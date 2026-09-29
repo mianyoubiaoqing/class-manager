@@ -208,6 +208,23 @@ if (!app.requestSingleInstanceLock()) {
             const parsed = checkDeepSeekInput.parse(input);
             const apiKey = credentialStore.loadKey();
             const credentialStatus = credentialStore.getStatus();
+            const target =
+              parsed.type === 'text'
+                ? {
+                    type: 'text_check' as const,
+                    model: DEFAULT_TEXT_MODEL,
+                    promptVersion: 'ping-v1',
+                    runner: () =>
+                      deepSeekClient.checkTextConnection(apiKey, { signal: controller.signal }),
+                  }
+                : {
+                    type: 'vision_check' as const,
+                    model: DEFAULT_VISION_MODEL,
+                    promptVersion: 'synthetic-1x1-v1',
+                    runner: () =>
+                      deepSeekClient.checkVisionConnection(apiKey, { signal: controller.signal }),
+                  };
+
             if (currentCheckController) {
               currentCheckController.abort();
             }
@@ -216,19 +233,14 @@ if (!app.requestSingleInstanceLock()) {
             const timeout = setTimeout(() => controller.abort(), 30000);
             const startTime = Date.now();
             try {
-              const result =
-                parsed.type === 'text'
-                  ? await deepSeekClient.checkTextConnection(apiKey, { signal: controller.signal })
-                  : await deepSeekClient.checkVisionConnection(apiKey, {
-                      signal: controller.signal,
-                    });
+              const result = await target.runner();
               result.credentialUpdatedAt = credentialStatus.updatedAt;
               ledger.record({
                 id: randomUUID(),
                 responseId: result.responseId,
                 timestamp: result.timestamp,
-                type: parsed.type === 'text' ? 'text_check' : 'vision_check',
-                requestModel: parsed.type === 'text' ? DEFAULT_TEXT_MODEL : DEFAULT_VISION_MODEL,
+                type: target.type,
+                requestModel: target.model,
                 responseModel: result.model,
                 status: 'success',
                 durationMs: result.durationMs,
@@ -242,12 +254,12 @@ if (!app.requestSingleInstanceLock()) {
               ledger.record({
                 id: randomUUID(),
                 timestamp: new Date().toISOString(),
-                type: parsed.type === 'text' ? 'text_check' : 'vision_check',
-                requestModel: parsed.type === 'text' ? DEFAULT_TEXT_MODEL : DEFAULT_VISION_MODEL,
+                type: target.type,
+                requestModel: target.model,
                 status: 'failed',
                 errorCode,
                 durationMs,
-                promptVersion: parsed.type === 'text' ? 'ping-v1' : 'synthetic-1x1-v1',
+                promptVersion: target.promptVersion,
               });
               throw error;
             } finally {

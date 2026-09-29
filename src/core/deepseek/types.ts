@@ -48,7 +48,6 @@ export interface DeepSeekCheckOptions {
   model?: DeepSeekModel;
   baseUrl?: string;
   signal?: AbortSignal;
-  timeoutMs?: number;
 }
 
 export interface DeepSeekCheckResult {

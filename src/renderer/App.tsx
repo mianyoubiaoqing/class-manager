@@ -217,6 +217,7 @@ export function App() {
           message: res.error.message,
           timestamp: new Date().toISOString(),
           promptVersion: type === 'text' ? 'ping-v1' : 'synthetic-1x1-v1',
+          credentialUpdatedAt: deepSeekStatus?.updatedAt,
         };
         if (type === 'text') setTestResultText(failedResult);
         else setTestResultVision(failedResult);
