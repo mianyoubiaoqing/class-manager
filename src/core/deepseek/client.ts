@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { DomainError } from '../errors';
 import {
   TEXT_PROMPT_VERSION,
@@ -15,27 +16,37 @@ export const DEFAULT_VISION_MODEL = 'deepseek-flash';
 export const SYNTHETIC_TEST_IMAGE_DATA_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 
-interface ChatCompletionResponse {
-  id?: string;
-  model?: string;
-  choices?: Array<{
-    message?: {
-      content?: string;
-      role?: string;
-    };
-    finish_reason?: string;
-  }>;
-  usage?: {
-    prompt_tokens?: number;
-    completion_tokens?: number;
-    total_tokens?: number;
-  };
-  error?: {
-    message?: string;
-    type?: string;
-    code?: string;
-  };
-}
+const chatCompletionSuccessSchema = z
+  .object({
+    id: z.string().trim().min(1, '返回数据缺少响应 ID'),
+    model: z.string().trim().min(1, '返回数据缺少模型名称'),
+    choices: z
+      .array(
+        z
+          .object({
+            message: z
+              .object({
+                content: z.string().optional().nullable(),
+                role: z.string().optional().nullable(),
+              })
+              .optional()
+              .nullable(),
+          })
+          .passthrough(),
+      )
+      .min(1, 'choices 列表不能为空'),
+    usage: z
+      .object({
+        prompt_tokens: z.number().int().nonnegative().optional().nullable(),
+        completion_tokens: z.number().int().nonnegative().optional().nullable(),
+        total_tokens: z.number().int().nonnegative().optional().nullable(),
+      })
+      .optional()
+      .nullable(),
+  })
+  .passthrough();
+
+export type ChatCompletionVerifiedResponse = z.infer<typeof chatCompletionSuccessSchema>;
 
 export type FetchFunction = typeof fetch;
 
@@ -57,12 +68,27 @@ export class DeepSeekClient {
     return message;
   }
 
-  private parseUsage(usageRaw?: ChatCompletionResponse['usage']): DeepSeekTokenUsage | null {
+  private parseUsage(
+    usageRaw?: ChatCompletionVerifiedResponse['usage'],
+  ): DeepSeekTokenUsage | null {
     if (!usageRaw) return null;
+    const promptTokens = typeof usageRaw.prompt_tokens === 'number' ? usageRaw.prompt_tokens : null;
+    const completionTokens =
+      typeof usageRaw.completion_tokens === 'number' ? usageRaw.completion_tokens : null;
+    let totalTokens = typeof usageRaw.total_tokens === 'number' ? usageRaw.total_tokens : null;
+
+    if (totalTokens === null && promptTokens !== null && completionTokens !== null) {
+      totalTokens = promptTokens + completionTokens;
+    }
+
+    if (promptTokens === null && completionTokens === null && totalTokens === null) {
+      return null;
+    }
+
     return {
-      promptTokens: usageRaw.prompt_tokens ?? 0,
-      completionTokens: usageRaw.completion_tokens ?? 0,
-      totalTokens: usageRaw.total_tokens ?? 0,
+      promptTokens,
+      completionTokens,
+      totalTokens,
     };
   }
 
@@ -71,7 +97,7 @@ export class DeepSeekClient {
     body: Record<string, unknown>,
     signal?: AbortSignal,
     maxRetries = 1,
-  ): Promise<{ data: ChatCompletionResponse; durationMs: number }> {
+  ): Promise<{ data: ChatCompletionVerifiedResponse; durationMs: number }> {
     const fetchImpl = this.customFetch ?? globalThis.fetch;
     const url = `${this.baseUrl}/chat/completions`;
 
@@ -105,7 +131,7 @@ export class DeepSeekClient {
         if (res.status === 400 || res.status === 422) {
           let detail = '请求参数错误';
           try {
-            const errJson = (await res.json()) as ChatCompletionResponse;
+            const errJson = (await res.json()) as { error?: { message?: string } };
             if (errJson.error?.message) {
               detail = this.sanitizeMessage(errJson.error.message, apiKey);
             }
@@ -135,8 +161,15 @@ export class DeepSeekClient {
           throw new DomainError('HTTP_ERROR', `DeepSeek 请求失败 (HTTP ${res.status})。`);
         }
 
-        const data = (await res.json()) as ChatCompletionResponse;
-        return { data, durationMs };
+        const rawJson: unknown = await res.json();
+        const parseResult = chatCompletionSuccessSchema.safeParse(rawJson);
+        if (!parseResult.success) {
+          throw new DomainError(
+            'INVALID_RESPONSE',
+            `DeepSeek 响应结构无效: ${parseResult.error.issues[0]?.message ?? '数据结构不符合规范'}`,
+          );
+        }
+        return { data: parseResult.data, durationMs };
       } catch (error) {
         if (error instanceof DomainError) {
           throw error;
@@ -178,7 +211,7 @@ export class DeepSeekClient {
 
     const startIso = new Date().toISOString();
     const { data, durationMs } = await this.requestWithRetry(apiKey, body, options?.signal, 1);
-    const returnedModel = data.model || model;
+    const returnedModel = data.model;
     const usage = this.parseUsage(data.usage);
     const label = type === 'text' ? '文本模型' : '视觉模型';
 

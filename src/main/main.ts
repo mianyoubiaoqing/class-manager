@@ -207,6 +207,7 @@ if (!app.requestSingleInstanceLock()) {
           case 'checkDeepSeek': {
             const parsed = checkDeepSeekInput.parse(input);
             const apiKey = credentialStore.loadKey();
+            const credentialStatus = credentialStore.getStatus();
             if (currentCheckController) {
               currentCheckController.abort();
             }
@@ -221,6 +222,7 @@ if (!app.requestSingleInstanceLock()) {
                   : await deepSeekClient.checkVisionConnection(apiKey, {
                       signal: controller.signal,
                     });
+              result.credentialUpdatedAt = credentialStatus.updatedAt;
               ledger.record({
                 id: randomUUID(),
                 responseId: result.responseId,
@@ -263,6 +265,19 @@ if (!app.requestSingleInstanceLock()) {
         }
       }
 
+      const EXCLUSIVE_WORKSPACE_CHANNELS = new Set<Channel>([
+        'createClass',
+        'renameClass',
+        'saveStudent',
+        'setStudentActive',
+        'seedDemo',
+        'addSyntheticAsset',
+        'saveBackup',
+        'previewRestore',
+        'commitRestore',
+        'previewRecovery',
+      ]);
+
       for (const channel of CHANNELS) {
         ipcMain.handle(`cm:${channel}`, async (event, input: unknown) => {
           try {
@@ -277,17 +292,23 @@ if (!app.requestSingleInstanceLock()) {
             ) {
               throw new DomainError('FORBIDDEN', '已拒绝未授权的窗口调用。');
             }
-            if (operationBusy) throw new DomainError('BUSY', '另一项操作正在进行，请稍后重试。');
             if (input !== undefined && Buffer.byteLength(JSON.stringify(input)) > 16384) {
-              throw new DomainError('VALIDATION', '请求内容超过 M0 支持范围。');
+              throw new DomainError('VALIDATION', '请求内容超过支持范围。');
             }
-            operationBusy = true;
+
+            const isExclusive = EXCLUSIVE_WORKSPACE_CHANNELS.has(channel);
+            if (isExclusive) {
+              if (operationBusy) throw new DomainError('BUSY', '另一项操作正在进行，请稍后重试。');
+              operationBusy = true;
+            }
             try {
               const result = await dispatch(channel, input);
               if (!result.ok) remember(result.error);
               return result;
             } finally {
-              operationBusy = false;
+              if (isExclusive) {
+                operationBusy = false;
+              }
             }
           } catch (error) {
             const masked = publicError(error);

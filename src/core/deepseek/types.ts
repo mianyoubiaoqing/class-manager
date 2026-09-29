@@ -7,9 +7,9 @@ export const deepSeekModelSchema = z.enum(['deepseek-flash']);
 export type DeepSeekModel = z.infer<typeof deepSeekModelSchema>;
 
 export interface DeepSeekTokenUsage {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
+  promptTokens: number | null;
+  completionTokens: number | null;
+  totalTokens: number | null;
 }
 
 export interface DeepSeekCallRecord {
@@ -28,6 +28,13 @@ export interface DeepSeekCallRecord {
 
 export interface DeepSeekLedgerData {
   version: 1;
+  totals: {
+    totalCalls: number;
+    successCalls: number;
+    totalTokens: number;
+    promptTokens: number;
+    completionTokens: number;
+  };
   entries: DeepSeekCallRecord[];
 }
 
@@ -54,4 +61,5 @@ export interface DeepSeekCheckResult {
   message: string;
   timestamp: string;
   promptVersion: string;
+  credentialUpdatedAt?: string | null;
 }

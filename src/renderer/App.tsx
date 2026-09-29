@@ -151,6 +151,9 @@ export function App() {
       () => api.saveDeepSeekKey({ apiKey: apiKeyToSave }),
       (statusValue) => {
         setDeepSeekStatus(statusValue);
+        // 保存新凭据后彻底重置旧账号的测试结果，避免误认为新账号已验证
+        setTestResultText(null);
+        setTestResultVision(null);
       },
       'DeepSeek API Key 已安全加密存储。',
     );
@@ -179,7 +182,15 @@ export function App() {
     checkTaskIdRef.current += 1;
     setTestingType(null);
     if (api) {
-      await api.cancelDeepSeekCheck();
+      const cancelRes = await api.cancelDeepSeekCheck();
+      if (!cancelRes.ok) {
+        setNotice({
+          error: true,
+          text: `取消操作失败: ${cancelRes.error.message}`,
+          code: `${cancelRes.error.code} · ${cancelRes.error.operationId}`,
+        });
+        return;
+      }
     }
     setNotice({ error: false, text: '已取消正在进行的检查任务。' });
   }
@@ -1036,37 +1047,41 @@ export function App() {
                         </button>
                       )}
                     </div>
-                    {testResultText && (
-                      <div
-                        className={`test-result-box ${testResultText.success ? 'success' : 'failure'}`}
-                      >
-                        <div className="test-result-header">
-                          {testResultText.success ? (
-                            <CheckCircle2 size={16} />
-                          ) : (
-                            <XCircle size={16} />
-                          )}
-                          <span>{testResultText.message}</span>
-                        </div>
-                        {testResultText.success && (
-                          <div className="test-result-details">
-                            <span>
-                              <Clock size={13} /> 耗时: {testResultText.durationMs}ms
-                            </span>
-                            <span>
-                              <Cpu size={13} /> 响应模型: {testResultText.model}
-                            </span>
-                            {testResultText.usage && (
-                              <span>
-                                <Coins size={13} /> Token: {testResultText.usage.totalTokens}{' '}
-                                (Prompt: {testResultText.usage.promptTokens}, Comp:{' '}
-                                {testResultText.usage.completionTokens})
-                              </span>
+                    {testResultText &&
+                      deepSeekStatus?.configured &&
+                      (!testResultText.credentialUpdatedAt ||
+                        testResultText.credentialUpdatedAt === deepSeekStatus.updatedAt) && (
+                        <div
+                          className={`test-result-box ${testResultText.success ? 'success' : 'failure'}`}
+                        >
+                          <div className="test-result-header">
+                            {testResultText.success ? (
+                              <CheckCircle2 size={16} />
+                            ) : (
+                              <XCircle size={16} />
                             )}
+                            <span>{testResultText.message}</span>
                           </div>
-                        )}
-                      </div>
-                    )}
+                          {testResultText.success && (
+                            <div className="test-result-details">
+                              <span>
+                                <Clock size={13} /> 耗时: {testResultText.durationMs}ms
+                              </span>
+                              <span>
+                                <Cpu size={13} /> 响应模型: {testResultText.model}
+                              </span>
+                              {testResultText.usage && (
+                                <span>
+                                  <Coins size={13} /> Token:{' '}
+                                  {testResultText.usage.totalTokens ?? '未知'} (Prompt:{' '}
+                                  {testResultText.usage.promptTokens ?? '未知'}, Comp:{' '}
+                                  {testResultText.usage.completionTokens ?? '未知'})
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                   </div>
 
                   <div className="test-card">
@@ -1116,37 +1131,41 @@ export function App() {
                         </button>
                       )}
                     </div>
-                    {testResultVision && (
-                      <div
-                        className={`test-result-box ${testResultVision.success ? 'success' : 'failure'}`}
-                      >
-                        <div className="test-result-header">
-                          {testResultVision.success ? (
-                            <CheckCircle2 size={16} />
-                          ) : (
-                            <XCircle size={16} />
-                          )}
-                          <span>{testResultVision.message}</span>
-                        </div>
-                        {testResultVision.success && (
-                          <div className="test-result-details">
-                            <span>
-                              <Clock size={13} /> 耗时: {testResultVision.durationMs}ms
-                            </span>
-                            <span>
-                              <Cpu size={13} /> 响应模型: {testResultVision.model}
-                            </span>
-                            {testResultVision.usage && (
-                              <span>
-                                <Coins size={13} /> Token: {testResultVision.usage.totalTokens}{' '}
-                                (Prompt: {testResultVision.usage.promptTokens}, Comp:{' '}
-                                {testResultVision.usage.completionTokens})
-                              </span>
+                    {testResultVision &&
+                      deepSeekStatus?.configured &&
+                      (!testResultVision.credentialUpdatedAt ||
+                        testResultVision.credentialUpdatedAt === deepSeekStatus.updatedAt) && (
+                        <div
+                          className={`test-result-box ${testResultVision.success ? 'success' : 'failure'}`}
+                        >
+                          <div className="test-result-header">
+                            {testResultVision.success ? (
+                              <CheckCircle2 size={16} />
+                            ) : (
+                              <XCircle size={16} />
                             )}
+                            <span>{testResultVision.message}</span>
                           </div>
-                        )}
-                      </div>
-                    )}
+                          {testResultVision.success && (
+                            <div className="test-result-details">
+                              <span>
+                                <Clock size={13} /> 耗时: {testResultVision.durationMs}ms
+                              </span>
+                              <span>
+                                <Cpu size={13} /> 响应模型: {testResultVision.model}
+                              </span>
+                              {testResultVision.usage && (
+                                <span>
+                                  <Coins size={13} /> Token:{' '}
+                                  {testResultVision.usage.totalTokens ?? '未知'} (Prompt:{' '}
+                                  {testResultVision.usage.promptTokens ?? '未知'}, Comp:{' '}
+                                  {testResultVision.usage.completionTokens ?? '未知'})
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                   </div>
                 </div>
               </section>

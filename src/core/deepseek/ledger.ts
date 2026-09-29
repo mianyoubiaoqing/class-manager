@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { DomainError } from '../errors';
 import { atomicWrite } from '../files';
 import type { DeepSeekCallRecord, DeepSeekLedgerData } from './types';
 
@@ -22,17 +23,40 @@ export class DeepSeekLedger {
 
   private read(): DeepSeekLedgerData {
     if (!existsSync(this.ledgerPath)) {
-      return { version: 1, entries: [] };
+      return {
+        version: 1,
+        totals: {
+          totalCalls: 0,
+          successCalls: 0,
+          totalTokens: 0,
+          promptTokens: 0,
+          completionTokens: 0,
+        },
+        entries: [],
+      };
     }
     try {
       const raw = readFileSync(this.ledgerPath, 'utf8');
       const parsed = JSON.parse(raw) as DeepSeekLedgerData;
-      if (parsed.version === 1 && Array.isArray(parsed.entries)) {
+      if (
+        parsed &&
+        parsed.version === 1 &&
+        Array.isArray(parsed.entries) &&
+        parsed.totals &&
+        typeof parsed.totals.totalCalls === 'number'
+      ) {
         return parsed;
       }
-      return { version: 1, entries: [] };
-    } catch {
-      return { version: 1, entries: [] };
+      throw new DomainError(
+        'DATA_CORRUPTED',
+        `DeepSeek 用量账本数据结构异常，已停止写入以保留原文件 (${this.ledgerPath})。`,
+      );
+    } catch (error) {
+      if (error instanceof DomainError) throw error;
+      throw new DomainError(
+        'DATA_CORRUPTED',
+        `无法解析 DeepSeek 用量账本文件，已停止写入以保留原文件 (${this.ledgerPath})。`,
+      );
     }
   }
 
@@ -46,6 +70,16 @@ export class DeepSeekLedger {
 
   record(entry: DeepSeekCallRecord): void {
     const data = this.read();
+    data.totals.totalCalls += 1;
+    if (entry.status === 'success') {
+      data.totals.successCalls += 1;
+    }
+    if (entry.usage) {
+      data.totals.totalTokens += entry.usage.totalTokens || 0;
+      data.totals.promptTokens += entry.usage.promptTokens || 0;
+      data.totals.completionTokens += entry.usage.completionTokens || 0;
+    }
+
     data.entries.unshift(entry);
     if (data.entries.length > this.maxEntries) {
       data.entries = data.entries.slice(0, this.maxEntries);
@@ -55,29 +89,13 @@ export class DeepSeekLedger {
 
   getSummary(): DeepSeekLedgerSummary {
     const data = this.read();
-    let totalTokens = 0;
-    let promptTokens = 0;
-    let completionTokens = 0;
-    let successCalls = 0;
-
-    for (const item of data.entries) {
-      if (item.status === 'success') {
-        successCalls += 1;
-      }
-      if (item.usage) {
-        totalTokens += item.usage.totalTokens || 0;
-        promptTokens += item.usage.promptTokens || 0;
-        completionTokens += item.usage.completionTokens || 0;
-      }
-    }
-
     return {
-      totalCalls: data.entries.length,
-      successCalls,
-      totalTokens,
-      promptTokens,
-      completionTokens,
-      recentEntries: data.entries.slice(0, 20),
+      totalCalls: data.totals.totalCalls,
+      successCalls: data.totals.successCalls,
+      totalTokens: data.totals.totalTokens,
+      promptTokens: data.totals.promptTokens,
+      completionTokens: data.totals.completionTokens,
+      recentEntries: data.entries.slice(0, this.maxEntries),
     };
   }
 }

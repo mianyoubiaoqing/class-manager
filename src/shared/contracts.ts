@@ -122,9 +122,9 @@ export interface DeepSeekCredentialStatus {
 }
 
 export interface DeepSeekTokenUsage {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
+  promptTokens: number | null;
+  completionTokens: number | null;
+  totalTokens: number | null;
 }
 
 export interface DeepSeekCheckResult {
@@ -137,6 +137,7 @@ export interface DeepSeekCheckResult {
   message: string;
   timestamp: string;
   promptVersion: string;
+  credentialUpdatedAt?: string | null;
 }
 
 export interface DeepSeekCallRecord {

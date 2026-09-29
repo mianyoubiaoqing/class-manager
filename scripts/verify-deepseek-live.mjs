@@ -50,6 +50,16 @@ async function sendRequest(body) {
     throw new Error(`HTTP ${res.status}: ${errText.replaceAll(rawKey, '***')}`);
   }
   const data = await res.json();
+  if (
+    !data ||
+    typeof data !== 'object' ||
+    !data.id ||
+    !data.model ||
+    !Array.isArray(data.choices) ||
+    data.choices.length === 0
+  ) {
+    throw new Error('DeepSeek 响应结构异常: 缺少必要字段 id/model/choices');
+  }
   return { data, durationMs };
 }
 

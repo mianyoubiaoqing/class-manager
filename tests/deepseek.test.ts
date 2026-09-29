@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -284,5 +284,127 @@ describe('DeepSeek Usage Ledger', () => {
     expect(summary.completionTokens).toBe(2);
     expect(summary.recentEntries.length).toBe(2);
     expect(summary.recentEntries[0]?.id).toBe('entry-2'); // newest first
+  });
+
+  test('corrupted ledger file is not silently overwritten and raises DATA_CORRUPTED', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ds-ledger-corrupt-'));
+    roots.push(root);
+    const ledgerPath = join(root, 'deepseek-ledger.json');
+    const corruptedContent = '{"invalid": "json", corrupt}';
+    writeFileSync(ledgerPath, corruptedContent, 'utf8');
+
+    const ledger = new DeepSeekLedger(root);
+    expect(() => ledger.getSummary()).toThrowError(
+      expect.objectContaining({
+        code: 'DATA_CORRUPTED',
+      }),
+    );
+
+    // Verify original file was preserved and not wiped
+    expect(readFileSync(ledgerPath, 'utf8')).toBe(corruptedContent);
+  });
+
+  test('cumulative totals survive window trimming beyond 200 entries without dropping counts', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ds-ledger-limit-'));
+    roots.push(root);
+    const ledger = new DeepSeekLedger(root);
+
+    // Record 205 entries (each with 2 tokens)
+    for (let i = 0; i < 205; i++) {
+      ledger.record({
+        id: `entry-${i}`,
+        timestamp: new Date().toISOString(),
+        type: 'text_check',
+        requestModel: 'deepseek-flash',
+        status: 'success',
+        durationMs: 50,
+        usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        promptVersion: 'ping-v1',
+      });
+    }
+
+    const summary = ledger.getSummary();
+    // Lifetime totals must be 205 and 410 tokens
+    expect(summary.totalCalls).toBe(205);
+    expect(summary.successCalls).toBe(205);
+    expect(summary.totalTokens).toBe(410);
+    expect(summary.promptTokens).toBe(205);
+    expect(summary.completionTokens).toBe(205);
+    // Recent detail entries window is capped at 200
+    expect(summary.recentEntries.length).toBe(200);
+    expect(summary.recentEntries[0]?.id).toBe('entry-204');
+  });
+});
+
+describe('DeepSeek Response Validation & Usage Nuance', () => {
+  const testKey = 'sk-real-secret-token-abcdef';
+
+  test('empty response body or missing choices throws INVALID_RESPONSE', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+    });
+
+    const client = new DeepSeekClient({ customFetch: mockFetch as unknown as typeof fetch });
+    await expect(client.checkTextConnection(testKey)).rejects.toMatchObject({
+      code: 'INVALID_RESPONSE',
+    });
+  });
+
+  test('missing id or model in response throws INVALID_RESPONSE', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: '',
+        model: '',
+        choices: [{ message: { content: 'Ping response' } }],
+      }),
+    });
+
+    const client = new DeepSeekClient({ customFetch: mockFetch as unknown as typeof fetch });
+    await expect(client.checkTextConnection(testKey)).rejects.toMatchObject({
+      code: 'INVALID_RESPONSE',
+    });
+  });
+
+  test('partial usage preserves unknown/null fields instead of zeroing them', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 'chatcmpl-usage-test',
+        model: 'deepseek-flash',
+        choices: [{ message: { content: 'Hello' } }],
+        usage: { prompt_tokens: 5 }, // completion_tokens and total_tokens omitted
+      }),
+    });
+
+    const client = new DeepSeekClient({ customFetch: mockFetch as unknown as typeof fetch });
+    const result = await client.checkTextConnection(testKey);
+
+    expect(result.usage).toEqual({
+      promptTokens: 5,
+      completionTokens: null,
+      totalTokens: null,
+    });
+  });
+
+  test('empty usage object returns null usage instead of three zeros', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 'chatcmpl-empty-usage',
+        model: 'deepseek-flash',
+        choices: [{ message: { content: 'Hello' } }],
+        usage: {},
+      }),
+    });
+
+    const client = new DeepSeekClient({ customFetch: mockFetch as unknown as typeof fetch });
+    const result = await client.checkTextConnection(testKey);
+    expect(result.usage).toBeNull();
   });
 });
