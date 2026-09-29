@@ -904,3 +904,216 @@ dialog p {
     font-size: 18px;
   }
 }
+
+/* DeepSeek Settings & Model Verification */
+.settings-section {
+  border-bottom: 1px solid #dfe4e3;
+  padding: 0 0 28px;
+  margin-bottom: 27px;
+}
+.settings-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 10px;
+}
+.settings-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.settings-badge.configured {
+  background: #eef7f0;
+  color: #2b7044;
+  border: 1px solid #c9e4d1;
+}
+.settings-badge.unconfigured {
+  background: #f4f5f6;
+  color: #727b76;
+  border: 1px solid #dee2e0;
+}
+.settings-form {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.settings-input {
+  flex: 1;
+  min-width: 260px;
+  max-width: 480px;
+  padding: 8px 12px;
+  border: 1px solid #cbd3cf;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #ffffff;
+  color: #1a2420;
+}
+.settings-input:focus {
+  outline: none;
+  border-color: #3b7454;
+  box-shadow: 0 0 0 2px rgba(59, 116, 84, 0.15);
+}
+.danger-button {
+  background: #fff3f1;
+  color: #b53828;
+  border: 1px solid #f0cfcb;
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.danger-button:hover:not(:disabled) {
+  background: #fee7e4;
+  border-color: #e5b3ad;
+}
+.danger-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.banner-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fef9ed;
+  border: 1px solid #fae8c3;
+  color: #8c6014;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+.banner-alert svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.test-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+  margin-top: 14px;
+}
+.test-card {
+  border: 1px solid #dfe5e2;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.test-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.test-card-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #273830;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.test-model-tag {
+  font-size: 11px;
+  color: #5c6b63;
+  background: #f0f3f2;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+.test-card-desc {
+  font-size: 12px;
+  color: #63736b;
+  margin: 0;
+  line-height: 1.4;
+}
+.test-result-box {
+  margin-top: 6px;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 12px;
+  border: 1px solid;
+}
+.test-result-box.success {
+  background: #f1f8f3;
+  border-color: #cbe6d4;
+  color: #266b3f;
+}
+.test-result-box.failure {
+  background: #fff5f3;
+  border-color: #f6d1cc;
+  color: #af3e30;
+}
+.test-result-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.test-result-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 11px;
+  color: #526359;
+  margin-top: 6px;
+}
+.test-result-details span {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.ledger-stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.ledger-stat-card {
+  border: 1px solid #dfe5e2;
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 12px 14px;
+}
+.ledger-stat-card span {
+  display: block;
+  font-size: 11px;
+  color: #798780;
+  margin-bottom: 4px;
+}
+.ledger-stat-card strong {
+  font-size: 20px;
+  color: #273830;
+}
+.table-badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.table-badge.text {
+  background: #eef3f9;
+  color: #2c598a;
+}
+.table-badge.vision {
+  background: #f7eef9;
+  color: #7d2c8a;
+}
+.table-badge.success {
+  background: #eef7f0;
+  color: #2b7044;
+}
+.table-badge.failed {
+  background: #fff3f1;
+  color: #b53828;
+}

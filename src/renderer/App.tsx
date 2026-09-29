@@ -23,8 +23,27 @@ import {
   UserRoundMinus,
   UsersRound,
   X,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Coins,
+  Cpu,
+  Eye,
+  KeyRound,
+  Sparkles,
+  Trash2,
+  XCircle,
 } from 'lucide-react';
-import type { DesktopApi, Result, RestorePreview, Snapshot, Student } from '../shared/contracts';
+import type {
+  DeepSeekCheckResult,
+  DeepSeekCredentialStatus,
+  DeepSeekLedgerSummary,
+  DesktopApi,
+  Result,
+  RestorePreview,
+  Snapshot,
+  Student,
+} from '../shared/contracts';
 import metadata from '../../package.json';
 
 declare global {
@@ -38,7 +57,8 @@ type Modal =
   | { kind: 'student'; student?: Student }
   | { kind: 'activation'; student: Student }
   | { kind: 'restore'; preview: RestorePreview; recovery?: boolean }
-  | { kind: 'seed' };
+  | { kind: 'seed' }
+  | { kind: 'deleteKey' };
 const date = (value: string) =>
   new Intl.DateTimeFormat('zh-CN', {
     year: 'numeric',
@@ -94,7 +114,7 @@ export function App() {
   const [snapshot, setSnapshot] = useState<Snapshot>();
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'roster' | 'maintenance'>('roster');
+  const [view, setView] = useState<'roster' | 'maintenance' | 'modelSettings'>('roster');
   const [notice, setNotice] = useState<Notice>();
   const [modal, setModal] = useState<Modal>();
   const [selectedClass, setSelectedClass] = useState('all');
@@ -102,7 +122,91 @@ export function App() {
   const [status, setStatus] = useState('active');
   const [page, setPage] = useState(0);
   const [lastBackup, setLastBackup] = useState<string>();
+  const [deepSeekStatus, setDeepSeekStatus] = useState<DeepSeekCredentialStatus>();
+  const [deepSeekLedger, setDeepSeekLedger] = useState<DeepSeekLedgerSummary>();
+  const [keyInput, setKeyInput] = useState('');
+  const [testingType, setTestingType] = useState<'text' | 'vision' | null>(null);
+  const [testResultText, setTestResultText] = useState<DeepSeekCheckResult | null>(null);
+  const [testResultVision, setTestResultVision] = useState<DeepSeekCheckResult | null>(null);
   const api = window.classManager;
+
+  async function loadDeepSeekData() {
+    if (!api) return;
+    const [statusRes, ledgerRes] = await Promise.all([
+      api.getDeepSeekStatus(),
+      api.getDeepSeekLedger(),
+    ]);
+    if (statusRes.ok) setDeepSeekStatus(statusRes.value);
+    if (ledgerRes.ok) setDeepSeekLedger(ledgerRes.value);
+  }
+
+  async function handleSaveKey(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = keyInput.trim();
+    if (!trimmed) return;
+    const success = await perform(
+      () => api.saveDeepSeekKey({ apiKey: trimmed }),
+      (statusValue) => {
+        setDeepSeekStatus(statusValue);
+        setKeyInput('');
+      },
+      'DeepSeek API Key 已安全加密存储。',
+    );
+    if (success) {
+      void loadDeepSeekData();
+    }
+  }
+
+  async function handleDeleteKey() {
+    const success = await perform(
+      () => api.deleteDeepSeekKey(),
+      () => {
+        setDeepSeekStatus({ configured: false, maskedKey: null, updatedAt: null });
+        setTestResultText(null);
+        setTestResultVision(null);
+      },
+      '已清除保存的 API Key。',
+    );
+    if (success) {
+      setModal(undefined);
+      void loadDeepSeekData();
+    }
+  }
+
+  async function handleCheckConnection(type: 'text' | 'vision') {
+    setTestingType(type);
+    setNotice(undefined);
+    try {
+      const res = await api.checkDeepSeek({ type });
+      if (res.ok) {
+        if (type === 'text') setTestResultText(res.value);
+        else setTestResultVision(res.value);
+        setNotice({ error: false, text: res.value.message });
+      } else {
+        const failedResult: DeepSeekCheckResult = {
+          type,
+          success: false,
+          model: type === 'text' ? 'deepseek-flash' : 'deepseek-flash (Vision)',
+          durationMs: 0,
+          usage: null,
+          message: res.error.message,
+          timestamp: new Date().toISOString(),
+        };
+        if (type === 'text') setTestResultText(failedResult);
+        else setTestResultVision(failedResult);
+        setNotice({
+          error: true,
+          text: res.error.message,
+          code: `${res.error.code} · ${res.error.operationId}`,
+        });
+      }
+      void loadDeepSeekData();
+    } catch {
+      setNotice({ error: true, text: '连接测试失败或被中断。' });
+    } finally {
+      setTestingType(null);
+    }
+  }
 
   async function perform<T>(
     request: () => Promise<Result<T>>,
@@ -258,6 +362,17 @@ export function App() {
             数据与维护
             <ChevronRight size={14} />
           </button>
+          <button
+            className={view === 'modelSettings' ? 'nav-item selected' : 'nav-item'}
+            onClick={() => {
+              setView('modelSettings');
+              void loadDeepSeekData();
+            }}
+          >
+            <KeyRound size={18} />
+            模型设置
+            <ChevronRight size={14} />
+          </button>
         </nav>
         <section className="class-navigation">
           <div className="section-label">
@@ -315,7 +430,9 @@ export function App() {
         <header className="topbar">
           <div className="breadcrumb">
             工作台 <ChevronRight size={14} />
-            <span>{view === 'roster' ? '班级名册' : '数据与维护'}</span>
+            <span>
+              {view === 'roster' ? '班级名册' : view === 'maintenance' ? '数据与维护' : '模型设置'}
+            </span>
           </div>
           <span className="local-status">
             <span className="dot" />
@@ -325,8 +442,14 @@ export function App() {
         <div className="content">
           <div className="page-heading">
             <div>
-              <div className="eyebrow">CLASS MANAGER / M0</div>
-              <h1>{view === 'roster' ? '班级名册' : '数据与维护'}</h1>
+              <div className="eyebrow">CLASS MANAGER / M1</div>
+              <h1>
+                {view === 'roster'
+                  ? '班级名册'
+                  : view === 'maintenance'
+                    ? '数据与维护'
+                    : 'DeepSeek 本地配置与连接检查'}
+              </h1>
             </div>
             <div className="heading-actions">
               {view === 'roster' && (
@@ -345,9 +468,13 @@ export function App() {
                 title="重新读取数据"
                 aria-label="重新读取数据"
                 disabled={busy || loading || !api}
-                onClick={() =>
-                  void perform(() => api.snapshot(), acceptSnapshot, '已重新读取本地数据。')
-                }
+                onClick={() => {
+                  if (view === 'modelSettings') {
+                    void loadDeepSeekData();
+                  } else {
+                    void perform(() => api.snapshot(), acceptSnapshot, '已重新读取本地数据。');
+                  }
+                }}
               >
                 <RefreshCw size={17} />
               </button>
@@ -758,10 +885,290 @@ export function App() {
               </section>
             </div>
           )}
+          {view === 'modelSettings' && (
+            <div className="maintenance-view">
+              <section className="settings-section">
+                <div className="maintenance-title">
+                  <KeyRound size={21} />
+                  <h2>DeepSeek API 凭据</h2>
+                </div>
+                <dl>
+                  <div>
+                    <dt>存储状态</dt>
+                    <dd>
+                      {deepSeekStatus?.configured ? (
+                        <span className="settings-badge configured">
+                          <CheckCircle2 size={13} /> 已加密存储
+                        </span>
+                      ) : (
+                        <span className="settings-badge unconfigured">
+                          <CircleAlert size={13} /> 未配置密钥
+                        </span>
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>当前凭据掩码</dt>
+                    <dd className="path">
+                      {deepSeekStatus?.configured
+                        ? (deepSeekStatus.maskedKey ?? '已配置')
+                        : '暂无凭据'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>最后更新时间</dt>
+                    <dd>{deepSeekStatus?.updatedAt ? date(deepSeekStatus.updatedAt) : '未记录'}</dd>
+                  </div>
+                  <div>
+                    <dt>安全防护说明</dt>
+                    <dd>
+                      使用系统级安全存储（Windows
+                      DPAPI）加密保存在本地。不进入名册备份、不进入诊断报告、不写入普通业务数据库，输入后不可读回明文。
+                    </dd>
+                  </div>
+                </dl>
+                <form className="settings-form" onSubmit={(e) => void handleSaveKey(e)}>
+                  <input
+                    className="settings-input"
+                    type="password"
+                    autoComplete="off"
+                    placeholder="输入或粘贴 DeepSeek API Key (如 sk-...)"
+                    value={keyInput}
+                    onChange={(e) => setKeyInput(e.target.value)}
+                    disabled={busy}
+                  />
+                  <button type="submit" className="primary" disabled={busy || !keyInput.trim()}>
+                    <KeyRound size={16} />
+                    保存并加密存储
+                  </button>
+                  {deepSeekStatus?.configured && (
+                    <button
+                      type="button"
+                      className="danger-button"
+                      disabled={busy}
+                      onClick={() => setModal({ kind: 'deleteKey' })}
+                    >
+                      <Trash2 size={16} />
+                      清除已存凭据
+                    </button>
+                  )}
+                </form>
+              </section>
+
+              <section className="settings-section">
+                <div className="maintenance-title">
+                  <Sparkles size={21} />
+                  <h2>双通道连接检查 (合成测试)</h2>
+                </div>
+                <div className="banner-alert">
+                  <AlertTriangle size={18} />
+                  <div>
+                    <strong>费用与通道独立性提示：</strong>
+                    连接测试将向 DeepSeek 官方接口发起微型合成请求，产生极少量 Token 消耗（通常 &lt;
+                    100 Tokens）。文本模型与视觉模型分别独立验证，文本通过不代表视觉多模态接口通过。
+                  </div>
+                </div>
+
+                <div className="test-grid">
+                  <div className="test-card">
+                    <div className="test-card-header">
+                      <h3>
+                        <FileText size={16} /> 文本模型检查
+                      </h3>
+                      <span className="test-model-tag">deepseek-flash</span>
+                    </div>
+                    <p className="test-card-desc">
+                      向官方 Chat Completions 接口发送微型合成 Ping 消息，验证文本生成与认证可用性。
+                    </p>
+                    <button
+                      className="primary"
+                      disabled={busy || !deepSeekStatus?.configured || testingType !== null}
+                      onClick={() => void handleCheckConnection('text')}
+                    >
+                      {testingType === 'text' ? (
+                        <>
+                          <LoaderCircle size={15} className="spin" /> 正在检查文本模型...
+                        </>
+                      ) : (
+                        <>
+                          <FileText size={15} /> 检查文本模型连通性
+                        </>
+                      )}
+                    </button>
+                    {testResultText && (
+                      <div
+                        className={`test-result-box ${testResultText.success ? 'success' : 'failure'}`}
+                      >
+                        <div className="test-result-header">
+                          {testResultText.success ? (
+                            <CheckCircle2 size={16} />
+                          ) : (
+                            <XCircle size={16} />
+                          )}
+                          <span>{testResultText.message}</span>
+                        </div>
+                        {testResultText.success && (
+                          <div className="test-result-details">
+                            <span>
+                              <Clock size={13} /> 耗时: {testResultText.durationMs}ms
+                            </span>
+                            <span>
+                              <Cpu size={13} /> 响应模型: {testResultText.model}
+                            </span>
+                            {testResultText.usage && (
+                              <span>
+                                <Coins size={13} /> Token: {testResultText.usage.totalTokens}{' '}
+                                (Prompt: {testResultText.usage.promptTokens}, Comp:{' '}
+                                {testResultText.usage.completionTokens})
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="test-card">
+                    <div className="test-card-header">
+                      <h3>
+                        <Eye size={16} /> 视觉多模态检查
+                      </h3>
+                      <span className="test-model-tag">deepseek-flash (Vision)</span>
+                    </div>
+                    <p className="test-card-desc">
+                      发送微型合成透明图片与简短提示词，验证 Flash 多模态图像理解与阅卷通道。
+                    </p>
+                    <button
+                      className="primary"
+                      disabled={busy || !deepSeekStatus?.configured || testingType !== null}
+                      onClick={() => void handleCheckConnection('vision')}
+                    >
+                      {testingType === 'vision' ? (
+                        <>
+                          <LoaderCircle size={15} className="spin" /> 正在检查视觉模型...
+                        </>
+                      ) : (
+                        <>
+                          <Eye size={15} /> 检查视觉模型连通性
+                        </>
+                      )}
+                    </button>
+                    {testResultVision && (
+                      <div
+                        className={`test-result-box ${testResultVision.success ? 'success' : 'failure'}`}
+                      >
+                        <div className="test-result-header">
+                          {testResultVision.success ? (
+                            <CheckCircle2 size={16} />
+                          ) : (
+                            <XCircle size={16} />
+                          )}
+                          <span>{testResultVision.message}</span>
+                        </div>
+                        {testResultVision.success && (
+                          <div className="test-result-details">
+                            <span>
+                              <Clock size={13} /> 耗时: {testResultVision.durationMs}ms
+                            </span>
+                            <span>
+                              <Cpu size={13} /> 响应模型: {testResultVision.model}
+                            </span>
+                            {testResultVision.usage && (
+                              <span>
+                                <Coins size={13} /> Token: {testResultVision.usage.totalTokens}{' '}
+                                (Prompt: {testResultVision.usage.promptTokens}, Comp:{' '}
+                                {testResultVision.usage.completionTokens})
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              <section className="settings-section">
+                <div className="maintenance-title">
+                  <Coins size={21} />
+                  <h2>用量与调用账本</h2>
+                </div>
+                <div className="ledger-stats-row">
+                  <div className="ledger-stat-card">
+                    <span>总调用次数</span>
+                    <strong>{deepSeekLedger?.totalCalls ?? 0} 次</strong>
+                  </div>
+                  <div className="ledger-stat-card">
+                    <span>成功调用</span>
+                    <strong>{deepSeekLedger?.successCalls ?? 0} 次</strong>
+                  </div>
+                  <div className="ledger-stat-card">
+                    <span>累计消耗 Token</span>
+                    <strong>{deepSeekLedger?.totalTokens ?? 0}</strong>
+                  </div>
+                  <div className="ledger-stat-card">
+                    <span>提示词 Token</span>
+                    <strong>{deepSeekLedger?.promptTokens ?? 0}</strong>
+                  </div>
+                  <div className="ledger-stat-card">
+                    <span>生成 Token</span>
+                    <strong>{deepSeekLedger?.completionTokens ?? 0}</strong>
+                  </div>
+                </div>
+
+                {!deepSeekLedger || deepSeekLedger.recentEntries.length === 0 ? (
+                  <p className="test-card-desc">
+                    暂无调用记录。配置密钥并执行连接检查后将记录于此。
+                  </p>
+                ) : (
+                  <div className="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>时间</th>
+                          <th>检查类型</th>
+                          <th>请求模型</th>
+                          <th>响应模型</th>
+                          <th>状态</th>
+                          <th>耗时</th>
+                          <th>消耗 Token</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {deepSeekLedger.recentEntries.map((entry) => (
+                          <tr key={entry.id}>
+                            <td>{date(entry.timestamp)}</td>
+                            <td>
+                              <span
+                                className={`table-badge ${entry.type === 'text_check' ? 'text' : 'vision'}`}
+                              >
+                                {entry.type === 'text_check' ? '文本检查' : '视觉检查'}
+                              </span>
+                            </td>
+                            <td>{entry.requestModel}</td>
+                            <td>{entry.responseModel ?? '-'}</td>
+                            <td>
+                              <span
+                                className={`table-badge ${entry.status === 'success' ? 'success' : 'failed'}`}
+                              >
+                                {entry.status === 'success' ? '成功' : (entry.errorCode ?? '失败')}
+                              </span>
+                            </td>
+                            <td>{entry.durationMs}ms</td>
+                            <td>{entry.usage?.totalTokens ?? '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
           <footer className="workspace-footer">
             <span>
               <ShieldCheck size={13} />
-              仅合成数据 · 未连接云模型
+              {deepSeekStatus?.configured ? '本地安全凭据已就绪' : '本地安全凭据未配置'} · 合成验证
             </span>
             <span>v{metadata.version}</span>
           </footer>
@@ -773,7 +1180,31 @@ export function App() {
           正在处理
         </div>
       )}
-      {modal && snapshot && (
+      {modal?.kind === 'deleteKey' && (
+        <Dialog busy={busy} close={() => setModal(undefined)} title="确认清除 API Key">
+          <div>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#37474f', lineHeight: 1.5 }}>
+              确定要清除本机保存的 DeepSeek API Key 吗？
+              <br />
+              清除后系统将彻底删除本地加密凭据文件，后续 AI 模型功能将受阻，直到重新填写密钥。
+            </p>
+            <div className="dialog-actions">
+              <button type="button" disabled={busy} onClick={() => setModal(undefined)}>
+                取消
+              </button>
+              <button
+                type="button"
+                className="danger-button"
+                disabled={busy}
+                onClick={() => void handleDeleteKey()}
+              >
+                确认清除
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
+      {modal && modal.kind !== 'deleteKey' && snapshot && (
         <Dialog
           busy={busy}
           close={() => setModal(undefined)}

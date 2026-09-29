@@ -4,6 +4,7 @@ release/
 output/
 coverage/
 .local-data/
+.temp/
 *.log
 .env
 .env.*

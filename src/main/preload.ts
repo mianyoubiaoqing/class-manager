@@ -14,5 +14,10 @@ const api: DesktopApi = {
   previewRecovery: () => ipcRenderer.invoke('cm:previewRecovery'),
   commitRestore: (input) => ipcRenderer.invoke('cm:commitRestore', input),
   exportDiagnostics: () => ipcRenderer.invoke('cm:exportDiagnostics'),
+  getDeepSeekStatus: () => ipcRenderer.invoke('cm:getDeepSeekStatus'),
+  saveDeepSeekKey: (input) => ipcRenderer.invoke('cm:saveDeepSeekKey', input),
+  deleteDeepSeekKey: () => ipcRenderer.invoke('cm:deleteDeepSeekKey'),
+  checkDeepSeek: (input) => ipcRenderer.invoke('cm:checkDeepSeek', input),
+  getDeepSeekLedger: () => ipcRenderer.invoke('cm:getDeepSeekLedger'),
 };
 contextBridge.exposeInMainWorld('classManager', Object.freeze(api));

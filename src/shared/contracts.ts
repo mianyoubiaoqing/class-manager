@@ -33,6 +33,18 @@ export const activationInput = epochInput.extend({
 });
 export const restoreInput = epochInput.extend({ token: id });
 
+export const saveDeepSeekKeyInput = z
+  .object({
+    apiKey: z.string().trim().min(5).max(200),
+  })
+  .strict();
+
+export const checkDeepSeekInput = z
+  .object({
+    type: z.enum(['text', 'vision']),
+  })
+  .strict();
+
 export const classroomSchema = z
   .object({
     id,
@@ -103,6 +115,49 @@ export interface PublicError {
   operationId: string;
 }
 export type Result<T> = { ok: true; value: T } | { ok: false; error: PublicError };
+export interface DeepSeekCredentialStatus {
+  configured: boolean;
+  maskedKey: string | null;
+  updatedAt: string | null;
+}
+
+export interface DeepSeekTokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
+export interface DeepSeekCheckResult {
+  type: 'text' | 'vision';
+  success: boolean;
+  model: string;
+  durationMs: number;
+  usage: DeepSeekTokenUsage | null;
+  message: string;
+  timestamp: string;
+}
+
+export interface DeepSeekCallRecord {
+  id: string;
+  timestamp: string;
+  type: 'text_check' | 'vision_check';
+  requestModel: string;
+  responseModel?: string;
+  status: 'success' | 'failed';
+  errorCode?: string;
+  durationMs: number;
+  usage?: DeepSeekTokenUsage;
+}
+
+export interface DeepSeekLedgerSummary {
+  totalCalls: number;
+  successCalls: number;
+  totalTokens: number;
+  promptTokens: number;
+  completionTokens: number;
+  recentEntries: DeepSeekCallRecord[];
+}
+
 export interface DesktopApi {
   snapshot(): Promise<Result<Snapshot>>;
   createClass(input: z.infer<typeof createClassInput>): Promise<Result<Snapshot>>;
@@ -116,6 +171,13 @@ export interface DesktopApi {
   previewRecovery(): Promise<Result<RestorePreview>>;
   commitRestore(input: z.infer<typeof restoreInput>): Promise<Result<Snapshot>>;
   exportDiagnostics(): Promise<Result<Receipt | null>>;
+  getDeepSeekStatus(): Promise<Result<DeepSeekCredentialStatus>>;
+  saveDeepSeekKey(
+    input: z.infer<typeof saveDeepSeekKeyInput>,
+  ): Promise<Result<DeepSeekCredentialStatus>>;
+  deleteDeepSeekKey(): Promise<Result<boolean>>;
+  checkDeepSeek(input: z.infer<typeof checkDeepSeekInput>): Promise<Result<DeepSeekCheckResult>>;
+  getDeepSeekLedger(): Promise<Result<DeepSeekLedgerSummary>>;
 }
 
 // The preload exposes only these named operations, never an arbitrary IPC caller.
@@ -132,5 +194,10 @@ export const CHANNELS = [
   'commitRestore',
   'exportDiagnostics',
   'previewRecovery',
+  'getDeepSeekStatus',
+  'saveDeepSeekKey',
+  'deleteDeepSeekKey',
+  'checkDeepSeek',
+  'getDeepSeekLedger',
 ] as const;
 export type Channel = (typeof CHANNELS)[number];

@@ -1,9 +1,12 @@
-import { app, BrowserWindow, dialog, ipcMain, session } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, safeStorage, session } from 'electron';
+import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
   CHANNELS,
+  checkDeepSeekInput,
+  saveDeepSeekKeyInput,
   type Channel,
   type PublicError,
   type Receipt,
@@ -13,6 +16,14 @@ import {
 import { MAX_BACKUP_BYTES } from '../core/backup';
 import { atomicWrite, requireRegularFile } from '../core/files';
 import { DomainError, publicError } from '../core/errors';
+import {
+  DeepSeekClient,
+  DeepSeekCredentialStore,
+  DeepSeekLedger,
+  DEFAULT_TEXT_MODEL,
+  DEFAULT_VISION_MODEL,
+  type CryptoProvider,
+} from '../core/deepseek';
 import { WorkerClient } from './worker-client';
 import { assertExportDestination, isTrustedSender } from './security';
 
@@ -45,6 +56,15 @@ if (!app.requestSingleInstanceLock()) {
     .then(() => {
       const root = join(app.getPath('userData'), 'workspace-data');
       const worker = new WorkerClient(join(__dirname, 'worker.cjs'), root);
+      const userDataPath = app.getPath('userData');
+      const cryptoProvider: CryptoProvider = {
+        isAvailable: () => safeStorage.isEncryptionAvailable(),
+        encrypt: (plain: string) => safeStorage.encryptString(plain),
+        decrypt: (cipher: Buffer) => safeStorage.decryptString(cipher),
+      };
+      const credentialStore = new DeepSeekCredentialStore(userDataPath, cryptoProvider);
+      const ledger = new DeepSeekLedger(userDataPath);
+      const deepSeekClient = new DeepSeekClient();
       app.on('will-quit', () => {
         void worker.close();
       });
@@ -137,6 +157,8 @@ if (!app.requestSingleInstanceLock()) {
           }
           case 'exportDiagnostics': {
             const snapshot = await worker.call<Snapshot>('snapshot');
+            const deepSeekStatus = credentialStore.getStatus();
+            const ledgerSummary = ledger.getSummary();
             const report = {
               format: 'class-manager-diagnostics',
               version: app.getVersion(),
@@ -155,6 +177,12 @@ if (!app.requestSingleInstanceLock()) {
                     schema: snapshot.value.schemaVersion,
                   }
                 : null,
+              deepSeek: {
+                configured: deepSeekStatus.configured,
+                maskedKey: deepSeekStatus.maskedKey,
+                totalCalls: ledgerSummary.totalCalls,
+                totalTokens: ledgerSummary.totalTokens,
+              },
               errors: recentErrors,
             };
             return save(
@@ -162,6 +190,62 @@ if (!app.requestSingleInstanceLock()) {
               'class-manager-diagnostics.json',
               'json',
             );
+          }
+          case 'getDeepSeekStatus': {
+            return { ok: true, value: credentialStore.getStatus() };
+          }
+          case 'saveDeepSeekKey': {
+            const parsed = saveDeepSeekKeyInput.parse(input);
+            const status = credentialStore.saveKey(parsed.apiKey);
+            return { ok: true, value: status };
+          }
+          case 'deleteDeepSeekKey': {
+            credentialStore.deleteKey();
+            return { ok: true, value: true };
+          }
+          case 'checkDeepSeek': {
+            const parsed = checkDeepSeekInput.parse(input);
+            const apiKey = credentialStore.loadKey();
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 30000);
+            const startTime = Date.now();
+            try {
+              const result =
+                parsed.type === 'text'
+                  ? await deepSeekClient.checkTextConnection(apiKey, { signal: controller.signal })
+                  : await deepSeekClient.checkVisionConnection(apiKey, {
+                      signal: controller.signal,
+                    });
+              ledger.record({
+                id: randomUUID(),
+                timestamp: result.timestamp,
+                type: parsed.type === 'text' ? 'text_check' : 'vision_check',
+                requestModel: parsed.type === 'text' ? DEFAULT_TEXT_MODEL : DEFAULT_VISION_MODEL,
+                responseModel: result.model,
+                status: 'success',
+                durationMs: result.durationMs,
+                usage: result.usage ?? undefined,
+              });
+              return { ok: true, value: result };
+            } catch (error) {
+              const durationMs = Date.now() - startTime;
+              const errorCode = error instanceof DomainError ? error.code : 'UNKNOWN';
+              ledger.record({
+                id: randomUUID(),
+                timestamp: new Date().toISOString(),
+                type: parsed.type === 'text' ? 'text_check' : 'vision_check',
+                requestModel: parsed.type === 'text' ? DEFAULT_TEXT_MODEL : DEFAULT_VISION_MODEL,
+                status: 'failed',
+                errorCode,
+                durationMs,
+              });
+              throw error;
+            } finally {
+              clearTimeout(timeout);
+            }
+          }
+          case 'getDeepSeekLedger': {
+            return { ok: true, value: ledger.getSummary() };
           }
           default:
             return worker.call(channel, input);
