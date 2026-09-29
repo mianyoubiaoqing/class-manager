@@ -1,0 +1,13 @@
+node_modules/
+dist/
+release/
+output/
+coverage/
+.local-data/
+*.log
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite-*
+*.cmbackup

@@ -1,0 +1,94 @@
+classDiagram
+direction TB
+class Enrollment {
+  +id
+}
+class Exam {
+  +id
+  +date
+}
+class ExamSubject {
+  +id
+  +subject
+  +maxScore
+  +precision
+}
+class ScoreRevision {
+  +id
+  +revision
+  +confirmedAt
+}
+class GradeEntry {
+  +status
+  +score
+}
+class AnswerSubmission {
+  +id
+  +revision
+  +pageOrder
+}
+class SourceAsset {
+  +id
+  +hash
+  +mediaType
+}
+class RubricVersion {
+  +id
+  +revision
+  +confirmedAt
+}
+class QuestionRule {
+  +questionId
+  +maxScore
+  +criteria
+}
+class GradingDraft {
+  +id
+  +revision
+  +status
+  +validateCompleteness()
+}
+class QuestionAssessment {
+  +questionId
+  +status
+  +proposedScore
+  +reason
+  +evidenceLocator
+}
+class GradingReview {
+  +id
+  +confirmedDraftRevision
+  +confirmedAt
+}
+class GrowthEntry {
+  +id
+  +kind
+  +occurredAt
+  +content
+}
+class SummaryDraft {
+  +id
+  +revision
+  +period
+  +status
+}
+Exam "1" *-- "1..*" ExamSubject : subjects
+ExamSubject "1" --> "0..*" ScoreRevision : score history
+ScoreRevision "1" *-- "0..*" GradeEntry : snapshot entries
+GradeEntry "0..*" --> "1" Enrollment : student at exam
+AnswerSubmission "0..*" --> "1" Enrollment : author
+AnswerSubmission "0..*" --> "1" ExamSubject : subject
+AnswerSubmission "0..*" --> "1..*" SourceAsset : ordered pages
+ExamSubject "1" --> "0..*" RubricVersion : rubrics
+RubricVersion "1" *-- "1..*" QuestionRule : rules
+GradingDraft "0..*" --> "1" AnswerSubmission : input revision
+GradingDraft "0..*" --> "1" RubricVersion : scoring basis
+GradingDraft "1" *-- "0..*" QuestionAssessment : results
+GradingReview "0..1" --> "1" GradingDraft : frozen reviewed version
+ScoreRevision "0..1" --> "0..1" GradingReview : publication origin
+GrowthEntry "0..*" --> "1" Enrollment : belongs to
+GrowthEntry "0..*" --> "0..*" ScoreRevision : referenced facts
+SummaryDraft "0..*" --> "1" Enrollment : subject
+SummaryDraft "0..*" --> "0..*" GrowthEntry : source facts
+SummaryDraft "0..*" --> "0..*" ScoreRevision : source scores
+SummaryDraft "0..1" --> "0..1" GrowthEntry : confirmed summary entry

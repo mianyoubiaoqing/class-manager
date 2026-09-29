@@ -1,0 +1,12 @@
+{
+  "theme": "neutral",
+  "look": "classic",
+  "layout": "dagre",
+  "class": {
+    "hideEmptyMembersBox": true
+  },
+  "themeVariables": {
+    "fontFamily": "Arial",
+    "fontSize": "16px"
+  }
+}

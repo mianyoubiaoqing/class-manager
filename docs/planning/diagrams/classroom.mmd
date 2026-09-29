@@ -1,0 +1,86 @@
+classDiagram
+direction TB
+class Classroom {
+  +id
+  +name
+}
+class Student {
+  +id
+  +studentNumber
+  +displayName
+}
+class Enrollment {
+  +id
+  +validFrom
+  +validTo
+}
+class SeatLayoutRevision {
+  +id
+  +revision
+  +rows
+  +columns
+}
+class Seat {
+  +id
+  +row
+  +column
+  +available
+}
+class SeatingPlan {
+  +id
+  +revision
+  +status
+  +validate()
+  +confirm()
+}
+class SeatAssignment {
+  +locked
+}
+class DutyPlan {
+  +id
+  +revision
+  +startDate
+  +endDate
+  +status
+  +confirm()
+}
+class DutyGroup {
+  +id
+  +order
+}
+class DutyMember {
+  +id
+}
+class DutyAssignment {
+  +id
+  +date
+}
+class DutyPostAssignment {
+  +id
+  +post
+  +temporaryReplacement
+}
+class Countdown {
+  +id
+  +targetDate
+  +timeZone
+  +remainingDays()
+}
+Classroom "1" --> "0..*" Enrollment : membership
+Student "1" --> "0..*" Enrollment : history
+Classroom "1" --> "0..*" SeatLayoutRevision : layouts
+SeatLayoutRevision "1" *-- "1..*" Seat : positions
+Classroom "1" --> "0..*" SeatingPlan : plans
+SeatingPlan "0..*" --> "1" SeatLayoutRevision : frozen layout
+SeatingPlan "1" *-- "0..*" SeatAssignment : allocation
+SeatAssignment "0..*" --> "1" Seat : occupies
+SeatAssignment "0..*" --> "1" Enrollment : assigned member
+Classroom "1" --> "0..*" DutyPlan : periods
+DutyPlan "1" *-- "0..*" DutyGroup : temporary groups
+DutyGroup "1" *-- "0..*" DutyMember : roster snapshot
+DutyMember "0..*" --> "1" Enrollment : member
+DutyPlan "1" *-- "0..*" DutyAssignment : schedule
+DutyAssignment "0..*" --> "1" DutyGroup : rotating group
+DutyAssignment "1" *-- "0..*" DutyPostAssignment : posts
+DutyPostAssignment "0..*" --> "1" Enrollment : assigned member
+Classroom "1" --> "0..*" Countdown : targets

@@ -1,0 +1,60 @@
+classDiagram
+direction TB
+class SourceMaterial {
+  +id
+  +title
+}
+class MaterialRevision {
+  +id
+  +hash
+  +parseStatus
+}
+class SourceReference {
+  +id
+  +pageOrSection
+  +excerpt
+}
+class LessonPlan {
+  +id
+  +topic
+  +subject
+}
+class LessonRevision {
+  +id
+  +revision
+  +status
+  +confirm()
+}
+class LessonSection {
+  +id
+  +order
+  +content
+  +teacherNotes
+}
+class Slide {
+  +id
+  +order
+  +contentBlocks
+}
+class ExportArtifact {
+  +id
+  +format
+  +templateVersion
+  +contentHash
+}
+class TeachingSession {
+  +id
+  +classroomId
+  +currentSection
+  +timerState
+  +status
+}
+SourceMaterial "1" *-- "1..*" MaterialRevision : versions
+SourceReference "0..*" --> "1" MaterialRevision : exact source
+LessonPlan "1" *-- "0..*" LessonRevision : revisions
+LessonRevision "1" *-- "0..*" LessonSection : plan content
+LessonRevision "1" *-- "0..*" Slide : courseware content
+LessonRevision "1" --> "0..*" SourceReference : basis
+ExportArtifact "0..*" --> "1" LessonRevision : exported snapshot
+TeachingSession "0..*" --> "1" LessonRevision : presented snapshot
+Slide "0..*" --> "0..1" LessonSection : corresponding section
