@@ -65,6 +65,7 @@ if (!app.requestSingleInstanceLock()) {
       const credentialStore = new DeepSeekCredentialStore(userDataPath, cryptoProvider);
       const ledger = new DeepSeekLedger(userDataPath);
       const deepSeekClient = new DeepSeekClient();
+      let currentCheckController: AbortController | null = null;
       app.on('will-quit', () => {
         void worker.close();
       });
@@ -157,8 +158,6 @@ if (!app.requestSingleInstanceLock()) {
           }
           case 'exportDiagnostics': {
             const snapshot = await worker.call<Snapshot>('snapshot');
-            const deepSeekStatus = credentialStore.getStatus();
-            const ledgerSummary = ledger.getSummary();
             const report = {
               format: 'class-manager-diagnostics',
               version: app.getVersion(),
@@ -177,12 +176,6 @@ if (!app.requestSingleInstanceLock()) {
                     schema: snapshot.value.schemaVersion,
                   }
                 : null,
-              deepSeek: {
-                configured: deepSeekStatus.configured,
-                maskedKey: deepSeekStatus.maskedKey,
-                totalCalls: ledgerSummary.totalCalls,
-                totalTokens: ledgerSummary.totalTokens,
-              },
               errors: recentErrors,
             };
             return save(
@@ -203,10 +196,22 @@ if (!app.requestSingleInstanceLock()) {
             credentialStore.deleteKey();
             return { ok: true, value: true };
           }
+          case 'cancelDeepSeekCheck': {
+            if (currentCheckController) {
+              currentCheckController.abort();
+              currentCheckController = null;
+              return { ok: true, value: true };
+            }
+            return { ok: true, value: false };
+          }
           case 'checkDeepSeek': {
             const parsed = checkDeepSeekInput.parse(input);
             const apiKey = credentialStore.loadKey();
+            if (currentCheckController) {
+              currentCheckController.abort();
+            }
             const controller = new AbortController();
+            currentCheckController = controller;
             const timeout = setTimeout(() => controller.abort(), 30000);
             const startTime = Date.now();
             try {
@@ -218,6 +223,7 @@ if (!app.requestSingleInstanceLock()) {
                     });
               ledger.record({
                 id: randomUUID(),
+                responseId: result.responseId,
                 timestamp: result.timestamp,
                 type: parsed.type === 'text' ? 'text_check' : 'vision_check',
                 requestModel: parsed.type === 'text' ? DEFAULT_TEXT_MODEL : DEFAULT_VISION_MODEL,
@@ -225,6 +231,7 @@ if (!app.requestSingleInstanceLock()) {
                 status: 'success',
                 durationMs: result.durationMs,
                 usage: result.usage ?? undefined,
+                promptVersion: result.promptVersion,
               });
               return { ok: true, value: result };
             } catch (error) {
@@ -238,10 +245,14 @@ if (!app.requestSingleInstanceLock()) {
                 status: 'failed',
                 errorCode,
                 durationMs,
+                promptVersion: parsed.type === 'text' ? 'ping-v1' : 'synthetic-1x1-v1',
               });
               throw error;
             } finally {
               clearTimeout(timeout);
+              if (currentCheckController === controller) {
+                currentCheckController = null;
+              }
             }
           }
           case 'getDeepSeekLedger': {

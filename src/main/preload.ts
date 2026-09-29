@@ -18,6 +18,7 @@ const api: DesktopApi = {
   saveDeepSeekKey: (input) => ipcRenderer.invoke('cm:saveDeepSeekKey', input),
   deleteDeepSeekKey: () => ipcRenderer.invoke('cm:deleteDeepSeekKey'),
   checkDeepSeek: (input) => ipcRenderer.invoke('cm:checkDeepSeek', input),
+  cancelDeepSeekCheck: () => ipcRenderer.invoke('cm:cancelDeepSeekCheck'),
   getDeepSeekLedger: () => ipcRenderer.invoke('cm:getDeepSeekLedger'),
 };
 contextBridge.exposeInMainWorld('classManager', Object.freeze(api));

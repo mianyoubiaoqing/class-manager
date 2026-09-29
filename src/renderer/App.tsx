@@ -128,6 +128,7 @@ export function App() {
   const [testingType, setTestingType] = useState<'text' | 'vision' | null>(null);
   const [testResultText, setTestResultText] = useState<DeepSeekCheckResult | null>(null);
   const [testResultVision, setTestResultVision] = useState<DeepSeekCheckResult | null>(null);
+  const checkTaskIdRef = useRef(0);
   const api = window.classManager;
 
   async function loadDeepSeekData() {
@@ -142,13 +143,14 @@ export function App() {
 
   async function handleSaveKey(e: FormEvent) {
     e.preventDefault();
-    const trimmed = keyInput.trim();
-    if (!trimmed) return;
+    const apiKeyToSave = keyInput.trim();
+    // 立即清空输入框，无论后续成功或失败，绝不在组件状态中存留明文 Key
+    setKeyInput('');
+    if (!apiKeyToSave) return;
     const success = await perform(
-      () => api.saveDeepSeekKey({ apiKey: trimmed }),
+      () => api.saveDeepSeekKey({ apiKey: apiKeyToSave }),
       (statusValue) => {
         setDeepSeekStatus(statusValue);
-        setKeyInput('');
       },
       'DeepSeek API Key 已安全加密存储。',
     );
@@ -173,11 +175,23 @@ export function App() {
     }
   }
 
+  async function handleCancelCheck() {
+    checkTaskIdRef.current += 1;
+    setTestingType(null);
+    if (api) {
+      await api.cancelDeepSeekCheck();
+    }
+    setNotice({ error: false, text: '已取消正在进行的检查任务。' });
+  }
+
   async function handleCheckConnection(type: 'text' | 'vision') {
+    const taskId = ++checkTaskIdRef.current;
     setTestingType(type);
     setNotice(undefined);
     try {
       const res = await api.checkDeepSeek({ type });
+      // 检查任务 ID，若已被取消或由新任务取代，则丢弃迟到响应
+      if (taskId !== checkTaskIdRef.current) return;
       if (res.ok) {
         if (type === 'text') setTestResultText(res.value);
         else setTestResultVision(res.value);
@@ -186,11 +200,12 @@ export function App() {
         const failedResult: DeepSeekCheckResult = {
           type,
           success: false,
-          model: type === 'text' ? 'deepseek-flash' : 'deepseek-flash (Vision)',
+          model: 'deepseek-flash',
           durationMs: 0,
           usage: null,
           message: res.error.message,
           timestamp: new Date().toISOString(),
+          promptVersion: type === 'text' ? 'ping-v1' : 'synthetic-1x1-v1',
         };
         if (type === 'text') setTestResultText(failedResult);
         else setTestResultVision(failedResult);
@@ -202,9 +217,13 @@ export function App() {
       }
       void loadDeepSeekData();
     } catch {
-      setNotice({ error: true, text: '连接测试失败或被中断。' });
+      if (taskId === checkTaskIdRef.current) {
+        setNotice({ error: true, text: '连接测试失败或被中断。' });
+      }
     } finally {
-      setTestingType(null);
+      if (taskId === checkTaskIdRef.current) {
+        setTestingType(null);
+      }
     }
   }
 
@@ -980,21 +999,43 @@ export function App() {
                     <p className="test-card-desc">
                       向官方 Chat Completions 接口发送微型合成 Ping 消息，验证文本生成与认证可用性。
                     </p>
-                    <button
-                      className="primary"
-                      disabled={busy || !deepSeekStatus?.configured || testingType !== null}
-                      onClick={() => void handleCheckConnection('text')}
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: '8px',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                      }}
                     >
-                      {testingType === 'text' ? (
-                        <>
-                          <LoaderCircle size={15} className="spin" /> 正在检查文本模型...
-                        </>
-                      ) : (
-                        <>
-                          <FileText size={15} /> 检查文本模型连通性
-                        </>
+                      <button
+                        className="primary"
+                        disabled={
+                          busy ||
+                          !deepSeekStatus?.configured ||
+                          (testingType !== null && testingType !== 'text')
+                        }
+                        onClick={() => void handleCheckConnection('text')}
+                      >
+                        {testingType === 'text' ? (
+                          <>
+                            <LoaderCircle size={15} className="spin" /> 正在检查文本模型...
+                          </>
+                        ) : (
+                          <>
+                            <FileText size={15} /> 检查文本模型连通性
+                          </>
+                        )}
+                      </button>
+                      {testingType === 'text' && (
+                        <button
+                          type="button"
+                          className="danger-button"
+                          onClick={() => void handleCancelCheck()}
+                        >
+                          取消检查
+                        </button>
                       )}
-                    </button>
+                    </div>
                     {testResultText && (
                       <div
                         className={`test-result-box ${testResultText.success ? 'success' : 'failure'}`}
@@ -1038,21 +1079,43 @@ export function App() {
                     <p className="test-card-desc">
                       发送微型合成透明图片与简短提示词，验证 Flash 多模态图像理解与阅卷通道。
                     </p>
-                    <button
-                      className="primary"
-                      disabled={busy || !deepSeekStatus?.configured || testingType !== null}
-                      onClick={() => void handleCheckConnection('vision')}
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: '8px',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                      }}
                     >
-                      {testingType === 'vision' ? (
-                        <>
-                          <LoaderCircle size={15} className="spin" /> 正在检查视觉模型...
-                        </>
-                      ) : (
-                        <>
-                          <Eye size={15} /> 检查视觉模型连通性
-                        </>
+                      <button
+                        className="primary"
+                        disabled={
+                          busy ||
+                          !deepSeekStatus?.configured ||
+                          (testingType !== null && testingType !== 'vision')
+                        }
+                        onClick={() => void handleCheckConnection('vision')}
+                      >
+                        {testingType === 'vision' ? (
+                          <>
+                            <LoaderCircle size={15} className="spin" /> 正在检查视觉模型...
+                          </>
+                        ) : (
+                          <>
+                            <Eye size={15} /> 检查视觉模型连通性
+                          </>
+                        )}
+                      </button>
+                      {testingType === 'vision' && (
+                        <button
+                          type="button"
+                          className="danger-button"
+                          onClick={() => void handleCancelCheck()}
+                        >
+                          取消检查
+                        </button>
                       )}
-                    </button>
+                    </div>
                     {testResultVision && (
                       <div
                         className={`test-result-box ${testResultVision.success ? 'success' : 'failure'}`}

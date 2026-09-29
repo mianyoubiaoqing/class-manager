@@ -1,5 +1,11 @@
 import { DomainError } from '../errors';
-import type { DeepSeekCheckOptions, DeepSeekCheckResult, DeepSeekTokenUsage } from './types';
+import {
+  TEXT_PROMPT_VERSION,
+  VISION_PROMPT_VERSION,
+  type DeepSeekCheckOptions,
+  type DeepSeekCheckResult,
+  type DeepSeekTokenUsage,
+} from './types';
 
 export const DEFAULT_BASE_URL = 'https://api.deepseek.com';
 export const DEFAULT_TEXT_MODEL = 'deepseek-flash';
@@ -155,14 +161,17 @@ export class DeepSeekClient {
     throw new DomainError('NETWORK_ERROR', 'DeepSeek 请求失败。');
   }
 
-  async checkTextConnection(
+  private async executeCheck(
     apiKey: string,
+    type: 'text' | 'vision',
+    model: string,
+    messages: unknown[],
+    promptVersion: string,
     options?: DeepSeekCheckOptions,
   ): Promise<DeepSeekCheckResult> {
-    const model = options?.model ?? DEFAULT_TEXT_MODEL;
     const body = {
       model,
-      messages: [{ role: 'user', content: 'Ping' }],
+      messages,
       max_tokens: 5,
       thinking: { type: 'disabled' },
     };
@@ -171,26 +180,44 @@ export class DeepSeekClient {
     const { data, durationMs } = await this.requestWithRetry(apiKey, body, options?.signal, 1);
     const returnedModel = data.model || model;
     const usage = this.parseUsage(data.usage);
+    const label = type === 'text' ? '文本模型' : '视觉模型';
 
     return {
-      type: 'text',
+      type,
       success: true,
+      responseId: data.id,
       model: returnedModel,
       durationMs,
       usage,
-      message: `文本模型连接成功 (${returnedModel})，耗时 ${durationMs}ms`,
+      message: `${label}连接成功 (${returnedModel})，耗时 ${durationMs}ms`,
       timestamp: startIso,
+      promptVersion,
     };
+  }
+
+  async checkTextConnection(
+    apiKey: string,
+    options?: DeepSeekCheckOptions,
+  ): Promise<DeepSeekCheckResult> {
+    return this.executeCheck(
+      apiKey,
+      'text',
+      options?.model ?? DEFAULT_TEXT_MODEL,
+      [{ role: 'user', content: 'Ping' }],
+      TEXT_PROMPT_VERSION,
+      options,
+    );
   }
 
   async checkVisionConnection(
     apiKey: string,
     options?: DeepSeekCheckOptions,
   ): Promise<DeepSeekCheckResult> {
-    const model = options?.model ?? DEFAULT_VISION_MODEL;
-    const body = {
-      model,
-      messages: [
+    return this.executeCheck(
+      apiKey,
+      'vision',
+      options?.model ?? DEFAULT_VISION_MODEL,
+      [
         {
           role: 'user',
           content: [
@@ -204,23 +231,8 @@ export class DeepSeekClient {
           ],
         },
       ],
-      max_tokens: 5,
-      thinking: { type: 'disabled' },
-    };
-
-    const startIso = new Date().toISOString();
-    const { data, durationMs } = await this.requestWithRetry(apiKey, body, options?.signal, 1);
-    const returnedModel = data.model || model;
-    const usage = this.parseUsage(data.usage);
-
-    return {
-      type: 'vision',
-      success: true,
-      model: returnedModel,
-      durationMs,
-      usage,
-      message: `视觉模型连接成功 (${returnedModel})，耗时 ${durationMs}ms`,
-      timestamp: startIso,
-    };
+      VISION_PROMPT_VERSION,
+      options,
+    );
   }
 }

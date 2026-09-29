@@ -1,6 +1,7 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { DomainError } from '../errors';
+import { atomicWrite } from '../files';
 import type { DeepSeekCredentialStatus } from './types';
 
 export interface CryptoProvider {
@@ -73,8 +74,8 @@ export class DeepSeekCredentialStore {
       mkdirSync(dir, { recursive: true });
     }
 
-    writeFileSync(this.credentialPath, encrypted);
-    writeFileSync(this.metaPath, JSON.stringify({ maskedKey: masked, updatedAt }, null, 2), 'utf8');
+    atomicWrite(this.credentialPath, encrypted);
+    atomicWrite(this.metaPath, JSON.stringify({ maskedKey: masked, updatedAt }, null, 2));
 
     return { configured: true, maskedKey: masked, updatedAt };
   }

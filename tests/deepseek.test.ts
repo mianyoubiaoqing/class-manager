@@ -111,7 +111,9 @@ describe('DeepSeek Client & Connection Verification', () => {
 
     expect(result.type).toBe('text');
     expect(result.success).toBe(true);
+    expect(result.responseId).toBe('chatcmpl-123');
     expect(result.model).toBe('deepseek-flash');
+    expect(result.promptVersion).toBe('ping-v1');
     expect(result.usage).toEqual({ promptTokens: 6, completionTokens: 2, totalTokens: 8 });
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -138,6 +140,8 @@ describe('DeepSeek Client & Connection Verification', () => {
 
     expect(result.type).toBe('vision');
     expect(result.success).toBe(true);
+    expect(result.responseId).toBe('chatcmpl-vision-123');
+    expect(result.promptVersion).toBe('synthetic-1x1-v1');
     expect(result.usage?.totalTokens).toBe(17);
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -250,6 +254,7 @@ describe('DeepSeek Usage Ledger', () => {
 
     ledger.record({
       id: 'entry-1',
+      responseId: 'chatcmpl-001',
       timestamp: new Date().toISOString(),
       type: 'text_check',
       requestModel: 'deepseek-flash',
@@ -257,6 +262,7 @@ describe('DeepSeek Usage Ledger', () => {
       status: 'success',
       durationMs: 120,
       usage: { promptTokens: 5, completionTokens: 2, totalTokens: 7 },
+      promptVersion: 'ping-v1',
     });
 
     ledger.record({
@@ -267,6 +273,7 @@ describe('DeepSeek Usage Ledger', () => {
       status: 'failed',
       errorCode: 'INSUFFICIENT_BALANCE',
       durationMs: 90,
+      promptVersion: 'synthetic-1x1-v1',
     });
 
     const summary = ledger.getSummary();

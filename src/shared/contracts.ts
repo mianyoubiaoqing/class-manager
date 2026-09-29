@@ -130,15 +130,18 @@ export interface DeepSeekTokenUsage {
 export interface DeepSeekCheckResult {
   type: 'text' | 'vision';
   success: boolean;
+  responseId?: string;
   model: string;
   durationMs: number;
   usage: DeepSeekTokenUsage | null;
   message: string;
   timestamp: string;
+  promptVersion: string;
 }
 
 export interface DeepSeekCallRecord {
   id: string;
+  responseId?: string;
   timestamp: string;
   type: 'text_check' | 'vision_check';
   requestModel: string;
@@ -147,6 +150,7 @@ export interface DeepSeekCallRecord {
   errorCode?: string;
   durationMs: number;
   usage?: DeepSeekTokenUsage;
+  promptVersion: string;
 }
 
 export interface DeepSeekLedgerSummary {
@@ -177,6 +181,7 @@ export interface DesktopApi {
   ): Promise<Result<DeepSeekCredentialStatus>>;
   deleteDeepSeekKey(): Promise<Result<boolean>>;
   checkDeepSeek(input: z.infer<typeof checkDeepSeekInput>): Promise<Result<DeepSeekCheckResult>>;
+  cancelDeepSeekCheck(): Promise<Result<boolean>>;
   getDeepSeekLedger(): Promise<Result<DeepSeekLedgerSummary>>;
 }
 
@@ -198,6 +203,7 @@ export const CHANNELS = [
   'saveDeepSeekKey',
   'deleteDeepSeekKey',
   'checkDeepSeek',
+  'cancelDeepSeekCheck',
   'getDeepSeekLedger',
 ] as const;
 export type Channel = (typeof CHANNELS)[number];

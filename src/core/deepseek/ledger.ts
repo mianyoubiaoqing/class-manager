@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { atomicWrite } from '../files';
 import type { DeepSeekCallRecord, DeepSeekLedgerData } from './types';
 
 export interface DeepSeekLedgerSummary {
@@ -40,7 +41,7 @@ export class DeepSeekLedger {
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }
-    writeFileSync(this.ledgerPath, JSON.stringify(data, null, 2), 'utf8');
+    atomicWrite(this.ledgerPath, JSON.stringify(data, null, 2));
   }
 
   record(entry: DeepSeekCallRecord): void {
