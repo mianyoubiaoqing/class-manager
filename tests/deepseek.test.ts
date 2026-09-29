@@ -334,6 +334,66 @@ describe('DeepSeek Usage Ledger', () => {
     expect(summary.recentEntries.length).toBe(200);
     expect(summary.recentEntries[0]?.id).toBe('entry-204');
   });
+
+  test('smoothly migrates legacy v1 ledger without totals by reconstructing totals from entries', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ds-ledger-legacy-'));
+    roots.push(root);
+    const ledgerPath = join(root, 'deepseek-ledger.json');
+    const legacyContent = JSON.stringify({
+      version: 1,
+      entries: [
+        {
+          id: 'legacy-1',
+          timestamp: new Date().toISOString(),
+          type: 'text_check',
+          requestModel: 'deepseek-flash',
+          status: 'success',
+          durationMs: 100,
+          usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+          promptVersion: 'ping-v1',
+        },
+      ],
+    });
+    writeFileSync(ledgerPath, legacyContent, 'utf8');
+
+    const ledger = new DeepSeekLedger(root);
+    const summary = ledger.getSummary();
+    expect(summary.totalCalls).toBe(1);
+    expect(summary.successCalls).toBe(1);
+    expect(summary.totalTokens).toBe(15);
+    expect(summary.promptTokens).toBe(10);
+    expect(summary.completionTokens).toBe(5);
+
+    // Verify file is persisted with totals structure
+    const updated = JSON.parse(readFileSync(ledgerPath, 'utf8'));
+    expect(updated.totals).toBeDefined();
+    expect(updated.totals.totalCalls).toBe(1);
+  });
+
+  test('in-progress call on restart is marked as interrupted without replay', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ds-ledger-reconcile-'));
+    roots.push(root);
+
+    // First session starts a call that does not complete before exit
+    const session1 = new DeepSeekLedger(root);
+    session1.startCall({
+      id: 'flight-call-1',
+      timestamp: new Date().toISOString(),
+      type: 'text_check',
+      requestModel: 'deepseek-flash',
+      status: 'in_progress',
+      durationMs: 0,
+      promptVersion: 'ping-v1',
+    });
+
+    // Second session starts up (simulating restart)
+    const session2 = new DeepSeekLedger(root);
+    const summary = session2.getSummary();
+    expect(summary.totalCalls).toBe(1);
+    expect(summary.successCalls).toBe(0);
+    expect(summary.recentEntries[0]?.status).toBe('interrupted');
+    expect(summary.recentEntries[0]?.errorCode).toBe('INTERRUPTED');
+  });
 });
 
 describe('DeepSeek Response Validation & Usage Nuance', () => {
@@ -348,6 +408,42 @@ describe('DeepSeek Response Validation & Usage Nuance', () => {
 
     const client = new DeepSeekClient({ customFetch: mockFetch as unknown as typeof fetch });
     await expect(client.checkTextConnection(testKey)).rejects.toMatchObject({
+      code: 'INVALID_RESPONSE',
+    });
+  });
+
+  test('empty choices list or choices with empty/whitespace content throws INVALID_RESPONSE', async () => {
+    const mockEmptyContent = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 'chatcmpl-empty-body',
+        model: 'deepseek-flash',
+        choices: [{ message: { content: '   ' } }],
+      }),
+    });
+
+    const client1 = new DeepSeekClient({
+      customFetch: mockEmptyContent as unknown as typeof fetch,
+    });
+    await expect(client1.checkTextConnection(testKey)).rejects.toMatchObject({
+      code: 'INVALID_RESPONSE',
+    });
+
+    const mockMissingMessage = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 'chatcmpl-no-msg',
+        model: 'deepseek-flash',
+        choices: [{}],
+      }),
+    });
+
+    const client2 = new DeepSeekClient({
+      customFetch: mockMissingMessage as unknown as typeof fetch,
+    });
+    await expect(client2.checkTextConnection(testKey)).rejects.toMatchObject({
       code: 'INVALID_RESPONSE',
     });
   });

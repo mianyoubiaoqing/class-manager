@@ -124,6 +124,7 @@ export function App() {
   const [lastBackup, setLastBackup] = useState<string>();
   const [deepSeekStatus, setDeepSeekStatus] = useState<DeepSeekCredentialStatus>();
   const [deepSeekLedger, setDeepSeekLedger] = useState<DeepSeekLedgerSummary>();
+  const [ledgerError, setLedgerError] = useState<string | null>(null);
   const [keyInput, setKeyInput] = useState('');
   const [testingType, setTestingType] = useState<'text' | 'vision' | null>(null);
   const [testResultText, setTestResultText] = useState<DeepSeekCheckResult | null>(null);
@@ -137,8 +138,16 @@ export function App() {
       api.getDeepSeekStatus(),
       api.getDeepSeekLedger(),
     ]);
-    if (statusRes.ok) setDeepSeekStatus(statusRes.value);
-    if (ledgerRes.ok) setDeepSeekLedger(ledgerRes.value);
+    if (statusRes.ok) {
+      setDeepSeekStatus(statusRes.value);
+    }
+    if (ledgerRes.ok) {
+      setDeepSeekLedger(ledgerRes.value);
+      setLedgerError(null);
+    } else {
+      setDeepSeekLedger(undefined);
+      setLedgerError(ledgerRes.error.message);
+    }
   }
 
   async function handleSaveKey(e: FormEvent) {
@@ -147,6 +156,16 @@ export function App() {
     // 立即清空输入框，无论后续成功或失败，绝不在组件状态中存留明文 Key
     setKeyInput('');
     if (!apiKeyToSave) return;
+
+    // 递增任务版本，让任何旧账号在途检查任务彻底失效并取消在途调用
+    checkTaskIdRef.current += 1;
+    if (testingType !== null && api) {
+      void api.cancelDeepSeekCheck();
+      setTestingType(null);
+    }
+    setTestResultText(null);
+    setTestResultVision(null);
+
     const success = await perform(
       () => api.saveDeepSeekKey({ apiKey: apiKeyToSave }),
       (statusValue) => {
@@ -163,6 +182,15 @@ export function App() {
   }
 
   async function handleDeleteKey() {
+    // 递增任务版本，让任何旧账号在途检查任务彻底失效并取消在途调用
+    checkTaskIdRef.current += 1;
+    if (testingType !== null && api) {
+      void api.cancelDeepSeekCheck();
+      setTestingType(null);
+    }
+    setTestResultText(null);
+    setTestResultVision(null);
+
     const success = await perform(
       () => api.deleteDeepSeekKey(),
       () => {
@@ -197,12 +225,18 @@ export function App() {
 
   async function handleCheckConnection(type: 'text' | 'vision') {
     const taskId = ++checkTaskIdRef.current;
+    const initialCredentialTimestamp = deepSeekStatus?.updatedAt;
     setTestingType(type);
     setNotice(undefined);
     try {
       const res = await api.checkDeepSeek({ type });
-      // 检查任务 ID，若已被取消或由新任务取代，则丢弃迟到响应
-      if (taskId !== checkTaskIdRef.current) return;
+      // 检查任务 ID 与凭据版本，若已被取消、更换 Key、删除 Key 或由新任务取代，则彻底丢弃响应与通知
+      if (
+        taskId !== checkTaskIdRef.current ||
+        (initialCredentialTimestamp && deepSeekStatus?.updatedAt !== initialCredentialTimestamp)
+      ) {
+        return;
+      }
       if (res.ok) {
         if (type === 'text') setTestResultText(res.value);
         else setTestResultVision(res.value);
@@ -1176,74 +1210,93 @@ export function App() {
                   <Coins size={21} />
                   <h2>用量与调用账本</h2>
                 </div>
-                <div className="ledger-stats-row">
-                  <div className="ledger-stat-card">
-                    <span>总调用次数</span>
-                    <strong>{deepSeekLedger?.totalCalls ?? 0} 次</strong>
-                  </div>
-                  <div className="ledger-stat-card">
-                    <span>成功调用</span>
-                    <strong>{deepSeekLedger?.successCalls ?? 0} 次</strong>
-                  </div>
-                  <div className="ledger-stat-card">
-                    <span>累计消耗 Token</span>
-                    <strong>{deepSeekLedger?.totalTokens ?? 0}</strong>
-                  </div>
-                  <div className="ledger-stat-card">
-                    <span>提示词 Token</span>
-                    <strong>{deepSeekLedger?.promptTokens ?? 0}</strong>
-                  </div>
-                  <div className="ledger-stat-card">
-                    <span>生成 Token</span>
-                    <strong>{deepSeekLedger?.completionTokens ?? 0}</strong>
-                  </div>
-                </div>
 
-                {!deepSeekLedger || deepSeekLedger.recentEntries.length === 0 ? (
-                  <p className="test-card-desc">
-                    暂无调用记录。配置密钥并执行连接检查后将记录于此。
-                  </p>
-                ) : (
-                  <div className="table-scroll">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>时间</th>
-                          <th>检查类型</th>
-                          <th>请求模型</th>
-                          <th>响应模型</th>
-                          <th>状态</th>
-                          <th>耗时</th>
-                          <th>消耗 Token</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {deepSeekLedger.recentEntries.map((entry) => (
-                          <tr key={entry.id}>
-                            <td>{date(entry.timestamp)}</td>
-                            <td>
-                              <span
-                                className={`table-badge ${entry.type === 'text_check' ? 'text' : 'vision'}`}
-                              >
-                                {entry.type === 'text_check' ? '文本检查' : '视觉检查'}
-                              </span>
-                            </td>
-                            <td>{entry.requestModel}</td>
-                            <td>{entry.responseModel ?? '-'}</td>
-                            <td>
-                              <span
-                                className={`table-badge ${entry.status === 'success' ? 'success' : 'failed'}`}
-                              >
-                                {entry.status === 'success' ? '成功' : (entry.errorCode ?? '失败')}
-                              </span>
-                            </td>
-                            <td>{entry.durationMs}ms</td>
-                            <td>{entry.usage?.totalTokens ?? '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                {ledgerError ? (
+                  <div className="test-result-box failure">
+                    <div className="test-result-header">
+                      <XCircle size={16} />
+                      <span>用量账本不可用: {ledgerError}</span>
+                    </div>
+                    <p className="test-card-desc">
+                      账本文件存在损坏或不可读。系统已停止覆盖原始文件以保全历史数据，排查修复前无法展示用量统计。
+                    </p>
                   </div>
+                ) : (
+                  <>
+                    <div className="ledger-stats-row">
+                      <div className="ledger-stat-card">
+                        <span>总调用次数</span>
+                        <strong>{deepSeekLedger?.totalCalls ?? 0} 次</strong>
+                      </div>
+                      <div className="ledger-stat-card">
+                        <span>成功调用</span>
+                        <strong>{deepSeekLedger?.successCalls ?? 0} 次</strong>
+                      </div>
+                      <div className="ledger-stat-card">
+                        <span>累计消耗 Token</span>
+                        <strong>{deepSeekLedger?.totalTokens ?? 0}</strong>
+                      </div>
+                      <div className="ledger-stat-card">
+                        <span>提示词 Token</span>
+                        <strong>{deepSeekLedger?.promptTokens ?? 0}</strong>
+                      </div>
+                      <div className="ledger-stat-card">
+                        <span>生成 Token</span>
+                        <strong>{deepSeekLedger?.completionTokens ?? 0}</strong>
+                      </div>
+                    </div>
+
+                    {!deepSeekLedger || deepSeekLedger.recentEntries.length === 0 ? (
+                      <p className="test-card-desc">
+                        暂无调用记录。配置密钥并执行连接检查后将记录于此。
+                      </p>
+                    ) : (
+                      <div className="table-scroll">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>时间</th>
+                              <th>检查类型</th>
+                              <th>请求模型</th>
+                              <th>响应模型</th>
+                              <th>状态</th>
+                              <th>耗时</th>
+                              <th>消耗 Token</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {deepSeekLedger.recentEntries.map((entry) => (
+                              <tr key={entry.id}>
+                                <td>{date(entry.timestamp)}</td>
+                                <td>
+                                  <span
+                                    className={`table-badge ${entry.type === 'text_check' ? 'text' : 'vision'}`}
+                                  >
+                                    {entry.type === 'text_check' ? '文本检查' : '视觉检查'}
+                                  </span>
+                                </td>
+                                <td>{entry.requestModel}</td>
+                                <td>{entry.responseModel ?? '-'}</td>
+                                <td>
+                                  <span className={`table-badge ${entry.status}`}>
+                                    {entry.status === 'success'
+                                      ? '成功'
+                                      : entry.status === 'in_progress'
+                                        ? '进行中'
+                                        : entry.status === 'interrupted'
+                                          ? '中断'
+                                          : (entry.errorCode ?? '失败')}
+                                  </span>
+                                </td>
+                                <td>{entry.durationMs}ms</td>
+                                <td>{entry.usage?.totalTokens ?? '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
                 )}
               </section>
             </div>

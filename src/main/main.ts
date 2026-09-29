@@ -231,35 +231,38 @@ if (!app.requestSingleInstanceLock()) {
             const controller = new AbortController();
             currentCheckController = controller;
             const timeout = setTimeout(() => controller.abort(), 30000);
+            const callId = randomUUID();
             const startTime = Date.now();
+
+            // 发起前先落盘在途记录 (in_progress)，保证窗口关闭或异常退出时不丢失潜在已扣费的调用
+            ledger.startCall({
+              id: callId,
+              timestamp: new Date().toISOString(),
+              type: target.type,
+              requestModel: target.model,
+              status: 'in_progress',
+              durationMs: 0,
+              promptVersion: target.promptVersion,
+            });
+
             try {
               const result = await target.runner();
               result.credentialUpdatedAt = credentialStatus.updatedAt;
-              ledger.record({
-                id: randomUUID(),
+              ledger.completeCall(callId, {
                 responseId: result.responseId,
-                timestamp: result.timestamp,
-                type: target.type,
-                requestModel: target.model,
                 responseModel: result.model,
                 status: 'success',
                 durationMs: result.durationMs,
                 usage: result.usage ?? undefined,
-                promptVersion: result.promptVersion,
               });
               return { ok: true, value: result };
             } catch (error) {
               const durationMs = Date.now() - startTime;
               const errorCode = error instanceof DomainError ? error.code : 'UNKNOWN';
-              ledger.record({
-                id: randomUUID(),
-                timestamp: new Date().toISOString(),
-                type: target.type,
-                requestModel: target.model,
+              ledger.completeCall(callId, {
                 status: 'failed',
                 errorCode,
                 durationMs,
-                promptVersion: target.promptVersion,
               });
               throw error;
             } finally {

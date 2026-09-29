@@ -24,13 +24,10 @@ const chatCompletionSuccessSchema = z
       .array(
         z
           .object({
-            message: z
-              .object({
-                content: z.string().optional().nullable(),
-                role: z.string().optional().nullable(),
-              })
-              .optional()
-              .nullable(),
+            message: z.object({
+              content: z.string().trim().min(1, '模型返回正文不能为空'),
+              role: z.string().optional().nullable(),
+            }),
           })
           .passthrough(),
       )

@@ -56,9 +56,10 @@ async function sendRequest(body) {
     !data.id ||
     !data.model ||
     !Array.isArray(data.choices) ||
-    data.choices.length === 0
+    data.choices.length === 0 ||
+    !data.choices[0]?.message?.content?.trim()
   ) {
-    throw new Error('DeepSeek 响应结构异常: 缺少必要字段 id/model/choices');
+    throw new Error('DeepSeek 响应结构异常: 缺少必要字段 id/model/choices 或模型返回正文为空');
   }
   return { data, durationMs };
 }

@@ -147,7 +147,7 @@ export interface DeepSeekCallRecord {
   type: 'text_check' | 'vision_check';
   requestModel: string;
   responseModel?: string;
-  status: 'success' | 'failed';
+  status: 'success' | 'failed' | 'interrupted' | 'in_progress';
   errorCode?: string;
   durationMs: number;
   usage?: DeepSeekTokenUsage;
