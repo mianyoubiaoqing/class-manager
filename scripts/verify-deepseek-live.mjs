@@ -49,7 +49,12 @@ async function sendRequest(body) {
     const errText = await res.text();
     throw new Error(`HTTP ${res.status}: ${errText.replaceAll(rawKey, '***')}`);
   }
-  const data = await res.json();
+  let data;
+  try {
+    data = await res.json();
+  } catch (jsonErr) {
+    throw new Error(`DeepSeek 返回的内容无法解析为有效 JSON: ${jsonErr.message}`);
+  }
   if (
     !data ||
     typeof data !== 'object' ||

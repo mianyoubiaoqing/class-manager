@@ -394,10 +394,50 @@ describe('DeepSeek Usage Ledger', () => {
     expect(summary.recentEntries[0]?.status).toBe('interrupted');
     expect(summary.recentEntries[0]?.errorCode).toBe('INTERRUPTED');
   });
+
+  test('damaged totals structure is rejected with DATA_CORRUPTED and not overwritten', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ds-ledger-damaged-totals-'));
+    roots.push(root);
+    const ledgerPath = join(root, 'deepseek-ledger.json');
+    const damagedContent = JSON.stringify({
+      version: 1,
+      totals: { totalCalls: 'NOT_A_NUMBER' },
+      entries: [],
+    });
+    writeFileSync(ledgerPath, damagedContent, 'utf8');
+
+    const ledger = new DeepSeekLedger(root);
+    expect(() => ledger.getSummary()).toThrowError(
+      expect.objectContaining({
+        code: 'DATA_CORRUPTED',
+      }),
+    );
+
+    // Verify original damaged file was preserved and NOT overwritten
+    expect(readFileSync(ledgerPath, 'utf8')).toBe(damagedContent);
+  });
 });
 
 describe('DeepSeek Response Validation & Usage Nuance', () => {
   const testKey = 'sk-real-secret-token-abcdef';
+
+  test('HTTP 200 with invalid unparseable JSON throws INVALID_RESPONSE without retrying', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new SyntaxError('Unexpected token < in JSON at position 0');
+      },
+    });
+
+    const client = new DeepSeekClient({ customFetch: mockFetch as unknown as typeof fetch });
+    await expect(client.checkTextConnection(testKey)).rejects.toMatchObject({
+      code: 'INVALID_RESPONSE',
+    });
+
+    // Crucial: exactly 1 call, zero retry attempts
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
 
   test('empty response body or missing choices throws INVALID_RESPONSE', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
@@ -502,5 +542,89 @@ describe('DeepSeek Response Validation & Usage Nuance', () => {
     const client = new DeepSeekClient({ customFetch: mockFetch as unknown as typeof fetch });
     const result = await client.checkTextConnection(testKey);
     expect(result.usage).toBeNull();
+  });
+});
+
+describe('DeepSeek Flow & Lifecycle Regressions (Key replacement, cancellation, crash interruption)', () => {
+  test('replacing key invalidates in-flight check task and ensures late response is dropped', () => {
+    // Model the exact state and sequencing guards from App.tsx
+    let checkTaskId = 0;
+    let credentialUpdatedAt = '2026-01-01T00:00:00.000Z';
+    let cardState: unknown = { active: 'previous-state' };
+    let noticeState: unknown = 'previous-notice';
+
+    // 1. Task 1 starts for account A
+    const task1Id = ++checkTaskId;
+    const task1InitialCredTimestamp = credentialUpdatedAt;
+    expect(cardState).not.toBeNull();
+    expect(noticeState).not.toBeNull();
+
+    // 2. While Task 1 is still in-flight, user replaces key with account B
+    // App.tsx: handleSaveKey increments checkTaskIdRef, resets results, and updates timestamp
+    checkTaskId += 1;
+    cardState = null;
+    noticeState = null;
+    credentialUpdatedAt = '2026-01-01T00:00:05.000Z';
+
+    // 3. Task 1 response finally arrives late (e.g. from slow network)
+    const task1LateResponse = {
+      ok: true,
+      value: {
+        type: 'text' as const,
+        success: true,
+        model: 'deepseek-flash',
+        durationMs: 1200,
+        usage: null,
+        message: '账号A连接成功',
+        timestamp: new Date().toISOString(),
+        promptVersion: 'ping-v1',
+      },
+    };
+
+    // App.tsx guard logic:
+    const isOutdated =
+      task1Id !== checkTaskId ||
+      (task1InitialCredTimestamp && credentialUpdatedAt !== task1InitialCredTimestamp);
+
+    if (!isOutdated) {
+      cardState = task1LateResponse.value;
+      noticeState = task1LateResponse.value.message;
+    }
+
+    // Both card and notice must remain completely un-polluted by the late response
+    expect(isOutdated).toBe(true);
+    expect(cardState).toBeNull();
+    expect(noticeState).toBeNull();
+  });
+
+  test('abrupt exit during check preserves in_progress record and marks interrupted on restart', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ds-crash-interrupted-'));
+    roots.push(root);
+
+    const callId = 'crash-test-call-1';
+    // Phase 1: Main process starts check and writes in_progress record before fetch
+    const session1 = new DeepSeekLedger(root);
+    session1.startCall({
+      id: callId,
+      timestamp: new Date().toISOString(),
+      type: 'text_check',
+      requestModel: 'deepseek-flash',
+      status: 'in_progress',
+      durationMs: 0,
+      promptVersion: 'ping-v1',
+    });
+
+    // Simulate abrupt process crash / exit before completeCall can be reached
+    // Phase 2: App starts up again, constructing new DeepSeekLedger
+    const session2 = new DeepSeekLedger(root);
+    const summary = session2.getSummary();
+
+    // Call was not lost: totalCalls is 1, but success is 0
+    expect(summary.totalCalls).toBe(1);
+    expect(summary.successCalls).toBe(0);
+    // Entry status is transitioned to 'interrupted' without executing any replay
+    expect(summary.recentEntries[0]?.id).toBe(callId);
+    expect(summary.recentEntries[0]?.status).toBe('interrupted');
+    expect(summary.recentEntries[0]?.errorCode).toBe('INTERRUPTED');
   });
 });

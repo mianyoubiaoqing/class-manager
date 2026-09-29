@@ -158,7 +158,18 @@ export class DeepSeekClient {
           throw new DomainError('HTTP_ERROR', `DeepSeek 请求失败 (HTTP ${res.status})。`);
         }
 
-        const rawJson: unknown = await res.json();
+        let rawJson: unknown;
+        try {
+          rawJson = await res.json();
+        } catch (jsonError) {
+          const errMsg = jsonError instanceof Error ? jsonError.message : String(jsonError);
+          const sanitized = this.sanitizeMessage(errMsg, apiKey);
+          throw new DomainError(
+            'INVALID_RESPONSE',
+            `DeepSeek 返回的内容无法解析为有效 JSON (${sanitized})。`,
+          );
+        }
+
         const parseResult = chatCompletionSuccessSchema.safeParse(rawJson);
         if (!parseResult.success) {
           throw new DomainError(
