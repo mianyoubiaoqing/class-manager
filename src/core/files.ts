@@ -20,22 +20,40 @@ export function durableWrite(path: string, bytes: string | Uint8Array): void {
   }
 }
 
+export interface AtomicWriteOptions {
+  renameFn?: (oldPath: string, newPath: string) => void;
+  sleepFn?: (ms: number) => void;
+  maxRetries?: number;
+}
+
 /** Publish only fully written files; a failed rename leaves the previous target intact. */
-export function atomicWrite(path: string, bytes: string | Uint8Array): void {
+export function atomicWrite(
+  path: string,
+  bytes: string | Uint8Array,
+  options?: AtomicWriteOptions,
+): void {
   const temporary = `${path}.${randomUUID()}.tmp`;
+  const rename = options?.renameFn ?? renameSync;
+  const sleep =
+    options?.sleepFn ??
+    ((ms: number) => {
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+    });
+  const maxRetries = options?.maxRetries ?? 10;
+
   try {
     durableWrite(temporary, bytes);
     let attempts = 0;
     while (true) {
       try {
-        renameSync(temporary, path);
+        rename(temporary, path);
         break;
       } catch (err: unknown) {
         const code = (err as { code?: string })?.code;
-        if ((code === 'EPERM' || code === 'EBUSY' || code === 'EACCES') && attempts < 10) {
+        if ((code === 'EPERM' || code === 'EBUSY' || code === 'EACCES') && attempts < maxRetries) {
           attempts++;
           const delay = attempts * 10;
-          Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delay);
+          sleep(delay);
           continue;
         }
         throw err;

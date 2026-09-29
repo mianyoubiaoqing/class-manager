@@ -10,6 +10,8 @@ import { Workspace } from '../src/core/workspace';
 import { DomainError, publicError } from '../src/core/errors';
 import { assertExportDestination, isTrustedSender } from '../src/main/security';
 import { WorkerClient } from '../src/main/worker-client';
+import { atomicWrite } from '../src/core/files';
+import * as fs from 'node:fs';
 
 const roots: string[] = [];
 const live: Workspace[] = [];
@@ -329,4 +331,90 @@ test('unresponsive worker fails within a deadline and rejects subsequent writes 
   } finally {
     await client.close();
   }
+});
+
+test('atomicWrite retries on transient EPERM/EBUSY and successfully publishes file', () => {
+  const root = mkdtempSync(join(tmpdir(), 'cm-atomic-retry-'));
+  roots.push(root);
+  const targetPath = join(root, 'target.txt');
+  writeFileSync(targetPath, 'initial-content', 'utf8');
+
+  let callCount = 0;
+  const sleepMsRecord: number[] = [];
+
+  atomicWrite(targetPath, 'updated-content', {
+    renameFn: (oldPath, newPath) => {
+      callCount++;
+      if (callCount <= 2) {
+        const eperm = new Error('EPERM: operation not permitted') as Error & { code: string };
+        eperm.code = 'EPERM';
+        throw eperm;
+      }
+      fs.renameSync(oldPath, newPath);
+    },
+    sleepFn: (ms) => sleepMsRecord.push(ms),
+  });
+
+  expect(callCount).toBe(3);
+  expect(sleepMsRecord).toEqual([10, 20]);
+  expect(readFileSync(targetPath, 'utf8')).toBe('updated-content');
+  // Ensure no orphan temporary files remain
+  const files = fs.readdirSync(root);
+  expect(files).toEqual(['target.txt']);
+});
+
+test('atomicWrite preserves original target and cleans up temp file when retries are exhausted', () => {
+  const root = mkdtempSync(join(tmpdir(), 'cm-atomic-exhaust-'));
+  roots.push(root);
+  const targetPath = join(root, 'target.txt');
+  writeFileSync(targetPath, 'original-content', 'utf8');
+
+  let callCount = 0;
+  expect(() =>
+    atomicWrite(targetPath, 'failed-content', {
+      renameFn: () => {
+        callCount++;
+        const ebusy = new Error('EBUSY: resource busy or locked') as Error & { code: string };
+        ebusy.code = 'EBUSY';
+        throw ebusy;
+      },
+      sleepFn: () => {},
+      maxRetries: 3,
+    }),
+  ).toThrow('EBUSY');
+
+  // Initial attempt (0) + 3 retries = 4 calls total
+  expect(callCount).toBe(4);
+  // Original target must remain byte-for-byte intact
+  expect(readFileSync(targetPath, 'utf8')).toBe('original-content');
+  // Temporary file must be removed by finally block
+  const files = fs.readdirSync(root);
+  expect(files).toEqual(['target.txt']);
+});
+
+test('atomicWrite aborts immediately on non-retryable errors without retrying', () => {
+  const root = mkdtempSync(join(tmpdir(), 'cm-atomic-nonretry-'));
+  roots.push(root);
+  const targetPath = join(root, 'target.txt');
+  writeFileSync(targetPath, 'original-content', 'utf8');
+
+  let callCount = 0;
+  expect(() =>
+    atomicWrite(targetPath, 'failed-content', {
+      renameFn: () => {
+        callCount++;
+        const enoent = new Error('ENOENT: no such file or directory') as Error & { code: string };
+        enoent.code = 'ENOENT';
+        throw enoent;
+      },
+      sleepFn: () => {},
+      maxRetries: 5,
+    }),
+  ).toThrow('ENOENT');
+
+  // Exactly 1 attempt, zero retries
+  expect(callCount).toBe(1);
+  expect(readFileSync(targetPath, 'utf8')).toBe('original-content');
+  const files = fs.readdirSync(root);
+  expect(files).toEqual(['target.txt']);
 });

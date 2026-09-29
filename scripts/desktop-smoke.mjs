@@ -72,9 +72,29 @@ try {
     process: typeof window.process,
     api: Object.keys(window.classManager),
   }));
+  const expectedApis = [
+    'snapshot',
+    'createClass',
+    'renameClass',
+    'saveStudent',
+    'setStudentActive',
+    'seedDemo',
+    'addSyntheticAsset',
+    'saveBackup',
+    'previewRestore',
+    'commitRestore',
+    'exportDiagnostics',
+    'previewRecovery',
+    'getDeepSeekStatus',
+    'saveDeepSeekKey',
+    'deleteDeepSeekKey',
+    'checkDeepSeek',
+    'cancelDeepSeekCheck',
+    'getDeepSeekLedger',
+  ];
   assert.equal(isolation.require, 'undefined');
   assert.equal(isolation.process, 'undefined');
-  assert.equal(isolation.api.length, 17);
+  assert.deepEqual(isolation.api.sort(), expectedApis.sort());
   const preferences = await application.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences(),
   );
@@ -95,17 +115,63 @@ try {
   );
   await page.getByRole('button', { name: '模型设置' }).click();
   await page.screenshot({ path: join(output, 'deepseek-settings.png'), fullPage: true });
-  assert.match(await page.locator('.credential-card').innerText(), /未配置密钥/);
+  assert.match(await page.locator('.settings-section').first().innerText(), /未配置密钥/);
   const keyInput = page.getByPlaceholder('输入或粘贴 DeepSeek API Key (如 sk-...)');
   await keyInput.fill('sk-synthetic-desktop-smoke-test-key-1234');
   await page.getByRole('button', { name: '保存并加密存储', exact: true }).click();
   await waitForSaved(page, 'DeepSeek API Key 已安全加密存储');
-  assert.match(await page.locator('.credential-card').innerText(), /sk-\.\.\.1234/);
+  assert.match(await page.locator('.settings-section').first().innerText(), /sk-\.\.\.1234/);
+
+  // 验证换 Key 时在途任务丢弃与迟到响应拦截端到端回归：
+  // 1. 模拟在途检查请求挂起
+  await page.evaluate(() => {
+    // 注入一个人工延迟的 checkDeepSeek 拦截器模拟慢速响应
+    const originalCheck = window.classManager.checkDeepSeek;
+    window.__originalCheck = originalCheck;
+    window.__checkHangPromise = new Promise((resolve) => {
+      window.__resolveHang = resolve;
+    });
+    window.classManager.checkDeepSeek = async (input) => {
+      await window.__checkHangPromise;
+      return {
+        ok: true,
+        value: {
+          type: input.type,
+          success: true,
+          model: 'deepseek-flash',
+          durationMs: 9999,
+          usage: null,
+          message: '迟到的旧账号响应-不应显示',
+          timestamp: new Date().toISOString(),
+          promptVersion: 'ping-v1',
+          credentialUpdatedAt: '2000-01-01T00:00:00.000Z',
+        },
+      };
+    };
+  });
+  // 2. 点击文本模型检查，UI 进入正在检查状态
+  await page.getByRole('button', { name: '检查文本模型连通性', exact: true }).click();
+  await page.locator('text=正在检查文本模型').waitFor();
+
+  // 3. 在途期间，用户换 Key 为账户 5678
+  await keyInput.fill('sk-synthetic-desktop-smoke-test-key-5678');
+  await page.getByRole('button', { name: '保存并加密存储', exact: true }).click();
+  await waitForSaved(page, 'DeepSeek API Key 已安全加密存储');
+  assert.match(await page.locator('.settings-section').first().innerText(), /sk-\.\.\.5678/);
+
+  // 4. 恢复并返回迟到的旧任务响应，断言 UI 绝不展示该迟到结果与通知
+  await page.evaluate(() => {
+    window.__resolveHang?.();
+    window.classManager.checkDeepSeek = window.__originalCheck;
+  });
+  await page.waitForTimeout(300);
+  assert.doesNotMatch(await page.locator('body').innerText(), /迟到的旧账号响应-不应显示/);
+
   await page.getByRole('button', { name: '清除已存凭据', exact: true }).click();
   await page.getByRole('dialog').waitFor();
   await page.getByRole('button', { name: '确认清除', exact: true }).click();
   await waitForSaved(page, '已清除保存的 API Key');
-  assert.match(await page.locator('.credential-card').innerText(), /未配置密钥/);
+  assert.match(await page.locator('.settings-section').first().innerText(), /未配置密钥/);
   await page.getByRole('button', { name: '数据与维护' }).click();
   await page.getByRole('button', { name: '添加合成验证附件', exact: true }).click();
   await waitForSaved(page, '合成验证附件已保存');
