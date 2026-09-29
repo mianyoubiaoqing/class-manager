@@ -416,6 +416,85 @@ describe('DeepSeek Usage Ledger', () => {
     // Verify original damaged file was preserved and NOT overwritten
     expect(readFileSync(ledgerPath, 'utf8')).toBe(damagedContent);
   });
+
+  test('legacy ledger with corrupted entry (e.g. usage.totalTokens as string) throws DATA_CORRUPTED and preserves file untouched', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ds-corrupt-entry-'));
+    roots.push(root);
+    const ledgerPath = join(root, 'deepseek-ledger.json');
+    const legacyCorrupted = JSON.stringify({
+      version: 1,
+      entries: [
+        {
+          id: 'call-1',
+          timestamp: '2026-01-01T00:00:00.000Z',
+          type: 'text_check',
+          requestModel: 'deepseek-flash',
+          status: 'success',
+          durationMs: 120,
+          promptVersion: 'ping-v1',
+          usage: {
+            promptTokens: 10,
+            completionTokens: 2,
+            totalTokens: '7',
+          },
+        },
+      ],
+    });
+    writeFileSync(ledgerPath, legacyCorrupted, 'utf8');
+
+    const ledger = new DeepSeekLedger(root);
+    expect(() => ledger.getSummary()).toThrowError(
+      expect.objectContaining({
+        code: 'DATA_CORRUPTED',
+      }),
+    );
+
+    // Verify original file on disk is strictly untouched and NOT overwritten with "07"
+    const onDisk = readFileSync(ledgerPath, 'utf8');
+    expect(onDisk).toBe(legacyCorrupted);
+    expect(onDisk).not.toContain('"07"');
+    expect(onDisk).not.toContain('"totals"');
+  });
+
+  test('legacy ledger with missing required entry fields throws DATA_CORRUPTED and does not overwrite', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ds-missing-fields-'));
+    roots.push(root);
+    const ledgerPath = join(root, 'deepseek-ledger.json');
+    const legacyMissing = JSON.stringify({
+      version: 1,
+      entries: [{ id: 'broken-entry' }],
+    });
+    writeFileSync(ledgerPath, legacyMissing, 'utf8');
+
+    const ledger = new DeepSeekLedger(root);
+    expect(() => ledger.getSummary()).toThrowError(
+      expect.objectContaining({
+        code: 'DATA_CORRUPTED',
+      }),
+    );
+    expect(readFileSync(ledgerPath, 'utf8')).toBe(legacyMissing);
+  });
+
+  test('startCall rejects invalid entry with PARAM_ERROR', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ds-startcall-invalid-'));
+    roots.push(root);
+    const ledger = new DeepSeekLedger(root);
+    expect(() =>
+      ledger.startCall({
+        id: '',
+        timestamp: '',
+        type: 'text_check',
+        requestModel: 'deepseek-flash',
+        status: 'in_progress',
+        durationMs: 0,
+        promptVersion: 'ping-v1',
+      }),
+    ).toThrowError(
+      expect.objectContaining({
+        code: 'PARAM_ERROR',
+      }),
+    );
+  });
 });
 
 describe('DeepSeek Response Validation & Usage Nuance', () => {
@@ -543,58 +622,115 @@ describe('DeepSeek Response Validation & Usage Nuance', () => {
     const result = await client.checkTextConnection(testKey);
     expect(result.usage).toBeNull();
   });
+
+  test('reading body stream interrupted by network drops triggers retry and throws NETWORK_ERROR', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => {
+        throw new Error('ECONNRESET: socket hung up');
+      },
+    });
+
+    const client = new DeepSeekClient({ customFetch: mockFetch as unknown as typeof fetch });
+    await expect(client.checkTextConnection(testKey)).rejects.toMatchObject({
+      code: 'NETWORK_ERROR',
+    });
+    // Verifies it entered network retry path (initial + 1 retry = 2 calls)
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  test('reading body stream aborted with AbortSignal throws ABORTED without retry and without INVALID_RESPONSE', async () => {
+    const controller = new AbortController();
+    const mockFetch = vi.fn().mockImplementation(() => {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => {
+          controller.abort();
+          const err = new Error('The operation was aborted');
+          err.name = 'AbortError';
+          throw err;
+        },
+      });
+    });
+
+    const client = new DeepSeekClient({ customFetch: mockFetch as unknown as typeof fetch });
+    await expect(
+      client.checkTextConnection(testKey, { signal: controller.signal }),
+    ).rejects.toMatchObject({
+      code: 'ABORTED',
+    });
+    // Cancellation must never retry
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('DeepSeek Flow & Lifecycle Regressions (Key replacement, cancellation, crash interruption)', () => {
-  test('replacing key invalidates in-flight check task and ensures late response is dropped', () => {
-    // Model the exact state and sequencing guards from App.tsx
-    let checkTaskId = 0;
-    let credentialUpdatedAt = '2026-01-01T00:00:00.000Z';
-    let cardState: unknown = { active: 'previous-state' };
-    let noticeState: unknown = 'previous-notice';
+  test('replacing key invalidates in-flight check task and ensures late response is dropped', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ds-key-replace-'));
+    roots.push(root);
+    const store = new DeepSeekCredentialStore(root, createMockCryptoProvider(true));
 
-    // 1. Task 1 starts for account A
-    const task1Id = ++checkTaskId;
-    const task1InitialCredTimestamp = credentialUpdatedAt;
-    expect(cardState).not.toBeNull();
-    expect(noticeState).not.toBeNull();
+    // 1. Initial key A configured
+    const credA = store.saveKey('sk-account-a-123456');
+    const timestampA = credA.updatedAt;
 
-    // 2. While Task 1 is still in-flight, user replaces key with account B
-    // App.tsx: handleSaveKey increments checkTaskIdRef, resets results, and updates timestamp
-    checkTaskId += 1;
-    cardState = null;
-    noticeState = null;
-    credentialUpdatedAt = '2026-01-01T00:00:05.000Z';
+    // 2. Start in-flight task 1
+    const controller1 = new AbortController();
+    let resolveTask1: ((value: unknown) => void) | undefined;
 
-    // 3. Task 1 response finally arrives late (e.g. from slow network)
-    const task1LateResponse = {
-      ok: true,
-      value: {
-        type: 'text' as const,
-        success: true,
-        model: 'deepseek-flash',
-        durationMs: 1200,
-        usage: null,
-        message: '账号A连接成功',
-        timestamp: new Date().toISOString(),
-        promptVersion: 'ping-v1',
-      },
-    };
+    const mockFetch = vi.fn().mockImplementation((_url, init?: { signal?: AbortSignal }) => {
+      return new Promise((resolve, reject) => {
+        resolveTask1 = resolve;
+        if (init?.signal) {
+          if (init.signal.aborted) {
+            const err = new Error('The operation was aborted');
+            err.name = 'AbortError';
+            reject(err);
+            return;
+          }
+          init.signal.addEventListener('abort', () => {
+            const err = new Error('The operation was aborted');
+            err.name = 'AbortError';
+            reject(err);
+          });
+        }
+      });
+    });
+    const client = new DeepSeekClient({ customFetch: mockFetch as unknown as typeof fetch });
 
-    // App.tsx guard logic:
-    const isOutdated =
-      task1Id !== checkTaskId ||
-      (task1InitialCredTimestamp && credentialUpdatedAt !== task1InitialCredTimestamp);
+    const inFlightCheck = client.checkTextConnection(store.loadKey(), {
+      signal: controller1.signal,
+    });
 
-    if (!isOutdated) {
-      cardState = task1LateResponse.value;
-      noticeState = task1LateResponse.value.message;
-    }
+    // 3. User replaces key with Account B while task 1 is in-flight
+    controller1.abort(); // Simulates App.tsx / Main.ts aborting in-flight check on new key
+    const credB = store.saveKey('sk-account-b-789012');
+    const timestampB = credB.updatedAt;
 
-    // Both card and notice must remain completely un-polluted by the late response
+    // Timestamp B is newer than Task 1's starting timestamp A
+    expect(timestampB).not.toBe(timestampA);
+
+    // 4. In-flight check throws ABORTED
+    await expect(inFlightCheck).rejects.toMatchObject({ code: 'ABORTED' });
+
+    // 5. Late response arriving after key change is recognized as outdated by comparing credentials
+    const currentStatus = store.getStatus();
+    const isOutdated = currentStatus.updatedAt !== timestampA;
     expect(isOutdated).toBe(true);
-    expect(cardState).toBeNull();
-    expect(noticeState).toBeNull();
+    expect(currentStatus.maskedKey).toBe('sk-...9012');
+
+    // Clean up task 1 promise
+    resolveTask1!({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: 'chatcmpl-late',
+        model: 'deepseek-flash',
+        choices: [{ message: { content: 'Late' } }],
+      }),
+    });
   });
 
   test('abrupt exit during check preserves in_progress record and marks interrupted on restart', () => {

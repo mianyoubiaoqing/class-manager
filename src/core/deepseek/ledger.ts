@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { DomainError } from '../errors';
 import { atomicWrite } from '../files';
-import type { DeepSeekCallRecord, DeepSeekLedgerData } from './types';
+import type { DeepSeekCallRecord, DeepSeekLedgerData, DeepSeekTokenUsage } from './types';
 
 export interface DeepSeekLedgerSummary {
   totalCalls: number;
@@ -14,20 +14,56 @@ export interface DeepSeekLedgerSummary {
 }
 
 function isValidTotals(totals: unknown): totals is DeepSeekLedgerData['totals'] {
-  if (!totals || typeof totals !== 'object') return false;
+  if (!totals || typeof totals !== 'object' || Array.isArray(totals)) return false;
   const t = totals as Record<string, unknown>;
+  const isNonNegativeInt = (v: unknown): boolean =>
+    typeof v === 'number' && Number.isFinite(v) && v >= 0 && Math.floor(v) === v;
   return (
-    typeof t.totalCalls === 'number' &&
-    Number.isFinite(t.totalCalls) &&
-    typeof t.successCalls === 'number' &&
-    Number.isFinite(t.successCalls) &&
-    typeof t.totalTokens === 'number' &&
-    Number.isFinite(t.totalTokens) &&
-    typeof t.promptTokens === 'number' &&
-    Number.isFinite(t.promptTokens) &&
-    typeof t.completionTokens === 'number' &&
-    Number.isFinite(t.completionTokens)
+    isNonNegativeInt(t.totalCalls) &&
+    isNonNegativeInt(t.successCalls) &&
+    isNonNegativeInt(t.totalTokens) &&
+    isNonNegativeInt(t.promptTokens) &&
+    isNonNegativeInt(t.completionTokens)
   );
+}
+
+function isValidUsage(usage: unknown): usage is DeepSeekTokenUsage {
+  if (usage === undefined || usage === null) return true;
+  if (!usage || typeof usage !== 'object' || Array.isArray(usage)) return false;
+  const u = usage as Record<string, unknown>;
+  const isTokenVal = (v: unknown): boolean =>
+    v === null ||
+    v === undefined ||
+    (typeof v === 'number' && Number.isFinite(v) && v >= 0 && Math.floor(v) === v);
+  return isTokenVal(u.promptTokens) && isTokenVal(u.completionTokens) && isTokenVal(u.totalTokens);
+}
+
+function isValidEntry(entry: unknown): entry is DeepSeekCallRecord {
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return false;
+  const e = entry as Record<string, unknown>;
+  if (typeof e.id !== 'string' || !e.id.trim()) return false;
+  if (typeof e.timestamp !== 'string' || !e.timestamp.trim()) return false;
+  if (e.type !== 'text_check' && e.type !== 'vision_check') return false;
+  if (typeof e.requestModel !== 'string' || !e.requestModel.trim()) return false;
+  if (e.responseId !== undefined && typeof e.responseId !== 'string') return false;
+  if (e.responseModel !== undefined && typeof e.responseModel !== 'string') return false;
+  if (
+    e.status !== 'success' &&
+    e.status !== 'failed' &&
+    e.status !== 'interrupted' &&
+    e.status !== 'in_progress'
+  ) {
+    return false;
+  }
+  if (e.errorCode !== undefined && typeof e.errorCode !== 'string') return false;
+  if (typeof e.durationMs !== 'number' || !Number.isFinite(e.durationMs) || e.durationMs < 0) {
+    return false;
+  }
+  if (typeof e.promptVersion !== 'string' || !e.promptVersion.trim()) return false;
+  if ('usage' in e && e.usage !== undefined) {
+    if (!isValidUsage(e.usage)) return false;
+  }
+  return true;
 }
 
 export class DeepSeekLedger {
@@ -81,7 +117,17 @@ export class DeepSeekLedger {
         entries?: unknown;
       } | null;
       if (parsed && parsed.version === 1 && Array.isArray(parsed.entries)) {
-        const entries = parsed.entries as DeepSeekCallRecord[];
+        // 先完整校验全部条目结构；若有任何一条损坏，坚决抛错且绝不写文件覆盖原件
+        for (const entry of parsed.entries) {
+          if (!isValidEntry(entry)) {
+            throw new DomainError(
+              'DATA_CORRUPTED',
+              `DeepSeek 用量账本存在异常条目，已停止写入以保留原文件 (${this.ledgerPath})。`,
+            );
+          }
+        }
+        const entries = parsed.entries;
+
         // 如果包含 totals 属性，必须是完整合法的数值统计结构；若异常则判定为损坏，坚决抛错且绝不重置覆盖
         if ('totals' in parsed && parsed.totals !== undefined) {
           if (isValidTotals(parsed.totals)) {
@@ -97,37 +143,42 @@ export class DeepSeekLedger {
           );
         }
 
-        // 仅当完全没有 totals 属性（合法旧版 v1 结构）时，才执行平滑升级
+        // 仅当完全没有 totals 属性（合法旧版 v1 结构）且所有条目均已验证合法时，才执行平滑升级
         // 根据现有历史重构 totals；明确说明：若升级前已有超过 200 条的历史被截断，旧历史无法还原。
         let totalTokens = 0;
         let promptTokens = 0;
         let completionTokens = 0;
         let successCalls = 0;
         for (const entry of entries) {
-          if (!entry || typeof entry !== 'object') {
-            throw new DomainError(
-              'DATA_CORRUPTED',
-              `DeepSeek 用量账本存在异常条目，已停止写入以保留原文件 (${this.ledgerPath})。`,
-            );
-          }
           if (entry.status === 'success') {
             successCalls += 1;
           }
           if (entry.usage) {
-            totalTokens += entry.usage.totalTokens || 0;
-            promptTokens += entry.usage.promptTokens || 0;
-            completionTokens += entry.usage.completionTokens || 0;
+            const tt = typeof entry.usage.totalTokens === 'number' ? entry.usage.totalTokens : 0;
+            const pt = typeof entry.usage.promptTokens === 'number' ? entry.usage.promptTokens : 0;
+            const ct =
+              typeof entry.usage.completionTokens === 'number' ? entry.usage.completionTokens : 0;
+            totalTokens += tt;
+            promptTokens += pt;
+            completionTokens += ct;
           }
+        }
+        const candidateTotals = {
+          totalCalls: entries.length,
+          successCalls,
+          totalTokens,
+          promptTokens,
+          completionTokens,
+        };
+        if (!isValidTotals(candidateTotals)) {
+          throw new DomainError(
+            'DATA_CORRUPTED',
+            `DeepSeek 用量账本统计计算异常，已停止写入以保留原文件 (${this.ledgerPath})。`,
+          );
         }
         const migrated: DeepSeekLedgerData = {
           version: 1,
-          totals: {
-            totalCalls: entries.length,
-            successCalls,
-            totalTokens,
-            promptTokens,
-            completionTokens,
-          },
+          totals: candidateTotals,
           entries,
         };
         this.write(migrated);
@@ -155,6 +206,9 @@ export class DeepSeekLedger {
   }
 
   startCall(entry: DeepSeekCallRecord): void {
+    if (!isValidEntry(entry)) {
+      throw new DomainError('PARAM_ERROR', '无效的 DeepSeek 调用记录。');
+    }
     const data = this.read();
     data.totals.totalCalls += 1;
     data.entries.unshift(entry);
@@ -173,24 +227,55 @@ export class DeepSeekLedger {
     if (updates.status === 'success') {
       data.totals.successCalls += 1;
       if (updates.usage) {
-        data.totals.totalTokens += updates.usage.totalTokens || 0;
-        data.totals.promptTokens += updates.usage.promptTokens || 0;
-        data.totals.completionTokens += updates.usage.completionTokens || 0;
+        const tt =
+          typeof updates.usage.totalTokens === 'number' &&
+          Number.isFinite(updates.usage.totalTokens)
+            ? updates.usage.totalTokens
+            : 0;
+        const pt =
+          typeof updates.usage.promptTokens === 'number' &&
+          Number.isFinite(updates.usage.promptTokens)
+            ? updates.usage.promptTokens
+            : 0;
+        const ct =
+          typeof updates.usage.completionTokens === 'number' &&
+          Number.isFinite(updates.usage.completionTokens)
+            ? updates.usage.completionTokens
+            : 0;
+        data.totals.totalTokens += tt;
+        data.totals.promptTokens += pt;
+        data.totals.completionTokens += ct;
       }
     }
     this.write(data);
   }
 
   record(entry: DeepSeekCallRecord): void {
+    if (!isValidEntry(entry)) {
+      throw new DomainError('PARAM_ERROR', '无效的 DeepSeek 调用记录。');
+    }
     const data = this.read();
     data.totals.totalCalls += 1;
     if (entry.status === 'success') {
       data.totals.successCalls += 1;
     }
     if (entry.usage) {
-      data.totals.totalTokens += entry.usage.totalTokens || 0;
-      data.totals.promptTokens += entry.usage.promptTokens || 0;
-      data.totals.completionTokens += entry.usage.completionTokens || 0;
+      const tt =
+        typeof entry.usage.totalTokens === 'number' && Number.isFinite(entry.usage.totalTokens)
+          ? entry.usage.totalTokens
+          : 0;
+      const pt =
+        typeof entry.usage.promptTokens === 'number' && Number.isFinite(entry.usage.promptTokens)
+          ? entry.usage.promptTokens
+          : 0;
+      const ct =
+        typeof entry.usage.completionTokens === 'number' &&
+        Number.isFinite(entry.usage.completionTokens)
+          ? entry.usage.completionTokens
+          : 0;
+      data.totals.totalTokens += tt;
+      data.totals.promptTokens += pt;
+      data.totals.completionTokens += ct;
     }
 
     data.entries.unshift(entry);

@@ -74,7 +74,7 @@ try {
   }));
   assert.equal(isolation.require, 'undefined');
   assert.equal(isolation.process, 'undefined');
-  assert.equal(isolation.api.length, 12);
+  assert.equal(isolation.api.length, 17);
   const preferences = await application.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences(),
   );
@@ -93,6 +93,19 @@ try {
   await application.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].setBounds({ width: 1240, height: 820 }),
   );
+  await page.getByRole('button', { name: '模型设置' }).click();
+  await page.screenshot({ path: join(output, 'deepseek-settings.png'), fullPage: true });
+  assert.match(await page.locator('.credential-card').innerText(), /未配置密钥/);
+  const keyInput = page.getByPlaceholder('输入或粘贴 DeepSeek API Key (如 sk-...)');
+  await keyInput.fill('sk-synthetic-desktop-smoke-test-key-1234');
+  await page.getByRole('button', { name: '保存并加密存储', exact: true }).click();
+  await waitForSaved(page, 'DeepSeek API Key 已安全加密存储');
+  assert.match(await page.locator('.credential-card').innerText(), /sk-\.\.\.1234/);
+  await page.getByRole('button', { name: '清除已存凭据', exact: true }).click();
+  await page.getByRole('dialog').waitFor();
+  await page.getByRole('button', { name: '确认清除', exact: true }).click();
+  await waitForSaved(page, '已清除保存的 API Key');
+  assert.match(await page.locator('.credential-card').innerText(), /未配置密钥/);
   await page.getByRole('button', { name: '数据与维护' }).click();
   await page.getByRole('button', { name: '添加合成验证附件', exact: true }).click();
   await waitForSaved(page, '合成验证附件已保存');
@@ -172,6 +185,7 @@ try {
       'restore',
       'recovery-copy',
       'redacted-diagnostics',
+      'deepseek-settings',
       'reopen',
     ],
     dataDirectory,

@@ -128,11 +128,17 @@ export class DeepSeekClient {
         if (res.status === 400 || res.status === 422) {
           let detail = '请求参数错误';
           try {
-            const errJson = (await res.json()) as { error?: { message?: string } };
-            if (errJson.error?.message) {
+            const rawErrText =
+              typeof res.text === 'function' ? await res.text() : JSON.stringify(await res.json());
+            if (signal?.aborted) {
+              throw new DomainError('ABORTED', 'DeepSeek 任务已取消。');
+            }
+            const errJson = JSON.parse(rawErrText) as { error?: { message?: string } };
+            if (errJson?.error?.message) {
               detail = this.sanitizeMessage(errJson.error.message, apiKey);
             }
-          } catch {
+          } catch (e) {
+            if (e instanceof DomainError) throw e;
             // Ignore JSON parsing failure
           }
           throw new DomainError('PARAM_ERROR', `DeepSeek 参数错误: ${detail}`);
@@ -158,16 +164,49 @@ export class DeepSeekClient {
           throw new DomainError('HTTP_ERROR', `DeepSeek 请求失败 (HTTP ${res.status})。`);
         }
 
+        // 1. 读取响应内容并严格区分流传输错误与 JSON 语法错误
         let rawJson: unknown;
-        try {
-          rawJson = await res.json();
-        } catch (jsonError) {
-          const errMsg = jsonError instanceof Error ? jsonError.message : String(jsonError);
-          const sanitized = this.sanitizeMessage(errMsg, apiKey);
-          throw new DomainError(
-            'INVALID_RESPONSE',
-            `DeepSeek 返回的内容无法解析为有效 JSON (${sanitized})。`,
-          );
+        if (typeof res.text === 'function') {
+          // 标准 Fetch 路径：先读取网络正文流
+          const rawText = await res.text();
+          if (signal?.aborted) {
+            throw new DomainError('ABORTED', 'DeepSeek 任务已取消。');
+          }
+          // 仅对已接收完整的正文文本进行 JSON 语法解析，纯语法错误归为 INVALID_RESPONSE
+          try {
+            rawJson = JSON.parse(rawText);
+          } catch (syntaxError) {
+            const errMsg = syntaxError instanceof Error ? syntaxError.message : String(syntaxError);
+            const sanitized = this.sanitizeMessage(errMsg, apiKey);
+            throw new DomainError(
+              'INVALID_RESPONSE',
+              `DeepSeek 返回的内容无法解析为有效 JSON (${sanitized})。`,
+            );
+          }
+        } else {
+          // 仅提供 res.json() 的模拟环境回退路径
+          try {
+            rawJson = await res.json();
+          } catch (jsonError) {
+            if (
+              signal?.aborted ||
+              (jsonError instanceof Error && jsonError.name === 'AbortError')
+            ) {
+              throw new DomainError('ABORTED', 'DeepSeek 任务已取消。');
+            }
+            if (
+              jsonError instanceof SyntaxError ||
+              (jsonError instanceof Error && jsonError.name === 'SyntaxError')
+            ) {
+              const errMsg = jsonError.message;
+              const sanitized = this.sanitizeMessage(errMsg, apiKey);
+              throw new DomainError(
+                'INVALID_RESPONSE',
+                `DeepSeek 返回的内容无法解析为有效 JSON (${sanitized})。`,
+              );
+            }
+            throw jsonError;
+          }
         }
 
         const parseResult = chatCompletionSuccessSchema.safeParse(rawJson);
@@ -179,11 +218,13 @@ export class DeepSeekClient {
         }
         return { data: parseResult.data, durationMs };
       } catch (error) {
+        // 先优先识别取消语义：无论发生在建立连接、正文流传输还是其他环节
+        if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) {
+          throw new DomainError('ABORTED', 'DeepSeek 任务已取消。');
+        }
+
         if (error instanceof DomainError) {
           throw error;
-        }
-        if (signal?.aborted) {
-          throw new DomainError('ABORTED', 'DeepSeek 任务已取消。');
         }
 
         const errMsg = error instanceof Error ? error.message : String(error);

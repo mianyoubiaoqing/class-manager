@@ -25,7 +25,22 @@ export function atomicWrite(path: string, bytes: string | Uint8Array): void {
   const temporary = `${path}.${randomUUID()}.tmp`;
   try {
     durableWrite(temporary, bytes);
-    renameSync(temporary, path);
+    let attempts = 0;
+    while (true) {
+      try {
+        renameSync(temporary, path);
+        break;
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        if ((code === 'EPERM' || code === 'EBUSY' || code === 'EACCES') && attempts < 10) {
+          attempts++;
+          const delay = attempts * 10;
+          Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delay);
+          continue;
+        }
+        throw err;
+      }
+    }
   } finally {
     // 失败的导出不应在目标旁留下含完整数据的临时文件；不触碰原目标。
     try {
