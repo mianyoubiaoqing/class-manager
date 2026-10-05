@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "externalRequests": 0,
+  "credentialReads": 0,
+  "errors": [],
+  "savedInputPreserved": true,
+  "timeoutAttemptPersisted": true,
+  "noReviewOrScorePublished": true,
+  "providerUsage": "unknown"
+}

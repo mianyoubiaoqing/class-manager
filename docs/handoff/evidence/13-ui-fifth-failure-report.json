@@ -1,0 +1,15 @@
+{
+  "status": "failed",
+  "root": "H:\\WorkSpace\\class-manager\\output\\playwright\\growth\\run-GNeAF8",
+  "packaged": false,
+  "externalRequests": 0,
+  "syntheticProviderCalls": 0,
+  "errors": [],
+  "gates": [],
+  "runtime": {
+    "electron": "44.4.5",
+    "node": "24.21.0",
+    "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-electron-probe-qXAqES\\electron.exe"
+  },
+  "failure": "locator.fill: Error: strict mode violation: getByLabel('后续结果') resolved to 3 elements:\n    1) <textarea maxlength=\"2000\">本地私有结果尚待核实</textarea> aka getByRole('textbox', { name: '后续结果' })\n    2) <textarea maxlength=\"1000\">10月1日完成一次订正练习，后续结果待核实。</textarea> aka getByRole('textbox', { name: '用于阶段总结的最小事实摘要' })\n    3) <input type=\"checkbox\"/> aka getByRole('checkbox', { name: '2026-10-01 · 修订 1 · 10月1' })\n\nCall log:\n\u001b[2m  - waiting for getByLabel('后续结果')\u001b[22m\n\n    at H:\\WorkSpace\\class-manager\\scripts\\growth-ui-smoke.mjs:175:23"
+}

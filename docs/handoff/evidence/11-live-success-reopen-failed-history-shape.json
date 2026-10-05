@@ -1,0 +1,11 @@
+{
+  "status": "failed",
+  "reportPath": "H:\\WorkSpace\\class-manager\\output\\live-grading-followup\\reopen\\run-uv0Myk\\report.json",
+  "externalRequests": 0,
+  "credentialReads": 0,
+  "errors": [],
+  "suggestionsPersisted": true,
+  "manualFormulaStillPending": true,
+  "providerUsagePersisted": true,
+  "failure": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\nundefined !== 2\n\n    at file:///H:/WorkSpace/class-manager/scripts/grading-live-reopen.mjs:113:10"
+}

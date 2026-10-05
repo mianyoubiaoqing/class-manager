@@ -1,0 +1,143 @@
+{
+  "status": "passed",
+  "startedAt": "2026-09-30T06:20:29.716Z",
+  "generationAttempted": true,
+  "dataDirectory": "H:\\WorkSpace\\class-manager\\output\\live-explanation\\isolated-hj0jAz",
+  "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-packaged-audit05-b308a7d8dfcd4f7da3730463fca95e76\\Class Manager.exe",
+  "syntheticDataOnly": true,
+  "transport": "real-provider-with-single-request-guard",
+  "outboundFacts": {
+    "formatVersion": 1,
+    "scope": "class",
+    "facts": [
+      {
+        "id": "F001",
+        "subject": "S01",
+        "metric": "fullScore",
+        "value": "150"
+      },
+      {
+        "id": "F002",
+        "subject": "S01",
+        "metric": "validCount",
+        "value": 50
+      },
+      {
+        "id": "F003",
+        "subject": "S01",
+        "metric": "mean",
+        "value": "100.00"
+      }
+    ]
+  },
+  "requestCount": 1,
+  "ledger": {
+    "totalCalls": 1,
+    "successCalls": 1,
+    "totalTokens": 739,
+    "promptTokens": 387,
+    "completionTokens": 352,
+    "recentEntries": [
+      {
+        "id": "a3e083b9-ab1a-49f5-89f9-3664b5856bb0",
+        "timestamp": "2026-09-30T06:20:31.106Z",
+        "type": "score_explanation",
+        "requestModel": "deepseek-flash",
+        "status": "success",
+        "durationMs": 2275,
+        "promptVersion": "score-explanation-v1",
+        "responseId": "ad35a471-6ce6-4fa1-b9f2-71be911558e8",
+        "responseModel": "deepseek-flash",
+        "usage": {
+          "promptTokens": 387,
+          "completionTokens": 352,
+          "totalTokens": 739
+        }
+      }
+    ]
+  },
+  "generation": {
+    "ok": true,
+    "value": {
+      "id": "d404644c-05a7-40ba-ac50-326e863fb99b",
+      "revision": 1,
+      "status": "draft",
+      "replayed": false
+    }
+  },
+  "provider": {
+    "provider": "deepseek",
+    "requestModel": "deepseek-flash",
+    "responseModel": "deepseek-flash",
+    "responseId": "ad35a471-6ce6-4fa1-b9f2-71be911558e8",
+    "generatedAt": "2026-09-30T06:20:33.329Z",
+    "durationMs": 192,
+    "usage": {
+      "promptTokens": 387,
+      "completionTokens": 352,
+      "totalTokens": 739
+    }
+  },
+  "original": {
+    "formatVersion": 1,
+    "observations": [
+      {
+        "factId": "F001",
+        "value": "150"
+      },
+      {
+        "factId": "F002",
+        "value": 50
+      },
+      {
+        "factId": "F003",
+        "value": "100.00"
+      }
+    ],
+    "interpretations": [
+      {
+        "text": "S01 本次统计的平均分为 100.00，处于 150 分满分的中段水平，但该数值仅反映班级平均，无法说明成绩分布、题目难度或学生个体表现。",
+        "evidenceIds": [
+          "F001",
+          "F003"
+        ],
+        "uncertainty": "平均分受极端值、缺考与题目难度影响，单凭均值无法判断班级整体水平高低。"
+      }
+    ],
+    "questions": [
+      {
+        "text": "S01 的 100.00 平均分是否与您对本次考试难度的预期一致？是否有需要关注的分数段或个别情况？",
+        "evidenceIds": [
+          "F003"
+        ]
+      },
+      {
+        "text": "本次 S01 统计的有效人数为 50，是否与班级实际参考人数一致？是否存在缺考、免考或成绩未计入的情况？",
+        "evidenceIds": [
+          "F002"
+        ]
+      }
+    ],
+    "actions": [
+      {
+        "text": "建议核实 S01 成绩的完整性与有效性，必要时补充分数段分布或题目级数据，再做进一步解释。",
+        "evidenceIds": [
+          "F002",
+          "F003"
+        ]
+      }
+    ],
+    "limitations": [
+      "仅有满分、有效人数与平均分三项统计事实，缺少分数段分布、标准差、最高最低分、题目级数据及学生个体数据。",
+      "无法据此判断知识点掌握情况、具体错题原因、学生品德或心理状态、能力变化或升学概率。",
+      "S01 为本次请求内科目代号，未提供学校、学生姓名、考试名称及实际学科信息。"
+    ]
+  },
+  "teacherEditSaved": true,
+  "scoreUnchanged": true,
+  "copiedEncryptionContextRemoved": true,
+  "copiedCredentialsRemoved": true,
+  "originalCredentialsUnchanged": true,
+  "originalEncryptionContextUnchanged": true,
+  "completedAt": "2026-09-30T06:20:34.629Z"
+}

@@ -1,0 +1,80 @@
+[
+  {
+    "id": "minimalism-and-swiss-style",
+    "name": "极简主义与瑞士国际风格 (Minimalism & Swiss Style)",
+    "keywords": [
+      "clean",
+      "simple",
+      "spacious",
+      "grid-based",
+      "functional",
+      "high contrast",
+      "sans-serif",
+      "swiss"
+    ],
+    "primaryColors": "墨黑 #1A2228, 画布灰白 #F8FAFB, 纯白 #FFFFFF",
+    "accentColor": "学术松石绿 #177A62 / 人文蓝 #2563EB",
+    "bestFor": "学校班级管理、SaaS中后台、数据表格、考务分析、文档中心、生产力工具",
+    "avoidFor": "低龄儿童娱乐游戏、浮夸潮牌艺术展",
+    "cssPatterns": "display: grid, gap: 16px, font-family: sans-serif, border: 1px solid var(--border-color), border-radius: 10px-14px",
+    "checklist": [
+      "基于 8px 基础网格系统排版",
+      "字号梯度鲜明 (26px / 20px / 16px / 14px / 12px)",
+      "表单与卡片使用低饱和度细腻边框",
+      "杜绝多余的拟态浮夸渐变"
+    ]
+  },
+  {
+    "id": "modern-bento-grid",
+    "name": "现代 Bento Grid 仪表盘 (Modern Bento Grid)",
+    "keywords": ["bento", "modular", "cards", "dashboard", "apple-style", "organized", "rounded"],
+    "primaryColors": "深石板灰 #0F172A, 纯白 #FFFFFF, 浅灰底 #F1F5F9",
+    "accentColor": "翡翠绿 #10B981, 琥珀黄 #F59E0B",
+    "bestFor": "班级名册概况、成绩综合看板、值日分配状态、考务倒计时展示",
+    "avoidFor": "超长篇幅文本小说阅读",
+    "cssPatterns": "display: grid, grid-template-columns: repeat(12, 1fr), border-radius: 16px, box-shadow: var(--shadow-sm)",
+    "checklist": [
+      "网格卡片依据信息权重合理跨列 (跨4列/跨6列/跨12列)",
+      "卡片内边距保持 16px~24px 呼吸感",
+      "悬停时有 1~2px 物理上浮阻尼"
+    ]
+  },
+  {
+    "id": "academic-modernism",
+    "name": "学术现代主义 (Academic Modernism - Class Manager 专属基调)",
+    "keywords": [
+      "academic",
+      "classroom",
+      "education",
+      "emerald",
+      "calm",
+      "trustworthy",
+      "editorial"
+    ],
+    "primaryColors": "学术松石绿 #177A62, 雅致深墨 #1A2228, 纸面温润白 #FFFFFF",
+    "accentColor": "高亮青绿 #22C55E, 预警琥珀 #D97706",
+    "bestFor": "中小学数字化教务、班主任业务工作站、学生成长评价、排座考分录入",
+    "avoidFor": "赛博朋克游戏、重金属夜店狂欢",
+    "cssPatterns": "--primary: #177a62; --bg-canvas: #f8fafb; --border-color: #e2e7ea; line-height: 1.65;",
+    "checklist": [
+      "文本对比度通过 WCAG AA (≥4.5:1)",
+      "表格表头采用淡灰绿底色衬托专业感",
+      "核心行动点统一使用实心主色胶囊按钮"
+    ]
+  },
+  {
+    "id": "dark-mode-oled",
+    "name": "OLED 纯黑夜间模式 (Dark Mode OLED)",
+    "keywords": ["dark", "oled", "night", "high contrast", "deep black"],
+    "primaryColors": "极致纯黑 #000000, 深石墨灰 #121212, 浅灰字 #E2E8F0",
+    "accentColor": "荧光薄荷绿 #34D399, 柔光天蓝 #38BDF8",
+    "bestFor": "夜间护眼模式、极客控制台、长时录入防眼疲劳",
+    "avoidFor": "强光直射的户外纸质打印预览",
+    "cssPatterns": "color-scheme: dark, background: #000000, color: #E2E8F0, border: 1px solid #27272A",
+    "checklist": [
+      "避免纯白 #FFF 大面积文本，采用 #E2E8F0 降低眩光",
+      "卡片使用比背景略亮一级的中性深灰 (如 #18181B)",
+      "焦点对焦环亮度必须显著区分于纯黑底色"
+    ]
+  }
+]

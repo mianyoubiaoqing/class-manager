@@ -1,0 +1,119 @@
+{
+  "status": "passed",
+  "startedAt": "2026-10-01T19:30:18.069Z",
+  "generationAttempted": false,
+  "authorizationConsumed": false,
+  "requestCount": 1,
+  "externalRequests": 0,
+  "credentialReads": 0,
+  "transport": "synthetic-preflight",
+  "syntheticDataOnly": true,
+  "retries": 0,
+  "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-grading-audit11-YbbrYN\\Class Manager.exe",
+  "dataDirectory": "H:\\WorkSpace\\class-manager\\output\\live-grading-preflight\\run-s2WL1D\\isolated-ctOQwV",
+  "wireHash": "570bb9d78bd789485bb71366e33c14dce7164ff24c56ac4b98c0a2df5a98b5d1",
+  "pages": 2,
+  "questions": 6,
+  "draftId": "801506a3-3d80-42ef-a5e2-bcf88a484171",
+  "attemptStatus": "succeeded",
+  "provider": {
+    "provider": "deepseek",
+    "requestModel": "deepseek-flash",
+    "responseModel": "synthetic",
+    "responseId": "synthetic-live-preflight",
+    "generatedAt": "2026-10-01T19:30:21.480Z",
+    "durationMs": 15,
+    "usage": {
+      "promptTokens": 100,
+      "completionTokens": 50,
+      "totalTokens": 150
+    }
+  },
+  "ledger": {
+    "totalCalls": 1,
+    "successCalls": 1,
+    "totalTokens": 150,
+    "promptTokens": 100,
+    "completionTokens": 50,
+    "recentEntries": [
+      {
+        "id": "718d7fae-9e40-449a-81f0-df8601ffb495",
+        "timestamp": "2026-10-01T19:30:21.449Z",
+        "type": "grading",
+        "requestModel": "deepseek-flash",
+        "status": "success",
+        "durationMs": 68,
+        "promptVersion": "grading-images-v1",
+        "responseId": "synthetic-live-preflight",
+        "responseModel": "synthetic",
+        "usage": {
+          "promptTokens": 100,
+          "completionTokens": 50,
+          "totalTokens": 150
+        }
+      }
+    ]
+  },
+  "assessments": [
+    {
+      "questionId": "single",
+      "answer": "B",
+      "scoreHundredths": 100,
+      "status": "suggested",
+      "expectedAnswer": "B",
+      "goldHundredths": 100,
+      "evidenceCount": 1
+    },
+    {
+      "questionId": "multi",
+      "answer": "A",
+      "scoreHundredths": 100,
+      "status": "suggested",
+      "expectedAnswer": "A",
+      "goldHundredths": 100,
+      "evidenceCount": 1
+    },
+    {
+      "questionId": "judge",
+      "answer": "true",
+      "scoreHundredths": 100,
+      "status": "suggested",
+      "expectedAnswer": "true",
+      "goldHundredths": 100,
+      "evidenceCount": 1
+    },
+    {
+      "questionId": "blank",
+      "answer": "Newton",
+      "scoreHundredths": 200,
+      "status": "suggested",
+      "expectedAnswer": "Newton",
+      "goldHundredths": 200,
+      "evidenceCount": 1
+    },
+    {
+      "questionId": "short",
+      "answer": "magnitude, direction, point of application",
+      "scoreHundredths": 300,
+      "status": "suggested",
+      "expectedAnswer": "magnitude, direction, point of application",
+      "goldHundredths": 300,
+      "evidenceCount": 1
+    },
+    {
+      "questionId": "manual",
+      "answer": null,
+      "scoreHundredths": null,
+      "status": "pending",
+      "expectedAnswer": "x squared + y squared = 1",
+      "goldHundredths": 100,
+      "evidenceCount": 0
+    }
+  ],
+  "supportedScoresMatchGold": true,
+  "supportedAnswersMatchGold": true,
+  "teacherUiMatchesStoredResult": true,
+  "completedAt": "2026-10-01T19:30:22.196Z",
+  "temporaryCredentialsRemoved": true,
+  "temporaryContextRemoved": true
+}

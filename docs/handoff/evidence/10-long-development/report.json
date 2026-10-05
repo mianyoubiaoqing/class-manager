@@ -1,0 +1,19 @@
+{
+  "status": "passed",
+  "runtime": {
+    "electron": "44.4.5",
+    "node": "24.21.0",
+    "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-electron-probe-qXAqES\\electron.exe"
+  },
+  "networkRequests": 0,
+  "errors": [],
+  "seeded": {
+    "epoch": "200bbc48-4d0e-4ad0-81d5-1f44eaaeba95",
+    "versionId": "b84ff0cb-fd12-4afb-a8de-5c42473c776d",
+    "versionRevision": 3
+  },
+  "longTitles": {
+    "mainHeight": 617,
+    "endVisible": true
+  }
+}

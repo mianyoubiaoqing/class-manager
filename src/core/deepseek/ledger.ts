@@ -3,6 +3,8 @@ import { dirname, join } from 'node:path';
 import { DomainError } from '../errors';
 import { atomicWrite } from '../files';
 import type { DeepSeekCallRecord, DeepSeekLedgerData, DeepSeekTokenUsage } from './types';
+import { growthSourceSchema } from '../../shared/growth';
+import { modelProviderId } from '../../shared/model-providers';
 
 export interface DeepSeekLedgerSummary {
   totalCalls: number;
@@ -41,9 +43,26 @@ function isValidUsage(usage: unknown): usage is DeepSeekTokenUsage {
 function isValidEntry(entry: unknown): entry is DeepSeekCallRecord {
   if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return false;
   const e = entry as Record<string, unknown>;
+  if (e.provider !== undefined && !modelProviderId.safeParse(e.provider).success) return false;
+  if (
+    e.configurationRevision !== undefined &&
+    (typeof e.configurationRevision !== 'string' ||
+      !/^[a-f0-9-]{36}$/i.test(e.configurationRevision))
+  )
+    return false;
   if (typeof e.id !== 'string' || !e.id.trim()) return false;
   if (typeof e.timestamp !== 'string' || !e.timestamp.trim()) return false;
-  if (e.type !== 'text_check' && e.type !== 'vision_check') return false;
+  if (
+    e.type !== 'text_check' &&
+    e.type !== 'vision_check' &&
+    e.type !== 'score_explanation' &&
+    e.type !== 'lesson_drafting' &&
+    e.type !== 'grading' &&
+    e.type !== 'growth_summary' &&
+    e.type !== 'conversation_intent' &&
+    e.type !== 'conversation_compaction'
+  )
+    return false;
   if (typeof e.requestModel !== 'string' || !e.requestModel.trim()) return false;
   if (e.responseId !== undefined && typeof e.responseId !== 'string') return false;
   if (e.responseModel !== undefined && typeof e.responseModel !== 'string') return false;
@@ -60,6 +79,15 @@ function isValidEntry(entry: unknown): entry is DeepSeekCallRecord {
     return false;
   }
   if (typeof e.promptVersion !== 'string' || !e.promptVersion.trim()) return false;
+  if (e.growthInput !== undefined) {
+    if (e.type !== 'growth_summary' || !e.growthInput || typeof e.growthInput !== 'object')
+      return false;
+    const input = e.growthInput as Record<string, unknown>;
+    if (Object.keys(input).some((key) => key !== 'source' && key !== 'inputHash')) return false;
+    if (typeof input.inputHash !== 'string' || !/^[a-f0-9]{64}$/.test(input.inputHash))
+      return false;
+    if (!growthSourceSchema.safeParse(input.source).success) return false;
+  }
   if ('usage' in e && e.usage !== undefined) {
     if (!isValidUsage(e.usage)) return false;
   }
@@ -70,8 +98,8 @@ export class DeepSeekLedger {
   private readonly ledgerPath: string;
   private readonly maxEntries = 200;
 
-  constructor(dataDirectory: string) {
-    this.ledgerPath = join(dataDirectory, 'deepseek-ledger.json');
+  constructor(dataDirectory: string, provider: 'deepseek' | 'kimi' | 'doubao' = 'deepseek') {
+    this.ledgerPath = join(dataDirectory, `${provider}-ledger.json`);
     this.reconcileInterrupted();
   }
 
@@ -210,6 +238,8 @@ export class DeepSeekLedger {
       throw new DomainError('PARAM_ERROR', '无效的 DeepSeek 调用记录。');
     }
     const data = this.read();
+    if (data.entries.some((existing) => existing.id === entry.id))
+      throw new DomainError('CONFLICT', '模型调用ID已使用，禁止重复计入用量。');
     data.totals.totalCalls += 1;
     data.entries.unshift(entry);
     if (data.entries.length > this.maxEntries) {
@@ -221,31 +251,35 @@ export class DeepSeekLedger {
   completeCall(id: string, updates: Partial<DeepSeekCallRecord>): void {
     const data = this.read();
     const entry = data.entries.find((item) => item.id === id);
-    if (entry) {
-      Object.assign(entry, updates);
-    }
+    if (!entry) throw new DomainError('NOT_FOUND', '调用记录不存在，未更新用量账本。');
+    // A terminal result must not charge the same tokens twice after a lost acknowledgement.
+    if (entry.status !== 'in_progress') return;
+    const completed = { ...entry, ...updates };
+    if (!isValidEntry(completed) || completed.id !== id || completed.status === 'in_progress')
+      throw new DomainError('PARAM_ERROR', '无效的 DeepSeek 完成记录。');
+    Object.assign(entry, completed);
     if (updates.status === 'success') {
       data.totals.successCalls += 1;
-      if (updates.usage) {
-        const tt =
-          typeof updates.usage.totalTokens === 'number' &&
-          Number.isFinite(updates.usage.totalTokens)
-            ? updates.usage.totalTokens
-            : 0;
-        const pt =
-          typeof updates.usage.promptTokens === 'number' &&
-          Number.isFinite(updates.usage.promptTokens)
-            ? updates.usage.promptTokens
-            : 0;
-        const ct =
-          typeof updates.usage.completionTokens === 'number' &&
-          Number.isFinite(updates.usage.completionTokens)
-            ? updates.usage.completionTokens
-            : 0;
-        data.totals.totalTokens += tt;
-        data.totals.promptTokens += pt;
-        data.totals.completionTokens += ct;
-      }
+    }
+    // A response can consume tokens even when local validation or saving later fails.
+    if (updates.usage) {
+      const tt =
+        typeof updates.usage.totalTokens === 'number' && Number.isFinite(updates.usage.totalTokens)
+          ? updates.usage.totalTokens
+          : 0;
+      const pt =
+        typeof updates.usage.promptTokens === 'number' &&
+        Number.isFinite(updates.usage.promptTokens)
+          ? updates.usage.promptTokens
+          : 0;
+      const ct =
+        typeof updates.usage.completionTokens === 'number' &&
+        Number.isFinite(updates.usage.completionTokens)
+          ? updates.usage.completionTokens
+          : 0;
+      data.totals.totalTokens += tt;
+      data.totals.promptTokens += pt;
+      data.totals.completionTokens += ct;
     }
     this.write(data);
   }

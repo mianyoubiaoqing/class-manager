@@ -1,0 +1,32 @@
+{
+  "status": "passed",
+  "externalRequests": 0,
+  "credentialReads": 0,
+  "errors": [],
+  "gates": [
+    "explicit difference and replacement approval",
+    "single publication and source trace",
+    "other student preserved and statistics updated",
+    "persistent query without regrading",
+    "visible updated analysis and provenance; retained stale parent",
+    "360px no horizontal overflow",
+    "Schema 9 backup/restore and old epoch rejection",
+    "no-credential reopen retains committed fact"
+  ],
+  "root": "H:\\WorkSpace\\class-manager\\output\\playwright\\publication\\run-Ek5vN0",
+  "packaged": false,
+  "runtime": {
+    "electron": "44.4.5",
+    "node": "24.21.0",
+    "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-electron-probe-qXAqES\\electron.exe"
+  },
+  "receipt": {
+    "reviewId": "5fc6a006-986b-4236-ba6b-d7e626259682",
+    "previousVersionId": "3fda26c7-9c72-43bf-9e39-534a8efff4a0",
+    "examId": "21f2fa02-2c97-43b3-bfd8-7c60e16c1dc9",
+    "versionId": "b28aa88c-7bc5-4962-9229-10a687b9ad64",
+    "revision": 2,
+    "createdAt": "2026-10-02T02:20:20.888Z",
+    "replayed": true
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "status": "passed",
+  "runtime": {
+    "electron": "44.4.5",
+    "node": "24.21.0",
+    "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-packaged-audit10-mrrwWg\\Class Manager.exe"
+  },
+  "networkRequests": 0,
+  "errors": [],
+  "seeded": {
+    "epoch": "546dd4d3-fa36-46f8-9e70-8479ee8ec6af",
+    "versionId": "fda547a3-d438-4ada-a2cf-18126018e568",
+    "versionRevision": 3
+  },
+  "longTitles": {
+    "mainHeight": 617,
+    "endVisible": true
+  }
+}

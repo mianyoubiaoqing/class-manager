@@ -1,0 +1,135 @@
+:root {
+  font-family: 'Microsoft YaHei', sans-serif;
+  color: #172b4d;
+  background: white;
+  font-synthesis: none;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button {
+  font: inherit;
+  padding: 0.4rem 0.7rem;
+  background: white;
+  border: 1px solid #b8c2d0;
+  border-radius: 0.35rem;
+  color: inherit;
+  cursor: pointer;
+}
+.classroom-display {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 1rem 2rem;
+  gap: 0.65rem;
+}
+.classroom-display header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+.classroom-display header div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+.display-heading p {
+  margin: 0.25rem 0;
+  color: #586780;
+  font-size: 1rem;
+}
+.display-heading h1 {
+  font-size: clamp(1.5rem, 3vw, 2.6rem);
+  line-height: 1.25;
+  margin: 0.3rem 0;
+  overflow-wrap: anywhere;
+}
+.classroom-display main {
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+  font-size: clamp(1.15rem, 2vw, 1.8rem);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  padding: 0 0.25rem 0.5rem;
+}
+.classroom-display p,
+.classroom-display li,
+.classroom-display td,
+.classroom-display th {
+  white-space: pre-wrap;
+}
+.classroom-display main p {
+  margin: 0.45rem 0;
+}
+.classroom-display main ul {
+  margin: 0.3rem 0;
+  padding-left: 1.5em;
+}
+.display-table {
+  overflow: auto;
+  margin: 0.7rem 0;
+}
+.display-table table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+}
+.display-table td,
+.display-table th {
+  border: 1px solid #b8c2d0;
+  padding: 0.4rem;
+  font-size: 0.8em;
+  vertical-align: top;
+}
+.display-table th {
+  background: #edf2f8;
+}
+.classroom-display figure {
+  margin: 0.8rem 0;
+}
+.classroom-display img {
+  display: block;
+  max-width: 100%;
+  max-height: 55vh;
+  object-fit: contain;
+  margin: auto;
+}
+.classroom-display figcaption {
+  font-size: 0.7em;
+  text-align: center;
+}
+.classroom-display footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  border-top: 1px solid #e0e5ec;
+  padding-top: 0.6rem;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .classroom-display {
+    padding: 0.7rem;
+  }
+  .classroom-display header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .classroom-display footer {
+    font-size: 0.75rem;
+  }
+  .display-table td,
+  .display-table th {
+    padding: 0.2rem;
+  }
+}

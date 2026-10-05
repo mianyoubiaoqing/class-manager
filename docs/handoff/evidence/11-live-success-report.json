@@ -1,0 +1,122 @@
+{
+  "status": "passed",
+  "startedAt": "2026-10-02T01:26:57.381Z",
+  "generationAttempted": true,
+  "authorizationConsumed": true,
+  "requestCount": 1,
+  "externalRequests": 1,
+  "credentialReads": 2,
+  "transport": "real-provider",
+  "authorizationScope": "new single request after documented timeout",
+  "previousReport": "H:\\WorkSpace\\class-manager\\output\\live-grading\\report.json",
+  "syntheticDataOnly": true,
+  "retries": 0,
+  "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-grading-audit11-YbbrYN\\Class Manager.exe",
+  "dataDirectory": "H:\\WorkSpace\\class-manager\\output\\live-grading-followup\\isolated-nHwcTu",
+  "wireHash": "ea308d2e6023862383fa7f7b20d674ed788c5971fecfc235a6e81676bf315b67",
+  "pages": 2,
+  "questions": 6,
+  "draftId": "73e0b48a-c97a-458b-9d8c-aab3796ae6bd",
+  "attemptStatus": "succeeded",
+  "provider": {
+    "provider": "deepseek",
+    "requestModel": "deepseek-flash",
+    "responseModel": "deepseek-flash",
+    "responseId": "9456f418-a7a5-413f-a941-c189a0ba7851",
+    "generatedAt": "2026-10-02T01:27:03.590Z",
+    "durationMs": 229,
+    "usage": {
+      "promptTokens": 2390,
+      "completionTokens": 669,
+      "totalTokens": 3059
+    }
+  },
+  "ledger": {
+    "totalCalls": 1,
+    "successCalls": 1,
+    "totalTokens": 3059,
+    "promptTokens": 2390,
+    "completionTokens": 669,
+    "recentEntries": [
+      {
+        "id": "3eec3fd4-0cf2-42c4-8d04-451667e8e170",
+        "timestamp": "2026-10-02T01:27:01.071Z",
+        "type": "grading",
+        "requestModel": "deepseek-flash",
+        "status": "success",
+        "durationMs": 2562,
+        "promptVersion": "grading-images-v1",
+        "responseId": "9456f418-a7a5-413f-a941-c189a0ba7851",
+        "responseModel": "deepseek-flash",
+        "usage": {
+          "promptTokens": 2390,
+          "completionTokens": 669,
+          "totalTokens": 3059
+        }
+      }
+    ]
+  },
+  "assessments": [
+    {
+      "questionId": "single",
+      "answer": "B",
+      "scoreHundredths": 100,
+      "status": "suggested",
+      "expectedAnswer": "B",
+      "goldHundredths": 100,
+      "evidenceCount": 1
+    },
+    {
+      "questionId": "multi",
+      "answer": "A",
+      "scoreHundredths": 100,
+      "status": "suggested",
+      "expectedAnswer": "A",
+      "goldHundredths": 100,
+      "evidenceCount": 1
+    },
+    {
+      "questionId": "judge",
+      "answer": "true",
+      "scoreHundredths": 100,
+      "status": "suggested",
+      "expectedAnswer": "true",
+      "goldHundredths": 100,
+      "evidenceCount": 1
+    },
+    {
+      "questionId": "blank",
+      "answer": "Newton",
+      "scoreHundredths": 200,
+      "status": "suggested",
+      "expectedAnswer": "Newton",
+      "goldHundredths": 200,
+      "evidenceCount": 1
+    },
+    {
+      "questionId": "short",
+      "answer": "magnitude, direction, point of application",
+      "scoreHundredths": 300,
+      "status": "suggested",
+      "expectedAnswer": "magnitude, direction, point of application",
+      "goldHundredths": 300,
+      "evidenceCount": 1
+    },
+    {
+      "questionId": "manual",
+      "answer": "x squared + y squared = 1",
+      "scoreHundredths": null,
+      "status": "pending",
+      "expectedAnswer": "x squared + y squared = 1",
+      "goldHundredths": 100,
+      "evidenceCount": 1
+    }
+  ],
+  "supportedScoresMatchGold": true,
+  "supportedAnswersMatchGold": true,
+  "teacherUiMatchesStoredResult": true,
+  "completedAt": "2026-10-02T01:27:04.334Z",
+  "originalCredentialsUnchanged": true,
+  "temporaryCredentialsRemoved": true,
+  "temporaryContextRemoved": true
+}

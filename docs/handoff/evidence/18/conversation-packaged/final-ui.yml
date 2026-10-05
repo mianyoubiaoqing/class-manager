@@ -1,0 +1,144 @@
+- complementary:
+  - text: 班级管理 本地工作台 Windows · 单机 M0
+  - navigation "主导航":
+    - button "业务对话"
+    - button "成长档案"
+    - button "答卷建议与复核"
+    - button "课堂与倒计时"
+    - button "资料备课"
+    - button "值日轮换"
+    - button "成绩管理"
+    - button "座位编排"
+    - button "班级名册"
+    - button "数据与维护"
+    - button "模型设置"
+    - button "外设接口"
+  - text: 班级 2
+  - button "新建班级"
+  - button "合成高一 1 班 49"
+  - button "重命名 合成高一 1 班"
+  - button "合成高一 2 班 50"
+  - button "重命名 合成高一 2 班"
+  - text: 合成数据验证 未进入真实班级业务
+- main:
+  - text: 工作台 业务对话 本地就绪 CLASS MANAGER / M1
+  - heading "业务对话" [level=1]
+  - button "重新读取数据"
+  - status:
+    - text: 合成样例已保存。
+    - button "关闭提示"
+  - region "统一业务对话":
+    - strong: 业务助手
+    - text: 豆包 · ep-synthetic-agent18
+    - paragraph: 直接说出需求，助手会结合上下文查询和回答；正式写入前由你确认。
+    - text: 当前班级
+    - combobox "对话当前班级":
+      - option "未选择"
+      - option "合成高一 1 班" [selected]
+      - option "合成高一 2 班"
+    - text: 当前学生
+    - combobox "对话当前学生":
+      - option "未选择"
+      - option "DEMO-1-01 · 合成学生 1-01（停用）" [selected]
+      - option "DEMO-1-02 · 合成学生 1-02"
+      - option "DEMO-1-03 · 合成学生 1-03"
+      - option "DEMO-1-04 · 合成学生 1-04"
+      - option "DEMO-1-05 · 合成学生 1-05"
+      - option "DEMO-1-06 · 合成学生 1-06"
+      - option "DEMO-1-07 · 合成学生 1-07"
+      - option "DEMO-1-08 · 合成学生 1-08"
+      - option "DEMO-1-09 · 合成学生 1-09"
+      - option "DEMO-1-10 · 合成学生 1-10"
+      - option "DEMO-1-11 · 合成学生 1-11"
+      - option "DEMO-1-12 · 合成学生 1-12"
+      - option "DEMO-1-13 · 合成学生 1-13"
+      - option "DEMO-1-14 · 合成学生 1-14"
+      - option "DEMO-1-15 · 合成学生 1-15"
+      - option "DEMO-1-16 · 合成学生 1-16"
+      - option "DEMO-1-17 · 合成学生 1-17"
+      - option "DEMO-1-18 · 合成学生 1-18"
+      - option "DEMO-1-19 · 合成学生 1-19"
+      - option "DEMO-1-20 · 合成学生 1-20"
+      - option "DEMO-1-21 · 合成学生 1-21"
+      - option "DEMO-1-22 · 合成学生 1-22"
+      - option "DEMO-1-23 · 合成学生 1-23"
+      - option "DEMO-1-24 · 合成学生 1-24"
+      - option "DEMO-1-25 · 合成学生 1-25"
+      - option "DEMO-1-26 · 合成学生 1-26"
+      - option "DEMO-1-27 · 合成学生 1-27"
+      - option "DEMO-1-28 · 合成学生 1-28"
+      - option "DEMO-1-29 · 合成学生 1-29"
+      - option "DEMO-1-30 · 合成学生 1-30"
+      - option "DEMO-1-31 · 合成学生 1-31"
+      - option "DEMO-1-32 · 合成学生 1-32"
+      - option "DEMO-1-33 · 合成学生 1-33"
+      - option "DEMO-1-34 · 合成学生 1-34"
+      - option "DEMO-1-35 · 合成学生 1-35"
+      - option "DEMO-1-36 · 合成学生 1-36"
+      - option "DEMO-1-37 · 合成学生 1-37"
+      - option "DEMO-1-38 · 合成学生 1-38"
+      - option "DEMO-1-39 · 合成学生 1-39"
+      - option "DEMO-1-40 · 合成学生 1-40"
+      - option "DEMO-1-41 · 合成学生 1-41"
+      - option "DEMO-1-42 · 合成学生 1-42"
+      - option "DEMO-1-43 · 合成学生 1-43"
+      - option "DEMO-1-44 · 合成学生 1-44"
+      - option "DEMO-1-45 · 合成学生 1-45"
+      - option "DEMO-1-46 · 合成学生 1-46"
+      - option "DEMO-1-47 · 合成学生 1-47"
+      - option "DEMO-1-48 · 合成学生 1-48"
+      - option "DEMO-1-49 · 合成学生 1-49"
+      - option "DEMO-1-50 · 合成学生 1-50"
+    - text: 本地快捷查询
+    - button "名册"
+    - button "考试"
+    - button "设备状态"
+    - button "倒计时"
+    - button "模型设置"
+    - button "新对话"
+    - log "本次对话记录":
+      - text: 你
+      - paragraph: 你好
+      - text: 业务助手
+      - paragraph: 结合刚才的名册，可以继续分析。
+      - text: 你
+      - paragraph: 停用当前学生
+      - text: 业务助手
+      - paragraph: 合成业务助手回复，正式写入需确认。
+      - text: 业务助手
+      - paragraph: 已保存学生在籍状态，原归属历史保留。
+      - text: 你
+      - paragraph: 合成丢回包验证false
+      - text: 业务助手
+      - paragraph: 丢回包后恢复的答复false
+      - text: 你
+      - paragraph: 合成丢回包验证true
+      - text: 业务助手
+      - paragraph: 丢回包后恢复的答复true
+      - text: 你
+      - paragraph: 创建一个班级
+      - text: 业务助手
+      - paragraph: 合成业务助手回复，正式写入需确认。
+      - text: 你
+      - paragraph: 查看名册
+      - text: 你
+      - paragraph: 合成错误场景
+      - text: 你
+      - paragraph: 合成错误场景
+      - text: 你
+      - paragraph: 请继续正常对话
+      - text: 业务助手
+      - paragraph: 最终合成对话截图。
+      - article:
+        - heading "本轮完成" [level=3]
+        - paragraph: 对象：合成高一 1 班 · DEMO-1-01 合成学生 1-01
+        - paragraph: 供应商：doubao · ep-synthetic-agent18
+        - group: 本轮输入与脱敏上下文
+        - button "查询原任务状态"
+    - text: 发送消息
+    - textbox "发送消息":
+      - /placeholder: 说说你希望查询、修改或打开什么…
+    - text: Enter 发送 · Shift+Enter 换行 · 0/2000
+    - button "发送" [disabled]
+    - paragraph: 发送即使用当前模型，可能计费；本轮最多8次模型往返。已知身份、联系方式、密钥及路径自动遮蔽，未知自由文本仍请留意。新对话会清空上下文。
+  - text: 本地安全凭据未配置 · 合成验证 v0.1.0

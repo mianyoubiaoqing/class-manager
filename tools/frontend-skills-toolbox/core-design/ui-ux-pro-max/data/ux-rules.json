@@ -1,0 +1,42 @@
+[
+  {
+    "id": "ux-01",
+    "topic": "对比度与文本辨识 (Contrast & Legibility)",
+    "rule": "所有普通正文对比度必须达到 WCAG 2.1 AA 级（≥ 4.5:1），大标题达到（≥ 3:1）。",
+    "do": "使用规范的 Design Tokens，浅色背景下使用 #1A2228 或 #0F172A 作为主文本色。",
+    "dont": "在白色背景上使用 #9CA3AF 或过淡的浅灰字作为关键指示或正文。",
+    "severity": "High"
+  },
+  {
+    "id": "ux-02",
+    "topic": "触控与点击目标面积 (Hit Targets)",
+    "rule": "移动端与桌面端高频操作按钮点击热区不得小于 36px × 36px（移动端建议 ≥ 44px × 44px）。",
+    "do": "仅包含图标的按钮必须留足内边距 (padding: 8px) 并在外层设定明确的盒模型宽高。",
+    "dont": "使用 14px 的纯文字或无 padding 的微小 SVG 图标作为核心触发按钮。",
+    "severity": "High"
+  },
+  {
+    "id": "ux-03",
+    "topic": "键盘对焦与可访问性 (Focus Visible)",
+    "rule": "移除 outline: none 时必须提供高辨识度的 :focus-visible 外发光环。",
+    "do": "使用 box-shadow: 0 0 0 3px rgba(23, 122, 98, 0.25) 提供柔和且清晰的焦点环。",
+    "dont": "无脑使用 * { outline: none !important; } 抹杀所有键盘无障碍导航能力。",
+    "severity": "Critical"
+  },
+  {
+    "id": "ux-04",
+    "topic": "工程防御信息泄漏防护 (Defensive Detox)",
+    "rule": "严禁将底层数据库事务报错代码、开发期回执单或免责长篇大论直接倾倒给最终用户。",
+    "do": "转换为人性化的状态微标（如‘✅ 写入已保存’），或将技术堆栈隐藏在可展开的调试抽屉内。",
+    "dont": "在正式业务流中常驻大块方框罗列 ‘本轮完成 / 对象 / 供应商 / 脱敏详情 / 尚未执行’。",
+    "severity": "Critical"
+  },
+  {
+    "id": "ux-05",
+    "topic": "长文本与溢出防护 (Overflow & Truncation)",
+    "rule": "表格、名册与卡片必须配置 overflow-wrap: anywhere 或优雅的单行截断 (text-overflow: ellipsis)。",
+    "do": "在 Flex 容器内部子元素上声明 min-width: 0，避免文字撑裂外层网格布局。",
+    "dont": "假设所有学生姓名、学号或文件名都在 5 个字以内，导致在宽屏或长字段时出现横向破版。",
+    "severity": "High"
+  }
+]

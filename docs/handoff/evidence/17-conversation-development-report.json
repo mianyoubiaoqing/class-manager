@@ -1,0 +1,19 @@
+{
+  "status": "passed",
+  "root": "H:\\WorkSpace\\class-manager\\output\\playwright\\conversation\\run-BHRnXE",
+  "packaged": false,
+  "externalRequests": 0,
+  "errors": [],
+  "gates": [
+    "unconfigured provider refuses outbound; local roster/device shortcuts use zero requests",
+    "three providers exact confirmed JSON once; original Worker queries; current provider/model and local identity separate; isolated ledgers",
+    "formal rename/create/growth fact require second exact confirmation; repeated execute returns original receipt; cancel makes no enrollment change",
+    "503/bad JSON/ignored AbortSignal cancellation single-call failures; unsupported notification never pretends delivered",
+    "actual classroom denies all five methods; Schema11 backup excludes session/config/credentials/ledger; restore invalidates old epoch; no-Key offline reopen retains original formal results"
+  ],
+  "runtime": {
+    "electron": "44.4.5",
+    "node": "24.21.0",
+    "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-electron-probe-qXAqES\\electron.exe"
+  }
+}

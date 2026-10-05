@@ -1,0 +1,21 @@
+{
+  "status": "passed",
+  "root": "H:\\WorkSpace\\class-manager\\output\\playwright\\devices\\run-TyU6ig",
+  "packaged": true,
+  "externalRequests": 0,
+  "errors": [],
+  "gates": [
+    "130 frozen teacher methods; actual default adapters unavailable with no values/acceptance/delivery",
+    "teacher and synthetic confirmation + dirty navigation protection",
+    "same ID repeated read/request stable; altered request rejected; cancel never claims retraction",
+    "360px no overflow and visible outcome",
+    "actual classroom preload has no devices and Main denies all 5 methods",
+    "Schema11 backup/restore invalidates old epoch for all 5 methods",
+    "no-credential reopen is offline and does not invent durable disconnected receipt"
+  ],
+  "runtime": {
+    "electron": "44.4.5",
+    "node": "24.21.0",
+    "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-agent18-VsVNMF\\Class Manager.exe"
+  }
+}

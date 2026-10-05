@@ -1,0 +1,219 @@
+.lesson-page {
+  display: grid;
+  gap: 18px;
+}
+.lesson-card {
+  background: var(--surface-2, #1c1916);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  border-radius: 12px;
+  padding: 20px;
+  min-width: 0;
+}
+.lesson-card header,
+.lesson-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.lesson-actions {
+  justify-content: flex-start;
+}
+.lesson-card h2 {
+  margin-top: 0;
+  font-size: 19px;
+  color: var(--text-primary);
+}
+.lesson-card h3 {
+  font-size: 16px;
+  color: var(--text-primary);
+}
+.lesson-intro,
+.lesson-card p {
+  line-height: 1.7;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.lesson-card label {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.lesson-card input,
+.lesson-card textarea,
+.lesson-card select {
+  width: 100%;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  font: inherit;
+  background: var(--surface-3, #26211e);
+  color: var(--text-primary);
+}
+.lesson-card textarea {
+  resize: vertical;
+  min-height: 90px;
+  line-height: 1.6;
+}
+.lesson-card fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.lesson-card legend {
+  font-weight: 600;
+  margin: 12px 0 5px;
+}
+.lesson-card .lesson-checkbox,
+.lesson-fragment-list label {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+}
+.lesson-card input[type='checkbox'] {
+  width: 16px;
+  flex: 0 0 16px;
+  margin-top: 2px;
+}
+.lesson-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.lesson-comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 15px 0;
+}
+.lesson-comparison > div {
+  min-width: 0;
+  border: 1px solid #e3e6ed;
+  border-radius: 8px;
+  padding: 12px;
+}
+.lesson-comparison pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  line-height: 1.8;
+  max-height: 460px;
+  overflow: auto;
+}
+.lesson-comparison img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.lesson-warning {
+  background: rgba(245, 158, 11, 0.14);
+  border-left: 3px solid var(--accent-amber, #f59e0b);
+  color: var(--accent-amber, #f59e0b);
+  padding: 10px;
+}
+.lesson-identity {
+  font-family: monospace;
+  font-size: 11px;
+  word-break: break-all;
+}
+.lesson-fragment-list {
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  background: var(--surface-3, #26211e);
+  border-radius: 8px;
+  padding: 10px;
+}
+.lesson-fragment-list label {
+  padding: 6px;
+  overflow-wrap: anywhere;
+}
+.lesson-selected,
+.lesson-history {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.lesson-selected > span {
+  background: var(--surface-3, #26211e);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.lesson-preview-confirm,
+.lesson-model-confirm,
+.lesson-local-confirm {
+  background: var(--surface-3, #26211e);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  padding: 16px;
+  border-radius: 8px;
+  margin: 14px 0;
+}
+.lesson-preview-confirm button,
+.lesson-local-confirm button {
+  margin: 6px 6px 0 0;
+}
+.lesson-block {
+  border-left: 3px solid var(--border-emphasis);
+  padding: 8px 12px;
+  margin: 10px 0;
+  min-width: 0;
+}
+.lesson-block-origin {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.lesson-block-origin button {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  white-space: normal;
+}
+.lesson-block-origin small {
+  display: block;
+}
+.lesson-table-wrap {
+  overflow: auto;
+  margin: 12px 0;
+}
+.lesson-table-wrap table {
+  min-width: 300px;
+  border-collapse: collapse;
+}
+.lesson-table-wrap td,
+.lesson-table-wrap th {
+  padding: 3px;
+  min-width: 90px;
+}
+.lesson-section {
+  border: 1px solid #e3e6ed;
+  border-radius: 8px;
+  padding: 13px;
+  margin: 12px 0;
+}
+.lesson-section summary {
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1.7;
+}
+@media (max-width: 780px) {
+  .lesson-fields,
+  .lesson-comparison {
+    grid-template-columns: 1fr;
+  }
+  .lesson-card {
+    padding: 13px;
+  }
+}

@@ -11,7 +11,6 @@ import {
   FileText,
   FolderArchive,
   GraduationCap,
-  HardDrive,
   LoaderCircle,
   Pencil,
   Plus,
@@ -23,14 +22,17 @@ import {
   UserRoundMinus,
   UsersRound,
   X,
-  AlertTriangle,
   CheckCircle2,
   Clock,
   Coins,
   Cpu,
   Eye,
   KeyRound,
+  PanelLeftClose,
+  PanelLeftOpen,
   Sparkles,
+  SquarePen,
+  MessagesSquare,
   Trash2,
   XCircle,
 } from 'lucide-react';
@@ -45,6 +47,27 @@ import type {
   Student,
 } from '../shared/contracts';
 import metadata from '../../package.json';
+import { ScorePage } from './ScorePage';
+import { SeatingPage } from './SeatingPage';
+import { DutyPage } from './DutyPage';
+import { LessonPage } from './LessonPage';
+import { ClassroomPage } from './ClassroomPage';
+import { CountdownBanner } from './CountdownBanner';
+import { GradingPage } from './GradingPage';
+import { GrowthPage } from './GrowthPage';
+import { DevicePage } from './DevicePage';
+import { ModelSettingsPage } from './ModelSettingsPage';
+import { ModelSelectionSummary } from './ModelSelectionSummary';
+import { ConversationWorkspace } from './ConversationWorkspace';
+import { AttendancePage, StudentProfilesPage } from './PupilPages';
+import {
+  workspaceAreas,
+  areaForView,
+  viewLabel,
+  WorkspaceHome,
+  WorkspaceLinks,
+  type AppView,
+} from './WorkspaceNavigation';
 
 declare global {
   interface Window {
@@ -114,7 +137,75 @@ export function App() {
   const [snapshot, setSnapshot] = useState<Snapshot>();
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'roster' | 'maintenance' | 'modelSettings'>('roster');
+  const [view, setView] = useState<AppView>('conversation');
+  const area = areaForView(view);
+  const [navigationFeedback, setNavigationFeedback] = useState<{
+    source: AppView;
+    target: string;
+  }>();
+  const navigationFeedbackRef = useRef<HTMLDivElement>(null);
+  const [scoreDirty, setScoreDirty] = useState(false);
+  const [seatingDirty, setSeatingDirty] = useState(false);
+  const [dutyDirty, setDutyDirty] = useState(false);
+  const [lessonDirty, setLessonDirty] = useState(false);
+  const [classroomDirty, setClassroomDirty] = useState(false);
+  const [gradingDirty, setGradingDirty] = useState(false);
+  const [growthDirty, setGrowthDirty] = useState(false);
+  const [deviceDirty, setDeviceDirty] = useState(false);
+  const [providerDirty, setProviderDirty] = useState(false);
+  const [pupilDirty, setPupilDirty] = useState(false);
+  const [conversationDirty, setConversationDirty] = useState(false);
+  const [conversationRestoreNotice, setConversationRestoreNotice] = useState('');
+  const [newConversationRequest, setNewConversationRequest] = useState(0);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const navigationDirty =
+    scoreDirty ||
+    seatingDirty ||
+    dutyDirty ||
+    lessonDirty ||
+    classroomDirty ||
+    gradingDirty ||
+    growthDirty ||
+    pupilDirty ||
+    deviceDirty ||
+    providerDirty ||
+    conversationDirty;
+  const pendingViews: Array<[AppView, boolean]> = [
+    ['scores', scoreDirty],
+    ['seating', seatingDirty],
+    ['duty', dutyDirty],
+    ['lessons', lessonDirty],
+    ['classroom', classroomDirty],
+    ['grading', gradingDirty],
+    ['growth', growthDirty],
+    ['devices', deviceDirty],
+    ['providerSettings', providerDirty],
+    [view === 'profiles' ? 'profiles' : 'attendance', pupilDirty],
+    ['conversation', conversationDirty],
+  ];
+  function canNavigate(target: string): boolean {
+    if (navigationDirty || busy || loading) {
+      setNavigationFeedback({
+        source: pendingViews.find(([, pending]) => pending)?.[0] ?? view,
+        target,
+      });
+      requestAnimationFrame(() =>
+        navigationFeedbackRef.current?.scrollIntoView({ block: 'nearest' }),
+      );
+      return false;
+    }
+    setNavigationFeedback(undefined);
+    return true;
+  }
+  function navigate(next: AppView): boolean {
+    if (next === view) return true;
+    if (!canNavigate(viewLabel(next))) return false;
+    setView(next);
+    return true;
+  }
+  function startNewConversation() {
+    if (canNavigate('新对话')) setNewConversationRequest((value) => value + 1);
+  }
   const [notice, setNotice] = useState<Notice>();
   const [modal, setModal] = useState<Modal>();
   const [selectedClass, setSelectedClass] = useState('all');
@@ -351,7 +442,7 @@ export function App() {
   const pageCount = Math.max(1, Math.ceil(filtered.length / 15));
   const currentPage = Math.min(page, pageCount - 1);
   const rows = filtered.slice(currentPage * 15, (currentPage + 1) * 15);
-  const disabled = busy || loading || !snapshot;
+  const disabled = busy || loading || !snapshot || navigationDirty;
 
   async function submitClass(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -396,50 +487,66 @@ export function App() {
   }
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <span className="brand-mark">
-            <GraduationCap size={24} />
-          </span>
-          <div>
-            班级管理<small>本地工作台</small>
+    <div className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-header">
+          <div className="brand">
+            <span className="brand-mark">
+              <GraduationCap size={22} />
+            </span>
+            <div>
+              班级管理<small>本地工作台</small>
+            </div>
           </div>
+          <button
+            type="button"
+            className="sidebar-toggle-btn"
+            title="收起侧边栏"
+            aria-label="收起侧边栏"
+            onClick={() => setSidebarCollapsed(true)}
+          >
+            <PanelLeftClose size={18} />
+          </button>
         </div>
+        <button type="button" className="sidebar-new-chat-btn" onClick={startNewConversation}>
+          <SquarePen size={16} />
+          <span>开启新对话</span>
+        </button>
         <div className="environment">
           <span className="dot" />
-          Windows · 单机<span className="version">M0</span>
+          Windows · 本地智能体<span className="version">v1.0</span>
         </div>
-        <nav aria-label="主导航">
+        <nav aria-label="主导航" className="primary-navigation">
           <button
-            className={view === 'roster' ? 'nav-item selected' : 'nav-item'}
-            onClick={() => setView('roster')}
+            className={view === 'conversation' ? 'nav-item selected' : 'nav-item'}
+            aria-current={view === 'conversation' ? 'page' : undefined}
+            onClick={() => navigate('conversation')}
           >
-            <UsersRound size={18} />
-            班级名册
-            <ChevronRight size={14} />
+            <Sparkles size={18} className="nav-item-icon" />
+            <span className="nav-item-text">业务对话</span>
           </button>
           <button
-            className={view === 'maintenance' ? 'nav-item selected' : 'nav-item'}
-            onClick={() => setView('maintenance')}
+            className={view === 'sessions' ? 'nav-item selected' : 'nav-item'}
+            aria-current={view === 'sessions' ? 'page' : undefined}
+            onClick={() => navigate('sessions')}
           >
-            <HardDrive size={18} />
-            数据与维护
-            <ChevronRight size={14} />
+            <MessagesSquare size={18} className="nav-item-icon" />
+            <span className="nav-item-text">会话管理</span>
           </button>
-          <button
-            className={view === 'modelSettings' ? 'nav-item selected' : 'nav-item'}
-            onClick={() => {
-              setView('modelSettings');
-              void loadDeepSeekData();
-            }}
-          >
-            <KeyRound size={18} />
-            模型设置
-            <ChevronRight size={14} />
-          </button>
+          {workspaceAreas.map((item) => (
+            <button
+              key={item.id}
+              className={area?.id === item.id ? 'nav-item selected' : 'nav-item'}
+              aria-current={area?.id === item.id ? 'page' : undefined}
+              onClick={() => navigate(item.id)}
+            >
+              <item.icon size={18} className="nav-item-icon" />
+              <span className="nav-item-text">{item.label}</span>
+              <ChevronRight size={13} className="nav-item-arrow" />
+            </button>
+          ))}
         </nav>
-        <section className="class-navigation">
+        <section className="class-navigation" hidden={area?.id !== 'classManagement'}>
           <div className="section-label">
             班级 <span>{snapshot?.classes.length ?? 0}</span>
             <button
@@ -457,8 +564,9 @@ export function App() {
               <button
                 className={`class-nav ${selectedClass === classroom.id ? 'current' : ''}`}
                 onClick={() => {
-                  setSelectedClass(classroom.id);
+                  if (!canNavigate('班级名册')) return;
                   setView('roster');
+                  setSelectedClass(classroom.id);
                   setPage(0);
                 }}
               >
@@ -487,17 +595,74 @@ export function App() {
         <div className="sidebar-bottom">
           <ShieldCheck size={17} />
           <span>
-            合成数据验证<small>未进入真实班级业务</small>
+            Class Manager<small>本地就绪 · 隐私防护</small>
           </span>
         </div>
       </aside>
       <main>
         <header className="topbar">
-          <div className="breadcrumb">
-            工作台 <ChevronRight size={14} />
-            <span>
-              {view === 'roster' ? '班级名册' : view === 'maintenance' ? '数据与维护' : '模型设置'}
-            </span>
+          <div className="topbar-left">
+            {sidebarCollapsed && (
+              <div className="topbar-collapsed-controls">
+                <button
+                  type="button"
+                  className="sidebar-toggle-btn topbar-toggle"
+                  title="展开侧边栏"
+                  aria-label="展开侧边栏"
+                  onClick={() => setSidebarCollapsed(false)}
+                >
+                  <PanelLeftOpen size={18} />
+                </button>
+                <button
+                  type="button"
+                  className="topbar-new-chat-btn"
+                  title="开启新对话"
+                  aria-label="开启新对话"
+                  onClick={startNewConversation}
+                >
+                  <SquarePen size={18} />
+                </button>
+              </div>
+            )}
+            <div className="breadcrumb">
+              {area && area.id !== view ? (
+                <>
+                  <button type="button" onClick={() => navigate(area.id)}>
+                    {area.label}
+                  </button>
+                  <ChevronRight size={14} aria-hidden="true" />
+                </>
+              ) : (
+                <span>工作台</span>
+              )}
+              <span>{viewLabel(view)}</span>
+            </div>
+            {snapshot && snapshot.classes.length > 0 && area?.id === 'classManagement' && (
+              <div className="current-class-badge" title="当前管理班级">
+                <span className="current-class-label">当前管理：</span>
+                <select
+                  className="current-class-select"
+                  aria-label="工作台当前管理班级"
+                  disabled={navigationDirty}
+                  value={selectedClass}
+                  onChange={(e) => setSelectedClass(e.target.value)}
+                >
+                  <option value="all">
+                    全部班级 ({snapshot.students.filter((s) => s.active).length}人在籍)
+                  </option>
+                  {snapshot.classes.map((c) => {
+                    const count = snapshot.students.filter(
+                      (s) => s.classId === c.id && s.active,
+                    ).length;
+                    return (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({count}人在籍)
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            )}
           </div>
           <span className="local-status">
             <span className="dot" />
@@ -505,16 +670,30 @@ export function App() {
           </span>
         </header>
         <div className="content">
+          {navigationFeedback && (navigationDirty || busy || loading) && (
+            <div className="navigation-feedback" role="status" ref={navigationFeedbackRef}>
+              <div>
+                <strong>先完成{viewLabel(navigationFeedback.source)}中的当前操作</strong>
+                <p>
+                  内容尚未保存或操作仍在进行。请先保存、清空未保存输入或取消当前任务，再打开
+                  {navigationFeedback.target}。
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setView(navigationFeedback.source);
+                  setNavigationFeedback(undefined);
+                }}
+              >
+                返回{viewLabel(navigationFeedback.source)}
+              </button>
+            </div>
+          )}
           <div className="page-heading">
             <div>
               <div className="eyebrow">CLASS MANAGER / M1</div>
-              <h1>
-                {view === 'roster'
-                  ? '班级名册'
-                  : view === 'maintenance'
-                    ? '数据与维护'
-                    : 'DeepSeek 本地配置与连接检查'}
-              </h1>
+              <h1>{viewLabel(view)}</h1>
             </div>
             <div className="heading-actions">
               {view === 'roster' && (
@@ -532,7 +711,7 @@ export function App() {
                 className="icon-button outlined"
                 title="重新读取数据"
                 aria-label="重新读取数据"
-                disabled={busy || loading || !api}
+                disabled={busy || loading || !api || navigationDirty}
                 onClick={() => {
                   if (view === 'modelSettings') {
                     void loadDeepSeekData();
@@ -603,6 +782,120 @@ export function App() {
                 导出诊断
               </button>
             </div>
+          )}
+          {snapshot && area?.id === view && <WorkspaceHome area={area} onNavigate={navigate} />}
+          {snapshot && <WorkspaceLinks view={view} onNavigate={navigate} />}
+          {snapshot && (
+            <CountdownBanner key={`countdown:${snapshot.epoch}`} epoch={snapshot.epoch} />
+          )}
+          {snapshot && view === 'attendance' && (
+            <AttendancePage
+              key={`attendance:${snapshot.epoch}`}
+              snapshot={snapshot}
+              selectedClass={selectedClass}
+              onDirtyChange={setPupilDirty}
+            />
+          )}
+          {snapshot && view === 'profiles' && (
+            <StudentProfilesPage
+              key={`profiles:${snapshot.epoch}`}
+              snapshot={snapshot}
+              selectedClass={selectedClass}
+              onDirtyChange={setPupilDirty}
+            />
+          )}
+          {snapshot && (
+            <div hidden={view !== 'conversation' && view !== 'sessions'}>
+              <ConversationWorkspace
+                key={`conversation:${snapshot.epoch}`}
+                snapshot={snapshot}
+                onSnapshot={acceptSnapshot}
+                onNavigate={setView}
+                onDirtyChange={setConversationDirty}
+                active={view === 'conversation' || view === 'sessions'}
+                mode={view === 'sessions' ? 'sessions' : 'conversation'}
+                newRequest={newConversationRequest}
+                onOpen={() => setView('conversation')}
+                restoreNotice={conversationRestoreNotice}
+                onRestoreNotice={setConversationRestoreNotice}
+              />
+            </div>
+          )}
+          {snapshot && view === 'classroom' && (
+            <ClassroomPage
+              key={`classroom:${snapshot.epoch}`}
+              snapshot={snapshot}
+              navigationBusy={busy || loading}
+              onDirtyChange={setClassroomDirty}
+            />
+          )}
+          {snapshot && view === 'grading' && (
+            <GradingPage
+              key={`grading:${snapshot.epoch}`}
+              snapshot={snapshot}
+              onDirtyChange={setGradingDirty}
+              navigationBusy={busy || loading}
+            />
+          )}
+          {snapshot && view === 'growth' && (
+            <GrowthPage
+              key={`growth:${snapshot.epoch}`}
+              snapshot={snapshot}
+              onDirtyChange={setGrowthDirty}
+              navigationBusy={busy || loading}
+            />
+          )}
+          {snapshot && ['growth', 'grading', 'lessons', 'scores'].includes(view) && (
+            <ModelSelectionSummary key={`model:${view}:${snapshot.epoch}`} />
+          )}
+          {snapshot && view === 'providerSettings' && (
+            <ModelSettingsPage
+              onDirtyChange={setProviderDirty}
+              onLegacy={() => {
+                setView('modelSettings');
+                void loadDeepSeekData();
+              }}
+            />
+          )}
+          {snapshot && view === 'devices' && (
+            <DevicePage
+              key={`devices:${snapshot.epoch}`}
+              snapshot={snapshot}
+              onDirtyChange={setDeviceDirty}
+              navigationBusy={busy || loading}
+            />
+          )}
+          {snapshot && view === 'seating' && (
+            <SeatingPage
+              key={`seating:${snapshot.epoch}`}
+              snapshot={snapshot}
+              onDirtyChange={setSeatingDirty}
+              navigationBusy={busy}
+            />
+          )}
+          {snapshot && view === 'lessons' && (
+            <LessonPage
+              key={`lessons:${snapshot.epoch}`}
+              snapshot={snapshot}
+              onDirtyChange={setLessonDirty}
+              navigationBusy={busy || loading}
+            />
+          )}
+          {snapshot && view === 'duty' && (
+            <DutyPage
+              key={`duty:${snapshot.epoch}`}
+              snapshot={snapshot}
+              onDirtyChange={setDutyDirty}
+              navigationBusy={busy || loading}
+            />
+          )}
+          {snapshot && view === 'scores' && (
+            <ScorePage
+              key={`scores:${snapshot.epoch}`}
+              snapshot={snapshot}
+              onDirtyChange={setScoreDirty}
+              navigationBusy={busy || loading}
+            />
           )}
           {snapshot && view === 'roster' && (
             <>
@@ -1023,14 +1316,19 @@ export function App() {
               <section className="settings-section">
                 <div className="maintenance-title">
                   <Sparkles size={21} />
-                  <h2>双通道连接检查 (合成测试)</h2>
+                  <h2>双通道连接检查 (模型连通性诊断)</h2>
                 </div>
-                <div className="banner-alert">
-                  <AlertTriangle size={18} />
+                <div
+                  className="banner-alert"
+                  style={{
+                    background: 'var(--primary-subtle)',
+                    borderColor: 'rgba(23,122,98,0.2)',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  <ShieldCheck size={18} style={{ color: 'var(--primary)', flexShrink: 0 }} />
                   <div>
-                    <strong>费用与通道独立性提示：</strong>
-                    连接测试将向 DeepSeek 官方接口发起微型合成请求，产生极少量 Token 消耗（通常 &lt;
-                    100 Tokens）。文本模型与视觉模型分别独立验证，文本通过不代表视觉多模态接口通过。
+                    连接测试向官方接口发起轻量握手验证。文本与视觉通道分别独立测试，确保各项能力正常。
                   </div>
                 </div>
 
@@ -1272,7 +1570,17 @@ export function App() {
                                   <span
                                     className={`table-badge ${entry.type === 'text_check' ? 'text' : 'vision'}`}
                                   >
-                                    {entry.type === 'text_check' ? '文本检查' : '视觉检查'}
+                                    {entry.type === 'text_check'
+                                      ? '文本检查'
+                                      : entry.type === 'vision_check'
+                                        ? '视觉检查'
+                                        : entry.type === 'lesson_drafting'
+                                          ? '资料备课'
+                                          : entry.type === 'growth_summary'
+                                            ? '成长总结'
+                                            : entry.type === 'grading'
+                                              ? '答卷建议'
+                                              : '成绩解释'}
                                   </span>
                                 </td>
                                 <td>{entry.requestModel}</td>
@@ -1304,11 +1612,24 @@ export function App() {
           <footer className="workspace-footer">
             <span>
               <ShieldCheck size={13} />
-              {deepSeekStatus?.configured ? '本地安全凭据已就绪' : '本地安全凭据未配置'} · 合成验证
+              {deepSeekStatus?.configured ? '本地安全凭据已就绪' : '本地安全凭据未配置'} ·
+              本地智能引擎
             </span>
             <span>v{metadata.version}</span>
           </footer>
         </div>
+        {view !== 'conversation' && view !== 'sessions' && (
+          <button
+            type="button"
+            className="floating-copilot-pill"
+            title="召唤智能助教"
+            aria-label="召唤智能助教"
+            onClick={() => navigate('conversation')}
+          >
+            <Sparkles size={15} />
+            <span>召唤助教</span>
+          </button>
+        )}
       </main>
       {busy && (
         <div className="busy-indicator" role="status">
@@ -1408,12 +1729,17 @@ export function App() {
                 学生编号
                 <input
                   name="studentNumber"
+                  aria-label="学生编号"
                   required
                   maxLength={32}
                   pattern="[A-Za-z0-9_-]+"
                   title="字母、数字、下划线或连字符"
+                  aria-describedby="student-number-hint"
                   defaultValue={modal.student?.studentNumber ?? ''}
                 />
+                <small id="student-number-hint" className="field-hint">
+                  请使用字母或数字，也可包含下划线、连字符。
+                </small>
               </label>
               <label>
                 所属班级
@@ -1500,8 +1826,10 @@ export function App() {
           )}
           {modal.kind === 'seed' && (
             <>
-              <p>2 个虚构班级 · 100 名合成学生</p>
-              <p className="muted">仅用于本地验证，不包含真实学生资料。仅允许在空名册载入。</p>
+              <p>2 个示范教学班 · 100 名演示学生</p>
+              <p className="muted">
+                用于初次启动快速体验与功能演练，不包含真实学生隐私。仅允许在空名册载入。
+              </p>
               <div className="dialog-actions">
                 <button disabled={busy} onClick={() => setModal(undefined)}>
                   取消
@@ -1529,7 +1857,9 @@ export function App() {
             <>
               <div className="restore-warning">
                 <CircleAlert size={20} />
-                <p>恢复将替换当前名册与附件。原数据保留为本机副本，不会合并记录。</p>
+                <p>
+                  恢复将替换当前工作区的名册、成绩、教学、阅卷、计划与附件。原数据保留为本机副本，不会合并记录。
+                </p>
               </div>
               <dl>
                 <div>
@@ -1541,6 +1871,41 @@ export function App() {
                   <dd>
                     {modal.preview.classCount} / {modal.preview.studentCount} /{' '}
                     {modal.preview.assetCount}
+                  </dd>
+                </div>
+                <div>
+                  <dt>考试 / 成绩版本</dt>
+                  <dd>
+                    {modal.preview.examCount} / {modal.preview.scoreVersionCount}
+                  </dd>
+                  <dt>解释草案（含已丢弃）</dt>
+                  <dd>{modal.preview.explanationDraftCount}</dd>
+                  <dt>座位版本</dt>
+                  <dd>{modal.preview.seatingVersionCount}</dd>
+                  <dt>值日版本</dt>
+                  <dd>{modal.preview.dutyVersionCount}</dd>
+                  <dt>资料版本</dt>
+                  <dd>{modal.preview.materialVersionCount}</dd>
+                  <dt>备课草案</dt>
+                  <dd>{modal.preview.lessonDraftCount}</dd>
+                  <dt>冻结教案</dt>
+                  <dd>{modal.preview.lessonVersionCount}</dd>
+                  <dt>课堂进度</dt>
+                  <dd>{modal.preview.teachingSessionCount}</dd>
+                  <dt>倒计时设置</dt>
+                  <dd>{modal.preview.countdownCount}</dd>
+                  <dt>评分细则版本</dt>
+                  <dd>{modal.preview.rubricVersionCount}</dd>
+                  <dt>阅卷草案 / 冻结复核</dt>
+                  <dd>
+                    {modal.preview.gradingDraftCount} / {modal.preview.gradingReviewCount}
+                  </dd>
+                  <dt>阅卷尝试 / 修订历史</dt>
+                  <dd>
+                    {modal.preview.gradingAttemptCount} / {modal.preview.gradingRevisionCount}
+                    。正式入分记录 {modal.preview.gradingPublicationCount} 条 。成长事件 / 总结草案
+                    / 正式条目 {modal.preview.growthEventCount} / {modal.preview.growthSummaryCount}{' '}
+                    / {modal.preview.growthEntryCount}
                   </dd>
                 </div>
               </dl>

@@ -1,0 +1,15 @@
+{
+  "at": "2026-09-30T18:31:45.076Z",
+  "source": "H:\\WorkSpace\\class-manager\\output\\ticket08-pack\\win-unpacked",
+  "copy": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-lesson08-FhazrQ",
+  "hashes": [
+    {
+      "file": "Class Manager.exe",
+      "sha256": "b6f85dd386d90599ec1897af1caf923e6d8eb51d56d21f6165f8c6725e335561"
+    },
+    {
+      "file": "resources/app.asar",
+      "sha256": "93387d4ec2b7dfdb31f66fda38fd9c6df31090294578c744d1e321633d8738d1"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "status": "passed",
+  "externalRequests": 0,
+  "credentialReads": 0,
+  "errors": [],
+  "gates": [
+    "explicit difference and replacement approval",
+    "single publication and source trace",
+    "other student preserved and statistics updated",
+    "persistent query without regrading",
+    "visible updated analysis and provenance; retained stale parent",
+    "360px no horizontal overflow",
+    "Schema 9 backup/restore and old epoch rejection",
+    "no-credential reopen retains committed fact"
+  ],
+  "root": "H:\\WorkSpace\\class-manager\\output\\playwright\\publication\\run-UoSes2",
+  "packaged": true,
+  "runtime": {
+    "electron": "44.4.5",
+    "node": "24.21.0",
+    "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-publication-audit12-eEGCHu\\Class Manager.exe"
+  },
+  "receipt": {
+    "reviewId": "636a486b-81fb-4dd3-8dca-ed51d2f795d8",
+    "previousVersionId": "ec5a4e0c-bbf5-4e53-91f1-9ca8572d7e8a",
+    "examId": "679f4960-bbdf-477b-a142-80301824aee5",
+    "versionId": "4b49e72d-de16-4170-ba1b-beb9bdbc8f0d",
+    "revision": 2,
+    "createdAt": "2026-10-02T02:24:03.887Z",
+    "replayed": true
+  }
+}

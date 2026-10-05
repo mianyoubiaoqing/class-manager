@@ -1,0 +1,19 @@
+{
+    "target":  "WPS 12.1.0.28505",
+    "word":  {
+                 "tables":  2,
+                 "inlineImages":  1,
+                 "editedAndReopened":  true,
+                 "applicationVersion":  "12.0"
+             },
+    "presentation":  {
+                         "applicationVersion":  "12.0",
+                         "nativeTables":  13,
+                         "editedAndReopened":  true,
+                         "slides":  18
+                     },
+    "errors":  [
+
+               ],
+    "existingWindowsUntouched":  true
+}

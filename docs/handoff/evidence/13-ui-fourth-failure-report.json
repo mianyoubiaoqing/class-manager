@@ -1,0 +1,15 @@
+{
+  "status": "failed",
+  "root": "H:\\WorkSpace\\class-manager\\output\\playwright\\growth\\run-i086s9",
+  "packaged": false,
+  "externalRequests": 0,
+  "syntheticProviderCalls": 0,
+  "errors": [],
+  "gates": [],
+  "runtime": {
+    "electron": "44.4.5",
+    "node": "24.21.0",
+    "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-electron-probe-qXAqES\\electron.exe"
+  },
+  "failure": "AssertionError [ERR_ASSERTION]: 记录来源\n\nfalse !== true\n\n    at file:///H:/WorkSpace/class-manager/scripts/growth-ui-smoke.mjs:154:12"
+}

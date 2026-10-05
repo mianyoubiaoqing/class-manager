@@ -1,0 +1,32 @@
+{
+  "status": "passed",
+  "externalRequests": 0,
+  "syntheticCalls": 5,
+  "gates": [
+    "editing resets teacher acknowledgement",
+    "complete rubric via teacher forms",
+    "real pixels redacted",
+    "preview bytes equal synthetic transport",
+    "local objective scoring and pending peer questions",
+    "all six questions manually reviewed",
+    "freeze matches human gold",
+    "frozen image evidence remains readable",
+    "revision preserves immutable parent",
+    "failed related read preserves prior draft and structured error",
+    "IPC cancellation rejection is handled without unhandled promise",
+    "narrow viewport 360px",
+    "offline and invalid output preserve input",
+    "cancel rejects late success and does not retry",
+    "UI crop rotation role order persist and reset suggestions without changing frozen parent",
+    "reopen without credentials preserves frozen review",
+    "no formal score version created",
+    "actual Schema 8 backup restore preserves all reviews, attempts and history",
+    "restore rejects old epoch and reopens current UI"
+  ],
+  "errors": [],
+  "runtime": {
+    "electron": "44.4.5",
+    "node": "24.21.0",
+    "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-electron-probe-qXAqES\\electron.exe"
+  }
+}

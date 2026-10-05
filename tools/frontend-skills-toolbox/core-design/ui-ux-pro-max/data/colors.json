@@ -1,0 +1,50 @@
+[
+  {
+    "category": "education-classroom",
+    "name": "教育与数字化班级 (Education & Classroom Hub)",
+    "primary": "#177A62",
+    "primaryHover": "#10654F",
+    "secondary": "#2563EB",
+    "background": "#F8FAFB",
+    "surface": "#FFFFFF",
+    "text": "#1A2228",
+    "mutedText": "#798791",
+    "border": "#E2E7EA",
+    "success": "#16A34A",
+    "warning": "#D97706",
+    "destructive": "#DC2626",
+    "notes": "沉稳内敛的学术松石绿基调，具备高度公信力与视觉安抚感，适合长时间高频录入与数据核对。"
+  },
+  {
+    "category": "academic-slate",
+    "name": "严谨理工学院风 (Academic Slate)",
+    "primary": "#0F766E",
+    "primaryHover": "#115E59",
+    "secondary": "#0284C7",
+    "background": "#F1F5F9",
+    "surface": "#FFFFFF",
+    "text": "#0F172A",
+    "mutedText": "#64748B",
+    "border": "#CBD5E1",
+    "success": "#059669",
+    "warning": "#D97706",
+    "destructive": "#E11D48",
+    "notes": "冷色调岩板蓝绿，适合数据密集型看板与复杂指标呈现。"
+  },
+  {
+    "category": "warm-editorial",
+    "name": "温润书香与人文关怀 (Warm Editorial)",
+    "primary": "#B45309",
+    "primaryHover": "#92400E",
+    "secondary": "#4D7C0F",
+    "background": "#FFFBEB",
+    "surface": "#FFFFFF",
+    "text": "#451A03",
+    "mutedText": "#78350F",
+    "border": "#FDE68A",
+    "success": "#15803D",
+    "warning": "#B45309",
+    "destructive": "#B91C1C",
+    "notes": "纸张书香暖琥珀色，适合心理咨询、德育成长记录与温暖评语展示。"
+  }
+]

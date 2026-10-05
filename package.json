@@ -11,18 +11,24 @@
     "node": ">=24.14.0 <25"
   },
   "scripts": {
+    "postinstall": "node scripts/patch-pdfjs.mjs",
     "build": "node scripts/build.mjs",
     "start": "node scripts/start.mjs",
     "dev": "node scripts/start.mjs --build",
+    "dev:web": "vite src/renderer --port 5173 --host",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
     "format": "prettier --write src tests scripts package.json tsconfig.json vitest.config.ts eslint.config.mjs .prettierrc.json",
     "format:check": "prettier --check src tests scripts package.json tsconfig.json vitest.config.ts eslint.config.mjs .prettierrc.json",
     "test": "vitest run",
     "test:desktop": "node scripts/desktop-smoke.mjs",
+    "fe:audit": "node tools/frontend-skills-toolbox/bin/fe-toolbox.mjs audit",
+    "fe:search": "node tools/frontend-skills-toolbox/bin/fe-toolbox.mjs search",
+    "fe:toolbox": "node tools/frontend-skills-toolbox/bin/fe-toolbox.mjs",
     "check": "npm run format:check && npm run typecheck && npm run lint && npm test && npm run build",
     "pack": "npm run build && electron-builder --win --x64 --dir",
-    "dist:win": "npm run build && electron-builder --win nsis --x64"
+    "dist:win": "npm run build && electron-builder --win nsis --x64 && node scripts/prepare-windows-installer.mjs",
+    "dist:portable": "node scripts/package-portable.mjs"
   },
   "build": {
     "appId": "local.classmanager.desktop",
@@ -32,7 +38,8 @@
     },
     "files": [
       "dist/**/*",
-      "package.json"
+      "package.json",
+      "!node_modules/https{,/**/*}"
     ],
     "asar": true,
     "npmRebuild": false,
@@ -44,15 +51,42 @@
     "nsis": {
       "oneClick": false,
       "perMachine": false,
+      "selectPerMachineByDefault": false,
       "allowToChangeInstallationDirectory": true,
       "deleteAppDataOnUninstall": false,
-      "createDesktopShortcut": true
+      "installerLanguages": [
+        "zh_CN"
+      ],
+      "language": "2052",
+      "displayLanguageSelector": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Class Manager",
+      "runAfterFinish": true
+    }
+  },
+  "overrides": {
+    "exceljs": {
+      "uuid": "11.1.1",
+      "unzipper": "0.12.5"
+    },
+    "pptxgenjs": {
+      "image-size": "2.0.4"
     }
   },
   "dependencies": {
+    "@napi-rs/canvas": "1.0.9",
+    "csv-parse": "7.0.3",
+    "docx": "9.8.1",
+    "exceljs": "4.4.0",
     "lucide-react": "1.48.0",
+    "pdfjs-dist": "6.3.289",
+    "pptxgenjs": "4.0.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "saxes": "6.0.0",
+    "sharp": "0.35.5",
+    "yauzl": "3.4.0",
     "zod": "4.6.5"
   },
   "devDependencies": {
@@ -60,10 +94,12 @@
     "@types/node": "24.19.0",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "@types/yauzl": "3.4.0",
     "electron": "44.4.5",
     "electron-builder": "26.15.3",
     "esbuild": "0.28.2",
     "eslint": "10.11.0",
+    "jszip": "3.10.2",
     "playwright": "1.63.0",
     "prettier": "3.9.9",
     "typescript": "6.0.3",

@@ -1,0 +1,42 @@
+{
+  "status": "passed",
+  "runtime": {
+    "electron": "44.4.5",
+    "node": "24.21.0",
+    "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-electron-probe-qXAqES\\electron.exe"
+  },
+  "networkRequests": 0,
+  "errors": [],
+  "seeded": {
+    "epoch": "e69e8158-61bb-4218-af5f-cfaa57815fd7",
+    "versionId": "35e130be-1de4-4a79-8962-610eeda811d8",
+    "versionRevision": 3
+  },
+  "initialReadGuard": true,
+  "postOpenReadFailureGuard": true,
+  "displayCapabilities": {
+    "keys": [
+      "readClock",
+      "readProjection",
+      "setFullscreen"
+    ],
+    "frozen": true,
+    "admin": "undefined",
+    "node": "undefined",
+    "process": "undefined"
+  },
+  "adminDenied": true,
+  "hiddenTimerDeltaMs": 2242,
+  "reopened": true,
+  "normalExitSavedRunningTimer": true,
+  "crashRecovered": {
+    "checkpointElapsedMs": 7983,
+    "status": "paused",
+    "interrupted": true
+  },
+  "restoreClosedDisplay": {
+    "oldEpochRejected": true,
+    "progressPaused": true,
+    "countdownRestored": true
+  }
+}

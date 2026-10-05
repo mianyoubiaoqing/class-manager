@@ -25,9 +25,13 @@ export class DeepSeekCredentialStore {
   private readonly metaPath: string;
   private readonly crypto: CryptoProvider;
 
-  constructor(dataDirectory: string, cryptoProvider: CryptoProvider) {
-    this.credentialPath = join(dataDirectory, 'credentials', 'deepseek.enc');
-    this.metaPath = join(dataDirectory, 'credentials', 'deepseek.meta.json');
+  constructor(
+    dataDirectory: string,
+    cryptoProvider: CryptoProvider,
+    provider: 'deepseek' | 'kimi' | 'doubao' = 'deepseek',
+  ) {
+    this.credentialPath = join(dataDirectory, 'credentials', `${provider}.enc`);
+    this.metaPath = join(dataDirectory, 'credentials', `${provider}.meta.json`);
     this.crypto = cryptoProvider;
   }
 
@@ -82,7 +86,7 @@ export class DeepSeekCredentialStore {
 
   loadKey(): string {
     if (!existsSync(this.credentialPath)) {
-      throw new DomainError('CREDENTIAL_MISSING', '未配置 DeepSeek API Key，请先在设置中填写。');
+      throw new DomainError('CREDENTIAL_MISSING', '未配置所选供应商 API Key，请先在设置中填写。');
     }
     if (!this.crypto.isAvailable()) {
       throw new DomainError('ENCRYPTION_UNAVAILABLE', '系统安全存储不可用，无法解密已保存的密钥。');
@@ -94,7 +98,7 @@ export class DeepSeekCredentialStore {
       if (error instanceof DomainError) throw error;
       throw new DomainError(
         'DECRYPTION_FAILED',
-        '无法解密 DeepSeek 密钥，可能由于系统凭据环境已更改。',
+        '无法解密供应商密钥，可能由于系统凭据环境已更改。',
       );
     }
   }

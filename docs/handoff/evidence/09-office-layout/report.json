@@ -1,0 +1,16 @@
+[
+  {
+    "format": "docx",
+    "path": "H:\\WorkSpace\\class-manager\\output\\office-layout\\lesson.docx",
+    "bytes": 13688,
+    "pages": null,
+    "sha256": "d8188576c8bc6202eab0d46e7749b87e4703fca77343cb0e8344d9e4a3d5ddf1"
+  },
+  {
+    "format": "pptx",
+    "path": "H:\\WorkSpace\\class-manager\\output\\office-layout\\lesson.pptx",
+    "bytes": 438570,
+    "pages": 18,
+    "sha256": "f65d2ad5ded0df1d5d64ef6ca7c00a187eba69f21099ea974bd624177c083fff"
+  }
+]

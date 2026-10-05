@@ -1,3 +1,4 @@
+import { nodeBundleOptions } from '../scripts/node-bundle-options';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -12,6 +13,7 @@ import { assertExportDestination, isTrustedSender } from '../src/main/security';
 import { WorkerClient } from '../src/main/worker-client';
 import { atomicWrite } from '../src/core/files';
 import * as fs from 'node:fs';
+import { MAX_BACKUP_BYTES } from '../src/core/storage-limits';
 
 const roots: string[] = [];
 const live: Workspace[] = [];
@@ -197,7 +199,7 @@ test.each([
 test('malformed JSON and oversized backups are refused', () => {
   const { workspace } = create();
   expect(() => workspace.previewRestore(Buffer.from('{'))).toThrow('损坏');
-  expect(() => workspace.previewRestore(new Uint8Array(32 * 1024 * 1024 + 1))).toThrow('上限');
+  expect(() => workspace.previewRestore(new Uint8Array(MAX_BACKUP_BYTES + 1))).toThrow('上限');
 });
 
 test('backup with an added SQL trigger is rejected even when its hash matches', () => {
@@ -267,14 +269,16 @@ test.each(['staged', 'published'])(
     workspace.createClass({ epoch, name: '合成恢复前新增' });
     close(workspace);
     const childPath = join(root, 'crash-child.cjs');
-    buildSync({
-      entryPoints: ['tests/fixtures/crash-restore.ts'],
-      outfile: childPath,
-      platform: 'node',
-      format: 'cjs',
-      bundle: true,
-      target: 'node24',
-    });
+    buildSync(
+      nodeBundleOptions({
+        entryPoints: ['tests/fixtures/crash-restore.ts'],
+        outfile: childPath,
+        platform: 'node',
+        format: 'cjs',
+        bundle: true,
+        target: 'node24',
+      }),
+    );
     const child = spawnSync(process.execPath, [childPath, root, backupPath, checkpoint], {
       encoding: 'utf8',
     });
@@ -311,13 +315,15 @@ test('unexpected exceptions never return student content, key values, or local p
 test('unresponsive worker fails within a deadline and rejects subsequent writes until restart', async () => {
   const { root } = create();
   const path = join(root, 'unresponsive.cjs');
-  buildSync({
-    entryPoints: ['tests/fixtures/unresponsive-worker.ts'],
-    outfile: path,
-    platform: 'node',
-    format: 'cjs',
-    bundle: true,
-  });
+  buildSync(
+    nodeBundleOptions({
+      entryPoints: ['tests/fixtures/unresponsive-worker.ts'],
+      outfile: path,
+      platform: 'node',
+      format: 'cjs',
+      bundle: true,
+    }),
+  );
   const client = new WorkerClient(path, root, 300);
   try {
     expect(await client.call('snapshot')).toMatchObject({

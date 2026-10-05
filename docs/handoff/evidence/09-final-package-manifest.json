@@ -1,0 +1,392 @@
+{
+  "at": "2026-10-01T00:43:50.617Z",
+  "status": "passed",
+  "source": "H:\\WorkSpace\\class-manager\\output\\ticket09-final-pack\\win-unpacked",
+  "target": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-office09-final-Fm1U7k",
+  "exe": "0cdb5265c5b2207aa68df5f2ba4af321746edb4ef75ec73671a29108c1e73e5c",
+  "asar": "50f4199be0b0044166c4c411c2203e90ff6908f19f406acfb65d0b56002da7b2",
+  "files": [
+    {
+      "path": "chrome_100_percent.pak",
+      "sha256": "ab7c4b7b6cb8832a31d44b95ec50ce52294f49422a3bdde4e21968eca2930cbe"
+    },
+    {
+      "path": "chrome_200_percent.pak",
+      "sha256": "30fa4a6e27c9ff2fb0f939f01158477e621a67d86e9ecb84cf11b3947db8eb9d"
+    },
+    {
+      "path": "Class Manager.exe",
+      "sha256": "0cdb5265c5b2207aa68df5f2ba4af321746edb4ef75ec73671a29108c1e73e5c"
+    },
+    {
+      "path": "d3dcompiler_47.dll",
+      "sha256": "a05f99734f7c4822fefc12b367af21fd0976ed6608752fb1e1e80b6ece7ecbbb"
+    },
+    {
+      "path": "dxcompiler.dll",
+      "sha256": "e389f028b89a7a1459e730968a1fb8e4218bded24b05c761df16f1c80b1ba703"
+    },
+    {
+      "path": "dxil.dll",
+      "sha256": "77e039c905030a641e53658a008b74e90635a5ea9b6b79eabd0f2003bdfca59a"
+    },
+    {
+      "path": "ffmpeg.dll",
+      "sha256": "22e07be5d900ecad1fa47cbd9f783143af0058e18793b4804b887253988273ac"
+    },
+    {
+      "path": "icudtl.dat",
+      "sha256": "9f48c7f9c7c94d516a14870707e910ab94d75ae640ff6842c4af53276cd26ebe"
+    },
+    {
+      "path": "LICENSE.electron.txt",
+      "sha256": "5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d"
+    },
+    {
+      "path": "LICENSES.chromium.html",
+      "sha256": "7b328b8c7463ac9bfc7dc648c751533517c8441a0b5b21047d6c0b2620e60d70"
+    },
+    {
+      "path": "locales\\af.pak",
+      "sha256": "3017b141bd16e24190d810f0748612f0fd4352ca8553002b9a63a7f77f7154f8"
+    },
+    {
+      "path": "locales\\am.pak",
+      "sha256": "67b938d162bc75db067120bb8366b5bafd9a75fa99a0ca9ad4f46b47d1d37634"
+    },
+    {
+      "path": "locales\\ar.pak",
+      "sha256": "4c47004abd0969cb1174d06eb7429c024872207960986afbf3cae37e339a8d01"
+    },
+    {
+      "path": "locales\\bg.pak",
+      "sha256": "2eb9c74c67e4b13b45a73061fa978738e335bc245da71bab0ea9b205fe91074e"
+    },
+    {
+      "path": "locales\\bn.pak",
+      "sha256": "415621a5c0b1546e6e447d43b76414425a8703cc7681d637ec1f283ad0c787e7"
+    },
+    {
+      "path": "locales\\ca.pak",
+      "sha256": "6f28297c1ccb628f534d65dade167ae559f83eace359acf47e48ff890b9409d5"
+    },
+    {
+      "path": "locales\\cs.pak",
+      "sha256": "799a789ce531991cb975425730db310f9a8fe74091eee568f3e65fcc7ef0cd57"
+    },
+    {
+      "path": "locales\\da.pak",
+      "sha256": "530fd95daee21d793b99492ca7d0bf9979daffe42944e24414d4b08a3d23b9fe"
+    },
+    {
+      "path": "locales\\de.pak",
+      "sha256": "58165025c4252ba8b2ce8203b59362b9968938cb0fef9d7da04941be22f41bb3"
+    },
+    {
+      "path": "locales\\el.pak",
+      "sha256": "37d2e1ef69fea9bdb1e0902cbc61a458baa9009fc3761029bd1c1882a7a0c9b2"
+    },
+    {
+      "path": "locales\\en-GB.pak",
+      "sha256": "01d9200a5daee1770f7147b166d25baa6a8dd72c138c3c526421e656dec789f5"
+    },
+    {
+      "path": "locales\\en-US.pak",
+      "sha256": "23b271e8009bfa14783700cd0712b4ecaa5b8f2ea28a4d81ae1d7e05bc0c96b1"
+    },
+    {
+      "path": "locales\\es-419.pak",
+      "sha256": "2766fd52da83ff679346313e66440f013a7d478b9be946df4ab197505912450b"
+    },
+    {
+      "path": "locales\\es.pak",
+      "sha256": "fe6fff51ef19db1f4fe0fc602e0bd4bd7fabcfb1ca5d6896d1ce0efcf37e49c4"
+    },
+    {
+      "path": "locales\\et.pak",
+      "sha256": "dd1205eae606f12510e24ce39f301439c98b3293d766ca5839dc292a14d7973c"
+    },
+    {
+      "path": "locales\\fa.pak",
+      "sha256": "ba33624ccad6d0e4a4339589c56be557b28968bf9422bd12a8f26e2a3d581577"
+    },
+    {
+      "path": "locales\\fi.pak",
+      "sha256": "1f3123d7fb5c22a95b5250ea17450b665c3c6cd6a6dfd28bbdde15e1bf684a0e"
+    },
+    {
+      "path": "locales\\fil.pak",
+      "sha256": "02e2c70d3d85b0deb677a9ae576ae3cf89e80774532cb3315c14f1e8ce64b310"
+    },
+    {
+      "path": "locales\\fr.pak",
+      "sha256": "8bad7fd88072ac66649dd9307da9163962f8ab00313e627bf1c5ca4450a48b4a"
+    },
+    {
+      "path": "locales\\gu.pak",
+      "sha256": "e86e8c240d4b6283abb03c49df9e8899607ef9def6d4933c7a541d63b5835271"
+    },
+    {
+      "path": "locales\\he.pak",
+      "sha256": "ddc1f304ab1f4489d19ae2b31e7f8e3ffb47dae439520159e8975422c65e4115"
+    },
+    {
+      "path": "locales\\hi.pak",
+      "sha256": "015b3856dc05e8635a48e749e6970fe43f5d620b8dbd04e5abff586178213f6e"
+    },
+    {
+      "path": "locales\\hr.pak",
+      "sha256": "d46c64ae8af3562e37eb80438aa2bee228fafda251d58ba4d0991291f1c72aab"
+    },
+    {
+      "path": "locales\\hu.pak",
+      "sha256": "0a46fc8d50f74effd1cfe1979e677df3de6fc47e6b551267303d93d57bd83f50"
+    },
+    {
+      "path": "locales\\id.pak",
+      "sha256": "f567569c42a25bb2dfc5c33e13aac558c0e2a1d5d4b969592bbd0841b36438db"
+    },
+    {
+      "path": "locales\\it.pak",
+      "sha256": "aeb1d99a2a09476d9ee0fd133df2d4d987c731b9f91a248ac4e60377ddda1ca5"
+    },
+    {
+      "path": "locales\\ja.pak",
+      "sha256": "f6e0d8eda3bc8f1112494bda96b230f3c44f054c47cced50c94c5ee9199f04c6"
+    },
+    {
+      "path": "locales\\kn.pak",
+      "sha256": "af5fed2130102ecc0c878059c88faed9d6db2e8b147fb5ae9e15e3fe69706c8a"
+    },
+    {
+      "path": "locales\\ko.pak",
+      "sha256": "55a3a8db9c84b1fe9e50b56d68fb069ad7546117cf1f6cb89f36f49cc044ad5e"
+    },
+    {
+      "path": "locales\\lt.pak",
+      "sha256": "af969f4407c190dd01a426fa1244cb1ec7cdf2909d1c3ba5b87ff662ba567303"
+    },
+    {
+      "path": "locales\\lv.pak",
+      "sha256": "4455ab7c06172c2c80796a99558e41f452cc3b33be76654d70440cf4ac7a2d34"
+    },
+    {
+      "path": "locales\\ml.pak",
+      "sha256": "b5606265910e45098a88e989202a550531f6d00333c6b112ed4c5cbc07b2ff6a"
+    },
+    {
+      "path": "locales\\mr.pak",
+      "sha256": "8465d4077ed5414cbcb7d9bdb00d85e515a1a069703cdc1d4d67c9d6e5623fb0"
+    },
+    {
+      "path": "locales\\ms.pak",
+      "sha256": "af7021a00befa586aa067ae3ccb339079e6f13ee0cab1621836f6abb608b6f2a"
+    },
+    {
+      "path": "locales\\nb.pak",
+      "sha256": "d97a2b0cbe6adc99add2ed3ce0d15d0bb124b778086c466c126634d60ea72608"
+    },
+    {
+      "path": "locales\\nl.pak",
+      "sha256": "b642c8ab5ce11438e9a8fd4639244fa8f1d55cfd70269565490bc55ee907b048"
+    },
+    {
+      "path": "locales\\pl.pak",
+      "sha256": "8a0969fc743d3e2f5111387d53c0d79e8c1d9f68256ad6553b87fca2bcaa7e6e"
+    },
+    {
+      "path": "locales\\pt-BR.pak",
+      "sha256": "5546559a56f9ac3191062c3fd42defd190a68e78ac988eb57fa5a6fd2dc5f874"
+    },
+    {
+      "path": "locales\\pt-PT.pak",
+      "sha256": "bdfa7264dddf70f936f1785737969559a577b51d1952c820a468c611d18b17ca"
+    },
+    {
+      "path": "locales\\ro.pak",
+      "sha256": "1e6b5b0dac63a9e951daf523de310f6bd9e5c53e281f37706d41bd35d2a08bb5"
+    },
+    {
+      "path": "locales\\ru.pak",
+      "sha256": "a9e76536472c45b39e7ae2af5f3ae1bc0e50a11646efdb6fb3ca373b5f2e2c70"
+    },
+    {
+      "path": "locales\\sk.pak",
+      "sha256": "3cdc8bca8696c90a572fb15c865caa5c286df45344c72194c3eea97201cc816a"
+    },
+    {
+      "path": "locales\\sl.pak",
+      "sha256": "e1371c8df577b979e3a515af34b0aaa3d07153c7a5c55d39a9b49a7ffe62d3d2"
+    },
+    {
+      "path": "locales\\sr.pak",
+      "sha256": "c42a674e3f43aa70cef005931915c8b7ceb34b29566fba3309f8da931dc7861f"
+    },
+    {
+      "path": "locales\\sv.pak",
+      "sha256": "7b0399a206bfbebe77d1a4fc598c8a6636a1bd940d3ab56519cf4af0134b6edb"
+    },
+    {
+      "path": "locales\\sw.pak",
+      "sha256": "bd41ea707a0d90d683ec8d5d0f0c79f3e925747bc4ea1982562dfb75080199b9"
+    },
+    {
+      "path": "locales\\ta.pak",
+      "sha256": "91fb1460711df108d8d435a378c8be1d1e80b0886c0158d8c6ae92f35812681b"
+    },
+    {
+      "path": "locales\\te.pak",
+      "sha256": "fc8c2706c5dfd36e7af8e380a240e0f697cc5fe969b512092a2185896512c4af"
+    },
+    {
+      "path": "locales\\th.pak",
+      "sha256": "c1f4235c31bc05153230b0e55b7aabc9020d7460d5b0a025c386885e1e4bda3c"
+    },
+    {
+      "path": "locales\\tr.pak",
+      "sha256": "d5648d7eaf1826211fb244fcf8419dabdc16c228d92139bc8b0b73c7a6b7e700"
+    },
+    {
+      "path": "locales\\uk.pak",
+      "sha256": "ec5d0b426e289c064e8f2d63636ae2a544ff30fc1e99dde04fe1920971e4d060"
+    },
+    {
+      "path": "locales\\ur.pak",
+      "sha256": "c218e21744df2ff0669a87d497d65d76333073577360d4c662c592de146bf82a"
+    },
+    {
+      "path": "locales\\vi.pak",
+      "sha256": "76a32f8ad5d08a6f9899e12e4aa9b3d9a9023931e2ca0f73e5ced541c922dcfb"
+    },
+    {
+      "path": "locales\\zh-CN.pak",
+      "sha256": "7887bd3d01e12306e32a11d9a20566ca0e93688a0375e6ff59da04cf782b1681"
+    },
+    {
+      "path": "locales\\zh-TW.pak",
+      "sha256": "7cb5f76e54a548d4e52aa8cdf226a4339bdadc304897abca690f407e95e42f4d"
+    },
+    {
+      "path": "resources\\app.asar",
+      "sha256": "50f4199be0b0044166c4c411c2203e90ff6908f19f406acfb65d0b56002da7b2"
+    },
+    {
+      "path": "resources\\app.asar.unpacked\\node_modules\\@img\\sharp-win32-x64\\index.cjs",
+      "sha256": "6ecbd583f45e914233410fe83a614e4f5ff1a6875a7eb828b03b7258e8ba6944"
+    },
+    {
+      "path": "resources\\app.asar.unpacked\\node_modules\\@img\\sharp-win32-x64\\lib\\libvips-42.dll",
+      "sha256": "06dab07cc386748513337a31672b1d5269fbc770a14ff403080575665bf0813f"
+    },
+    {
+      "path": "resources\\app.asar.unpacked\\node_modules\\@img\\sharp-win32-x64\\lib\\libvips-cpp-8.18.7.dll",
+      "sha256": "25001dbd05305a0a29119ab49933622c70b4a20ea12ef1d5d20ca40181db53bf"
+    },
+    {
+      "path": "resources\\app.asar.unpacked\\node_modules\\@img\\sharp-win32-x64\\lib\\sharp-win32-x64-0.35.5.node",
+      "sha256": "971048779f9c8598df14641dfc03c625885c93f473a788e65ca2deb50d0b083e"
+    },
+    {
+      "path": "resources\\app.asar.unpacked\\node_modules\\@img\\sharp-win32-x64\\LICENSE",
+      "sha256": "dc1f5d2d43c5531dfe0acaf4e950ea5dbe3e61e1850cf0e983bda7efc10d6693"
+    },
+    {
+      "path": "resources\\app.asar.unpacked\\node_modules\\@img\\sharp-win32-x64\\package.json",
+      "sha256": "697b3d89590e3b988b51764bd22dfd6f4a1b35cd4eb12c664eca7987e8ee6115"
+    },
+    {
+      "path": "resources\\app.asar.unpacked\\node_modules\\@img\\sharp-win32-x64\\versions.json",
+      "sha256": "e2611d5d854815a8b33c8a3d2ec649511a9596ccf16844e8eae7cf81e79881c4"
+    },
+    {
+      "path": "resources\\app.asar.unpacked\\node_modules\\@napi-rs\\canvas-win32-x64-msvc\\icudtl.dat",
+      "sha256": "9f48c7f9c7c94d516a14870707e910ab94d75ae640ff6842c4af53276cd26ebe"
+    },
+    {
+      "path": "resources\\app.asar.unpacked\\node_modules\\@napi-rs\\canvas-win32-x64-msvc\\package.json",
+      "sha256": "5df35d33638caeff347c8f6705f7e8b3dfbbaa1201add96b8ab55ae9bdc8858c"
+    },
+    {
+      "path": "resources\\app.asar.unpacked\\node_modules\\@napi-rs\\canvas-win32-x64-msvc\\skia.win32-x64-msvc.node",
+      "sha256": "f69cac8093b0a4914d41a01add30a08cb739ecc254ad1d124b1804384af16586"
+    },
+    {
+      "path": "resources.pak",
+      "sha256": "ee5707e9409e76742e1dacdae0ebbb3c567b8772ce5bbcb9785aa215f5784c22"
+    },
+    {
+      "path": "snapshot_blob.bin",
+      "sha256": "132b5c838d93d5067c1de721b1b4d906b59289b3bb0a407925c228e621901a9a"
+    },
+    {
+      "path": "v8_context_snapshot.bin",
+      "sha256": "d11a9fff344e9a6d067243ef85d4064716ea378098894f9a21bf8a1eeca66e53"
+    },
+    {
+      "path": "vk_swiftshader.dll",
+      "sha256": "20938b3bb2da284a828d8b881a0954882a82620e57551ee3c93db3046b98c989"
+    },
+    {
+      "path": "vk_swiftshader_icd.json",
+      "sha256": "32d83ff113fef532a9f97e0d2831f8656628ab1c99e9060f0332b1532839afd9"
+    },
+    {
+      "path": "vulkan-1.dll",
+      "sha256": "17f4fb133bf92744913abe23202c3d6434fa84577746ad9fce18a74d1ec921c8"
+    }
+  ],
+  "currentDistMatches": [
+    {
+      "path": "main\\main.cjs",
+      "sha256": "9ba2b5b169cb49640a6736f87b28673f12d1944db73c49f68c4f5de1bd3e6505"
+    },
+    {
+      "path": "main\\main.cjs.map",
+      "sha256": "9f6360f1cf50c2f1c94288d53d8f89293cede7656b741fb7a066d7acfed37b26"
+    },
+    {
+      "path": "main\\material-process.cjs",
+      "sha256": "79d7cfb3a7c705ab603bae68cc169627ec7dbbba6ebbd1948236998c999361d6"
+    },
+    {
+      "path": "main\\material-process.cjs.map",
+      "sha256": "5da60bbbbfb9b5a6866a9a4ed7e6d2becce55f371df40ac3a36a0b13a756f315"
+    },
+    {
+      "path": "main\\office-process.cjs",
+      "sha256": "05a034e2364de04bc0506b22000d8bff6aa35cb5f9f28e2354454dd3d1527231"
+    },
+    {
+      "path": "main\\office-process.cjs.map",
+      "sha256": "e3e5acb227c0b09bfba2c03e6a107b28d0ddde3952740191207e99163ba9efc8"
+    },
+    {
+      "path": "main\\preload.cjs",
+      "sha256": "7b36a358b14a176269f37346a7de0b86cf33a6fdbe04c69035d1b14fa25a0266"
+    },
+    {
+      "path": "main\\preload.cjs.map",
+      "sha256": "d98ace8b94fa985adf73504909b14c12d712288a17775b20d0d662c4e85ff1fd"
+    },
+    {
+      "path": "main\\worker.cjs",
+      "sha256": "0bd2d0ad15e5cba6406facbc55a9f5c20a97773935e05808ba2c11148963929b"
+    },
+    {
+      "path": "main\\worker.cjs.map",
+      "sha256": "cd0f13068028207f4ea0a45372c824518ef548b93b75a2fd0ce69e1f4e42d9a6"
+    },
+    {
+      "path": "renderer\\assets\\index-Ds-a49E7.css",
+      "sha256": "36affb4716571e808468c5f5403776be7121b3a03d99b29acad50117c6546eef"
+    },
+    {
+      "path": "renderer\\assets\\index-DwOI-SGD.js",
+      "sha256": "ae1c670a8a403e43de52821e4b53cf7aaeec6841cf91936dcb0312f15a1d2065"
+    },
+    {
+      "path": "renderer\\index.html",
+      "sha256": "bf9babf02f73c40b4aaad9e95c465d06c1588c9ba0acd53742970dc7a78f1a76"
+    }
+  ]
+}

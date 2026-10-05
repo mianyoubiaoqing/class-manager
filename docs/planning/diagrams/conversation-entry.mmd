@@ -1,0 +1,13 @@
+flowchart TD
+  Input[本次输入与显式本地上下文] --> Prepare[Main准备确切JSON与单次令牌]
+  Prepare --> Preview[教师核对实际外发内容]
+  Preview -->|确认外发| Model[所选供应商与型号]
+  Model --> Validate[严格具名动作校验及来源复核]
+  Validate --> Proposal[模型提议 尚未执行]
+  Proposal -->|查询或导航| Local[有限本地业务]
+  Proposal --> Changes[确切对象与前后差异]
+  Changes -->|另行确认正式写入| Commit[Main独占槽 原Worker CAS事务]
+  Local --> Receipt[本地任务回执 不外发结果]
+  Commit --> Receipt
+  Proposal -->|入分 入档 冻结 恢复| Review[原页面审核流程]
+  Cancel[取消 配置变化 来源过期] --> Invalid[令牌失效 不重试 不采用迟到提议]

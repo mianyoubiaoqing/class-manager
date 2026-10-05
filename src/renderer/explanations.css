@@ -1,0 +1,100 @@
+.explanation-section {
+  min-width: 0;
+}
+.explanation-section h3 {
+  font-size: 17px;
+  margin: 0;
+}
+.explanation-section h4 {
+  font-size: 14px;
+  margin: 8px 0;
+}
+.explanation-selection,
+.explanation-editor {
+  display: grid;
+  gap: 18px;
+}
+.explanation-selection fieldset legend {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+.explanation-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.explanation-options .score-check {
+  align-items: start;
+}
+.explanation-section input[type='checkbox'] {
+  flex: 0 0 18px;
+}
+.explanation-section textarea {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100px;
+  resize: vertical;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  border-radius: 4px;
+  padding: 10px;
+  font: inherit;
+  line-height: 1.6;
+  background: var(--surface-3, #26211e);
+  color: var(--text-primary);
+}
+.explanation-notices {
+  border-left: 3px solid var(--accent-amber, #f59e0b);
+  padding: 4px 12px;
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--accent-amber, #f59e0b);
+  font-size: 13px;
+}
+.explanation-notices p {
+  margin: 6px 0;
+}
+.explanation-wire {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 280px;
+  overflow: auto;
+  font-size: 12px;
+}
+.explanation-facts {
+  max-height: 320px;
+}
+.explanation-facts table {
+  min-width: 480px;
+}
+.explanation-list {
+  display: grid;
+}
+.explanation-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  font-size: 13px;
+}
+.explanation-row button {
+  flex-shrink: 0;
+}
+.explanation-provenance,
+.explanation-original {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.explanation-original p {
+  white-space: pre-wrap;
+}
+@media (max-width: 700px) {
+  .explanation-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .explanation-row {
+    align-items: start;
+    flex-direction: column;
+    gap: 8px;
+  }
+}

@@ -1,0 +1,244 @@
+{
+  "files": [
+    {
+      "source": "scripts/build-agent-installer.mjs",
+      "archived": "docs\\handoff\\evidence\\19\\scripts\\build-agent-installer.mjs",
+      "bytes": 6673,
+      "sha256": "3f1df2b3ec46dd36bab1e76b6172a82957e6d26fa463ce3888524745f8718696"
+    },
+    {
+      "source": "scripts/agent-installer-smoke.mjs",
+      "archived": "docs\\handoff\\evidence\\19\\scripts\\agent-installer-smoke.mjs",
+      "bytes": 10816,
+      "sha256": "9f6e428f0a95c3f763ade75d112a37c8ac01ba8b6d5d53677379dd04f9489719"
+    },
+    {
+      "source": "scripts/installer-wizard-probe.cs",
+      "archived": "docs\\handoff\\evidence\\19\\scripts\\installer-wizard-probe.cs",
+      "bytes": 12400,
+      "sha256": "f8c8e309367741f42dc9ab76d268e9dfc4a95d090b87743e156d1c6a6fe2e1e3"
+    },
+    {
+      "source": "scripts/debug-nsis19-bootstrap.mjs",
+      "archived": "docs\\handoff\\evidence\\19\\scripts\\debug-nsis19-bootstrap.mjs",
+      "bytes": 2334,
+      "sha256": "eeec769201da9348641293e616add98a143fef590379d2f7ca4f80ea2c5a182a"
+    },
+    {
+      "source": "scripts/debug-nsis19-temp.cs",
+      "archived": "docs\\handoff\\evidence\\19\\scripts\\debug-nsis19-temp.cs",
+      "bytes": 3710,
+      "sha256": "ca1ea1d1239687df8d79a790c2e8a0319752dfe7046fa117b2d1c0b84e265f3a"
+    },
+    {
+      "source": "scripts/prepare-agent-installer-delivery.mjs",
+      "archived": "docs\\handoff\\evidence\\19\\scripts\\prepare-agent-installer-delivery.mjs",
+      "bytes": 2756,
+      "sha256": "4e8860af72aaa2b301e10646515fe8c31ea565816d587c101237c2d1ed06e042"
+    },
+    {
+      "source": "docs/handoff/agent-installer.md",
+      "archived": "docs\\handoff\\evidence\\19\\docs\\handoff\\agent-installer.md",
+      "bytes": 5815,
+      "sha256": "c768a56cfea7946e9ba3cf89fd31ce79400386c2d7d237fdf175e7b66b55a72b"
+    },
+    {
+      "source": ".scratch/initial-release/issues/19-agent-installer.md",
+      "archived": "docs\\handoff\\evidence\\19\\.scratch\\initial-release\\issues\\19-agent-installer.md",
+      "bytes": 2239,
+      "sha256": "40477a085f69d95f1f6202dd2f387cd3ae9be61f851ddae186f7763b98d636f0"
+    },
+    {
+      "source": "docs/handoff/agent-installer-audit.md",
+      "archived": "docs\\handoff\\evidence\\19\\docs\\handoff\\agent-installer-audit.md",
+      "bytes": 2438,
+      "sha256": "2e2b396076d45d90597dd266a7c4d9f00a8c0eac86354d698c2ed150e8737ae0"
+    },
+    {
+      "source": "output/19-final-files.json",
+      "archived": "docs\\handoff\\evidence\\19\\output\\19-final-files.json",
+      "bytes": 1539,
+      "sha256": "42bed2515952b76fbb1a850be7fb989b3b734bc0d1a11d9fcf272d3349cd0a87"
+    },
+    {
+      "source": "output/19-final-audit-result.json",
+      "archived": "docs\\handoff\\evidence\\19\\output\\19-final-audit-result.json",
+      "bytes": 2098,
+      "sha256": "52383e58664d10f71b09937a9bdf6f29343767d3e5f75c52b183765db0699cf7"
+    },
+    {
+      "source": "output/19-review-stage3-files.json",
+      "archived": "docs\\handoff\\evidence\\19\\output\\19-review-stage3-files.json",
+      "bytes": 1398,
+      "sha256": "7ade19927beb8a92f48a987f48c546d12ca6cf2e34a8e5a7a1bfce6f9cc1f63c"
+    },
+    {
+      "source": "output/19-review-stage3.diff",
+      "archived": "docs\\handoff\\evidence\\19\\output\\19-review-stage3.diff",
+      "bytes": 49227,
+      "sha256": "e442b851dd23b363afea1f0d9e08a7aa51b7a6e2b4862f4ce11f8d92a00eae71"
+    },
+    {
+      "source": "output/19-incident-preserved-manifest.json",
+      "archived": "docs\\handoff\\evidence\\19\\output\\19-incident-preserved-manifest.json",
+      "bytes": 31600,
+      "sha256": "4a0ab253ec6042ba47eda0d2ae60bc005e9279a5c194884d52c4f94570e81ca7"
+    },
+    {
+      "source": "output/19-production-launcher-check.json",
+      "archived": "docs\\handoff\\evidence\\19\\output\\19-production-launcher-check.json",
+      "bytes": 183,
+      "sha256": "2a962c0746994e03b8566e3f847aa67189c6c6d4aef9426b8a289937476f6228"
+    },
+    {
+      "source": "output/19-installer-launcher-tests.log",
+      "archived": "docs\\handoff\\evidence\\19\\output\\19-installer-launcher-tests.log",
+      "bytes": 185,
+      "sha256": "71844a61e1541da52e4d98780949274e91cf1f602597c2838b01677150f8918b"
+    },
+    {
+      "source": "output/19-installer-build.log",
+      "archived": "docs\\handoff\\evidence\\19\\output\\19-installer-build.log",
+      "bytes": 1510,
+      "sha256": "fb331fa65011bbe671493c4c843249dca306d745cecad6bc62300eb6824358b6"
+    },
+    {
+      "source": "output/19-isolated-v8-build.log",
+      "archived": "docs\\handoff\\evidence\\19\\output\\19-isolated-v8-build.log",
+      "bytes": 1412,
+      "sha256": "bd0a338de59454bab759a985196352d72b981f8d8a40ad5b13d1cd1262781dea"
+    },
+    {
+      "source": "output/19-installer-live-v8.log",
+      "archived": "docs\\handoff\\evidence\\19\\output\\19-installer-live-v8.log",
+      "bytes": 467,
+      "sha256": "b747bc96e9e9598db52c08f3bbf4af970cf361718d0e9bbebd8046649531bd79"
+    },
+    {
+      "source": "output/installer19-isolated-v8/installer-manifest.json",
+      "archived": "docs\\handoff\\evidence\\19\\output\\installer19-isolated-v8\\installer-manifest.json",
+      "bytes": 51032,
+      "sha256": "bd025e065868ba0c5fc904109be03ff14f8143757fb4e6cb1d53f548b5a8a38c"
+    },
+    {
+      "source": "release/ticket19-20261002-agent18-installer/installer-manifest.json",
+      "archived": "docs\\handoff\\evidence\\19\\release\\ticket19-20261002-agent18-installer\\installer-manifest.json",
+      "bytes": 50941,
+      "sha256": "ab89e39119d674b247de5f7278634fea6839935c2df805948a5d4b0f17cfdb71"
+    },
+    {
+      "source": "output\\playwright\\installer19\\run-Q2qDaQ\\installed-conversation.png",
+      "archived": "docs\\handoff\\evidence\\19\\output\\playwright\\installer19\\run-Q2qDaQ\\installed-conversation.png",
+      "bytes": 89879,
+      "sha256": "1ff42d59cca34da20a603706d70430e6739d3f8218f3de8bc2da6ff8f357b9b8"
+    },
+    {
+      "source": "output\\playwright\\installer19\\run-Q2qDaQ\\report.json",
+      "archived": "docs\\handoff\\evidence\\19\\output\\playwright\\installer19\\run-Q2qDaQ\\report.json",
+      "bytes": 41802,
+      "sha256": "2cd6a472f8329dea33e5e94cf5b571f0f7bf9f73d555aa7da6e3372722cc3106"
+    },
+    {
+      "source": "output\\playwright\\installer19\\run-Q2qDaQ\\wizard-00.png",
+      "archived": "docs\\handoff\\evidence\\19\\output\\playwright\\installer19\\run-Q2qDaQ\\wizard-00.png",
+      "bytes": 14202,
+      "sha256": "37dd868bad5ebe5b1cbf9a0b96befd98a8f15c5543d81934dba187393e4128e4"
+    },
+    {
+      "source": "output\\playwright\\installer19\\run-Q2qDaQ\\wizard-01.png",
+      "archived": "docs\\handoff\\evidence\\19\\output\\playwright\\installer19\\run-Q2qDaQ\\wizard-01.png",
+      "bytes": 16327,
+      "sha256": "407cd507a6378c1436f8cc6dbede684ef3398dbe11621fc216326bf2101a369c"
+    },
+    {
+      "source": "output\\playwright\\installer19\\run-Q2qDaQ\\wizard-02.png",
+      "archived": "docs\\handoff\\evidence\\19\\output\\playwright\\installer19\\run-Q2qDaQ\\wizard-02.png",
+      "bytes": 11125,
+      "sha256": "7d5a6b01cf0821ebe8a1e5d08f4ff873c8e513087a667cadee37ed03f8033489"
+    },
+    {
+      "source": "output\\playwright\\installer19\\run-Q2qDaQ\\wizard-report.json",
+      "archived": "docs\\handoff\\evidence\\19\\output\\playwright\\installer19\\run-Q2qDaQ\\wizard-report.json",
+      "bytes": 4790,
+      "sha256": "2b75574b55efa436a072dd4ef18b08cdf55285eb588e54d5ecc72c26925b3575"
+    },
+    {
+      "source": "output\\nsis19-matrix-DHzkwj\\C-default-temp\\bootstrap.png",
+      "archived": "docs\\handoff\\evidence\\19\\output\\nsis19-matrix-DHzkwj\\C-default-temp\\bootstrap.png",
+      "bytes": 15611,
+      "sha256": "08935cdcc1a4ed817a068f6ef183629b0838151a66e60d1676e0beec106e1acc"
+    },
+    {
+      "source": "output\\nsis19-matrix-DHzkwj\\C-default-temp\\wizard-report.json",
+      "archived": "docs\\handoff\\evidence\\19\\output\\nsis19-matrix-DHzkwj\\C-default-temp\\wizard-report.json",
+      "bytes": 1753,
+      "sha256": "39fda88c320f18b838efcbd89199a2aabab352cd2f7f5ec3d8abf18647cee913"
+    },
+    {
+      "source": "output\\nsis19-matrix-DHzkwj\\C-fresh-temp\\bootstrap.png",
+      "archived": "docs\\handoff\\evidence\\19\\output\\nsis19-matrix-DHzkwj\\C-fresh-temp\\bootstrap.png",
+      "bytes": 15611,
+      "sha256": "08935cdcc1a4ed817a068f6ef183629b0838151a66e60d1676e0beec106e1acc"
+    },
+    {
+      "source": "output\\nsis19-matrix-DHzkwj\\C-fresh-temp\\wizard-report.json",
+      "archived": "docs\\handoff\\evidence\\19\\output\\nsis19-matrix-DHzkwj\\C-fresh-temp\\wizard-report.json",
+      "bytes": 1746,
+      "sha256": "dd57f829d9d1df25c6e1b46464ee00c17f0242be1cc7d26805d7b0dd735b8483"
+    },
+    {
+      "source": "output\\nsis19-matrix-DHzkwj\\H-default-temp\\nsis-error.png",
+      "archived": "docs\\handoff\\evidence\\19\\output\\nsis19-matrix-DHzkwj\\H-default-temp\\nsis-error.png",
+      "bytes": 6457,
+      "sha256": "37f02a419b4816de5208098dbd9820ae66f6ce1621e199768e3f7560f6ca4e72"
+    },
+    {
+      "source": "output\\nsis19-matrix-DHzkwj\\H-default-temp\\wizard-report.json",
+      "archived": "docs\\handoff\\evidence\\19\\output\\nsis19-matrix-DHzkwj\\H-default-temp\\wizard-report.json",
+      "bytes": 680,
+      "sha256": "36d08c008b2e3d0bd87ed5a7ae36848f54ba548640c6f49b2ed98e531d4adc3f"
+    },
+    {
+      "source": "output\\nsis19-matrix-DHzkwj\\H-fresh-temp\\nsis-error.png",
+      "archived": "docs\\handoff\\evidence\\19\\output\\nsis19-matrix-DHzkwj\\H-fresh-temp\\nsis-error.png",
+      "bytes": 6457,
+      "sha256": "37f02a419b4816de5208098dbd9820ae66f6ce1621e199768e3f7560f6ca4e72"
+    },
+    {
+      "source": "output\\nsis19-matrix-DHzkwj\\H-fresh-temp\\wizard-report.json",
+      "archived": "docs\\handoff\\evidence\\19\\output\\nsis19-matrix-DHzkwj\\H-fresh-temp\\wizard-report.json",
+      "bytes": 677,
+      "sha256": "33351c987385728e319d284173688e0c286385876c047983076cbddd1abe8c5a"
+    },
+    {
+      "source": "output\\nsis19-matrix-DHzkwj\\matrix.json",
+      "archived": "docs\\handoff\\evidence\\19\\output\\nsis19-matrix-DHzkwj\\matrix.json",
+      "bytes": 10747,
+      "sha256": "d58ca7af4abf07d431ec14e8a1e3e00a7029b0f95ae564a7a6909db3dbf4de9c"
+    },
+    {
+      "source": "output\\19-production-final-bootstrap-9SCTEg\\bootstrap.png",
+      "archived": "docs\\handoff\\evidence\\19\\output\\19-production-final-bootstrap-9SCTEg\\bootstrap.png",
+      "bytes": 15611,
+      "sha256": "08935cdcc1a4ed817a068f6ef183629b0838151a66e60d1676e0beec106e1acc"
+    },
+    {
+      "source": "output\\19-production-final-bootstrap-9SCTEg\\wizard-report.json",
+      "archived": "docs\\handoff\\evidence\\19\\output\\19-production-final-bootstrap-9SCTEg\\wizard-report.json",
+      "bytes": 1797,
+      "sha256": "dad3aad60b1fdba3199ab7e83b8c23f96abaafef11bbca6e8ca15495d2c6f6d8"
+    },
+    {
+      "source": "output\\nsis19-integrity-egYXpd\\C.json",
+      "archived": "docs\\handoff\\evidence\\19\\output\\nsis19-integrity-egYXpd\\C.json",
+      "bytes": 1709,
+      "sha256": "f821f993829225016157f9ba7cfd5ebd1feb63eea44b91ff92822f1cb3e9a290"
+    },
+    {
+      "source": "output\\nsis19-integrity-egYXpd\\H.json",
+      "archived": "docs\\handoff\\evidence\\19\\output\\nsis19-integrity-egYXpd\\H.json",
+      "bytes": 2103,
+      "sha256": "ebb63fc6a4ddcc871ef5836ed5e97953a1205253cf2e80ae08bc7f1ff339ea4d"
+    }
+  ]
+}

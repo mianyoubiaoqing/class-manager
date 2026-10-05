@@ -1,0 +1,25 @@
+{
+  "passed": true,
+  "formats": [
+    "txt",
+    "docx",
+    "pdf",
+    "png",
+    "jpg"
+  ],
+  "provider": "synthetic transport",
+  "externalRequests": 0,
+  "syntheticCalls": 4,
+  "runtime": {
+    "electron": "44.4.5",
+    "node": "24.21.0",
+    "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-electron-probe-qXAqES\\electron.exe"
+  },
+  "cancelledLateOutput": true,
+  "readbackLock": true,
+  "confirmationLock": true,
+  "modelPreparationLock": true,
+  "frozenReopen": true,
+  "narrowViewport": 360,
+  "errors": []
+}

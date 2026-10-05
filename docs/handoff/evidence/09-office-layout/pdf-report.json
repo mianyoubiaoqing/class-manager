@@ -1,0 +1,53 @@
+{
+  "files": [
+    {
+      "file": "word-original",
+      "pages": 17,
+      "renderedPages": 17,
+      "fonts": [
+        "YMVEVT+MicrosoftYaHei",
+        "YWSWBG+MicrosoftYaHei-Bold"
+      ]
+    },
+    {
+      "file": "word-edited",
+      "pages": 17,
+      "renderedPages": 17,
+      "fonts": [
+        "YMVEVT+MicrosoftYaHei",
+        "YWSWBG+MicrosoftYaHei-Bold"
+      ]
+    },
+    {
+      "file": "presentation-original",
+      "pages": 18,
+      "renderedPages": 18,
+      "fonts": [
+        "YMVEVT+MicrosoftYaHei",
+        "YWSWBG+MicrosoftYaHei-Bold"
+      ]
+    },
+    {
+      "file": "presentation-edited",
+      "pages": 18,
+      "renderedPages": 18,
+      "fonts": [
+        "YMVEVT+MicrosoftYaHei",
+        "YWSWBG+MicrosoftYaHei-Bold"
+      ]
+    }
+  ],
+  "changedPages": {
+    "word": [
+      2,
+      3,
+      4,
+      17
+    ],
+    "presentation": [
+      1,
+      2
+    ]
+  },
+  "failures": []
+}

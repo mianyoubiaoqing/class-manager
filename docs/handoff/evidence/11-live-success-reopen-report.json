@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "reportPath": "H:\\WorkSpace\\class-manager\\output\\live-grading-followup\\reopen\\run-Puuhzy\\report.json",
+  "externalRequests": 0,
+  "credentialReads": 0,
+  "errors": [],
+  "suggestionsPersisted": true,
+  "manualFormulaStillPending": true,
+  "providerUsagePersisted": true,
+  "teacherUiMatchesStoredResult": true,
+  "savedInputPreserved": true,
+  "noReviewOrScorePublished": true,
+  "providerUsage": {
+    "promptTokens": 2390,
+    "completionTokens": 669,
+    "totalTokens": 3059
+  }
+}

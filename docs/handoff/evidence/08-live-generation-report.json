@@ -1,0 +1,277 @@
+{
+  "status": "passed",
+  "startedAt": "2026-09-30T23:33:59.142Z",
+  "generationAttempted": true,
+  "requestCount": 1,
+  "syntheticDataOnly": true,
+  "dataDirectory": "H:\\WorkSpace\\class-manager\\output\\live-lesson\\isolated-9XdSrP",
+  "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-lesson08-FhazrQ\\Class Manager.exe",
+  "outbound": {
+    "request": {
+      "topic": "合成力的三要素",
+      "subject": "物理",
+      "grade": "高中",
+      "durationMinutes": 10,
+      "instructions": "合成接口验收：只生成一个10分钟环节和一张课件，每项内容简短。文字依据可逐字引用；图片仅作示意，不声称完成文字识别。教师备注和参考答案独立填写。",
+      "acknowledgePartial": false,
+      "selection": [
+        {
+          "sourceVersionId": "14b87c0f-6fe6-471e-9bcc-d1ce9b57b7e6",
+          "fragmentId": 1
+        },
+        {
+          "sourceVersionId": "a31525e7-b090-4853-a037-e80ebb1de836",
+          "fragmentId": 1
+        }
+      ]
+    },
+    "text": "合成教材：力有大小、方向和作用点。改变其中一个要素，力的作用效果可能改变。图像是合成示意图，不是实际实验照片。",
+    "images": 1,
+    "textCharacters": 55,
+    "inputHash": "2a727e38a499d947c968cd8f5ecd13a0440ae5321b11689ad58639ea4e3620a7"
+  },
+  "ledger": {
+    "totalCalls": 1,
+    "successCalls": 1,
+    "totalTokens": 12545,
+    "promptTokens": 11140,
+    "completionTokens": 1405,
+    "recentEntries": [
+      {
+        "id": "0ceae9fb-320a-408e-bb05-8595456f3ab9",
+        "timestamp": "2026-09-30T23:34:01.395Z",
+        "type": "lesson_drafting",
+        "requestModel": "deepseek-flash",
+        "status": "success",
+        "durationMs": 4811,
+        "promptVersion": "lesson-material-v1",
+        "responseId": "e3eb4bcf-052d-4595-86aa-69dc9b39ad10",
+        "responseModel": "deepseek-flash",
+        "usage": {
+          "promptTokens": 11140,
+          "completionTokens": 1405,
+          "totalTokens": 12545
+        }
+      }
+    ]
+  },
+  "generation": {
+    "ok": true,
+    "value": {
+      "id": "8a8edaaa-cb31-4e21-aeeb-506b125b57c2",
+      "revision": 1,
+      "status": "draft",
+      "replayed": false
+    }
+  },
+  "provider": {
+    "provider": "deepseek",
+    "requestModel": "deepseek-flash",
+    "responseModel": "deepseek-flash",
+    "responseId": "e3eb4bcf-052d-4595-86aa-69dc9b39ad10",
+    "generatedAt": "2026-09-30T23:34:06.182Z",
+    "durationMs": 253,
+    "usage": {
+      "promptTokens": 11140,
+      "completionTokens": 1405,
+      "totalTokens": 12545
+    }
+  },
+  "original": {
+    "formatVersion": 1,
+    "title": "合成力的三要素",
+    "objectives": [
+      {
+        "kind": "list",
+        "items": [
+          "说出力的三要素。",
+          "知道改变其中一个要素可能改变力的作用效果。"
+        ],
+        "origin": {
+          "kind": "source",
+          "citations": [
+            {
+              "sourceVersionId": "14b87c0f-6fe6-471e-9bcc-d1ce9b57b7e6",
+              "fragmentId": 1,
+              "quote": "合成教材：力有大小、方向和作用点。改变其中一个要素，力的作用效果可能改变。"
+            }
+          ]
+        }
+      }
+    ],
+    "keyPoints": [
+      {
+        "kind": "paragraph",
+        "text": "理解力的三要素，并体会改变三要素对力的作用效果的影响。",
+        "origin": {
+          "kind": "source",
+          "citations": [
+            {
+              "sourceVersionId": "14b87c0f-6fe6-471e-9bcc-d1ce9b57b7e6",
+              "fragmentId": 1,
+              "quote": "力有大小、方向和作用点。改变其中一个要素，力的作用效果可能改变。"
+            }
+          ]
+        }
+      }
+    ],
+    "difficulties": [
+      {
+        "kind": "paragraph",
+        "text": "区分三要素之一发生变化与实际作用效果变化之间的关系。",
+        "origin": {
+          "kind": "supplement"
+        }
+      }
+    ],
+    "sections": [
+      {
+        "id": "sec1",
+        "title": "合成力的三要素",
+        "durationMinutes": 10,
+        "content": [
+          {
+            "kind": "paragraph",
+            "text": "力的三要素指力的大小、方向和作用点。",
+            "origin": {
+              "kind": "source",
+              "citations": [
+                {
+                  "sourceVersionId": "14b87c0f-6fe6-471e-9bcc-d1ce9b57b7e6",
+                  "fragmentId": 1,
+                  "quote": "力有大小、方向和作用点。"
+                }
+              ]
+            }
+          },
+          {
+            "kind": "paragraph",
+            "text": "改变其中一个要素，力的作用效果可能改变。",
+            "origin": {
+              "kind": "source",
+              "citations": [
+                {
+                  "sourceVersionId": "14b87c0f-6fe6-471e-9bcc-d1ce9b57b7e6",
+                  "fragmentId": 1,
+                  "quote": "改变其中一个要素，力的作用效果可能改变。"
+                }
+              ]
+            }
+          },
+          {
+            "kind": "image",
+            "source": {
+              "sourceVersionId": "a31525e7-b090-4853-a037-e80ebb1de836",
+              "fragmentId": 1
+            },
+            "caption": "合成示意图：用箭头表示力的方向和相对大小。"
+          }
+        ],
+        "questions": [
+          {
+            "kind": "list",
+            "items": [
+              "力的三要素是什么？",
+              "改变力的作用点，可能产生什么影响？"
+            ],
+            "origin": {
+              "kind": "supplement"
+            }
+          }
+        ],
+        "answers": [
+          {
+            "kind": "list",
+            "items": [
+              "大小、方向和作用点。",
+              "改变力的作用效果可能改变。"
+            ],
+            "origin": {
+              "kind": "source",
+              "citations": [
+                {
+                  "sourceVersionId": "14b87c0f-6fe6-471e-9bcc-d1ce9b57b7e6",
+                  "fragmentId": 1,
+                  "quote": "力有大小、方向和作用点。改变其中一个要素，力的作用效果可能改变。"
+                }
+              ]
+            }
+          }
+        ],
+        "teacherNotes": "用箭头图说明方向；提醒学生图示为示意。"
+      }
+    ],
+    "slides": [
+      {
+        "id": "slide1",
+        "sectionId": "sec1",
+        "title": "合成力的三要素",
+        "content": [
+          {
+            "kind": "paragraph",
+            "text": "力的三要素指力的大小、方向和作用点。",
+            "origin": {
+              "kind": "source",
+              "citations": [
+                {
+                  "sourceVersionId": "14b87c0f-6fe6-471e-9bcc-d1ce9b57b7e6",
+                  "fragmentId": 1,
+                  "quote": "力有大小、方向和作用点。"
+                }
+              ]
+            }
+          },
+          {
+            "kind": "paragraph",
+            "text": "改变其中一个要素，力的作用效果可能改变。",
+            "origin": {
+              "kind": "source",
+              "citations": [
+                {
+                  "sourceVersionId": "14b87c0f-6fe6-471e-9bcc-d1ce9b57b7e6",
+                  "fragmentId": 1,
+                  "quote": "改变其中一个要素，力的作用效果可能改变。"
+                }
+              ]
+            }
+          },
+          {
+            "kind": "image",
+            "source": {
+              "sourceVersionId": "a31525e7-b090-4853-a037-e80ebb1de836",
+              "fragmentId": 1
+            },
+            "caption": "合成示意图：用箭头表示力的方向和相对大小。"
+          }
+        ],
+        "answers": [
+          {
+            "kind": "list",
+            "items": [
+              "大小、方向和作用点。",
+              "改变力的作用效果可能改变。"
+            ],
+            "origin": {
+              "kind": "source",
+              "citations": [
+                {
+                  "sourceVersionId": "14b87c0f-6fe6-471e-9bcc-d1ce9b57b7e6",
+                  "fragmentId": 1,
+                  "quote": "力有大小、方向和作用点。改变其中一个要素，力的作用效果可能改变。"
+                }
+              ]
+            }
+          }
+        ],
+        "teacherNotes": "用箭头图示意方向；图示不作实验照片。"
+      }
+    ]
+  },
+  "frozenVersionId": "df6bbb2f-596d-44dc-ba2b-30ec99563f5a",
+  "teacherEditSaved": true,
+  "frozenReopenWithoutCredentials": true,
+  "copiedCredentialsRemoved": true,
+  "copiedEncryptionContextRemoved": true,
+  "originalCredentialsUnchanged": true,
+  "completedAt": "2026-09-30T23:34:08.158Z"
+}

@@ -1,0 +1,1149 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Class Manager · 教师数字化教学管理工作台 (交互原型预览 v2)</title>
+    <style>
+      :root {
+        /* 🎨 全新教师友好配色：人文智慧蓝 (Royal Cobalt) + 暖白纸张底色 (Alabaster Paper) */
+        --primary: #2563eb;
+        --primary-hover: #1d4ed8;
+        --primary-active: #1e40af;
+        --primary-light: #eff6ff;
+        --primary-subtle: #f8faff;
+        --primary-ring: rgba(37, 99, 235, 0.20);
+        
+        --accent-warm: #f59e0b;
+        --accent-warm-light: #fef3c7;
+        --accent-success: #10b981;
+        
+        --bg-canvas: #f8fafc;
+        --bg-surface: #ffffff;
+        --bg-muted: #f1f5f9;
+        --border-color: #e2e8f0;
+        --border-subtle: #edf2f7;
+        --border-hover: #cbd5e1;
+        
+        --text-primary: #0f172a;
+        --text-secondary: #334155;
+        --text-muted: #64748b;
+        
+        --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+        --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.06);
+        --shadow-card: 0 4px 16px -2px rgba(15, 23, 42, 0.07), 0 2px 4px -1px rgba(15, 23, 42, 0.04);
+        --shadow-float: 0 16px 36px -4px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+        
+        --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+        --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+        --sidebar-width: 256px;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        color: var(--text-primary);
+        background: var(--bg-canvas);
+        font-size: 14px;
+        line-height: 1.6;
+        overflow: hidden;
+        height: 100vh;
+      }
+
+      button, input, select, textarea {
+        font: inherit;
+        color: inherit;
+      }
+
+      /* 整体工作台骨架 */
+      .app-shell {
+        display: grid;
+        grid-template-columns: var(--sidebar-width) 1fr;
+        height: 100vh;
+        width: 100vw;
+        transition: grid-template-columns 0.28s var(--ease-spring);
+      }
+
+      .app-shell.sidebar-collapsed {
+        grid-template-columns: 0px 1fr;
+      }
+
+      /* 侧边栏：面向教师的纯中文业务导航 */
+      .sidebar {
+        background: #f8fafc;
+        border-right: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        white-space: nowrap;
+        user-select: none;
+        transition: opacity 0.2s var(--ease-smooth);
+      }
+
+      .app-shell.sidebar-collapsed .sidebar {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .sidebar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 16px 12px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        font-size: 15px;
+        color: var(--text-primary);
+      }
+
+      .brand-icon {
+        width: 32px;
+        height: 32px;
+        background: var(--primary);
+        color: white;
+        border-radius: 9px;
+        display: grid;
+        place-items: center;
+        font-size: 15px;
+        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+      }
+
+      .icon-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--text-secondary);
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+
+      .icon-btn:hover {
+        background: rgba(0,0,0,0.06);
+        color: var(--text-primary);
+      }
+
+      .new-chat-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 6px 14px 10px;
+        padding: 10px 14px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 13.5px;
+        cursor: pointer;
+        box-shadow: var(--shadow-xs);
+        transition: all 0.18s var(--ease-spring);
+      }
+
+      .new-chat-btn:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .sidebar-nav {
+        flex: 1;
+        overflow-y: auto;
+        padding: 6px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      .nav-group-title {
+        font-size: 11.5px;
+        font-weight: 600;
+        color: var(--text-muted);
+        padding: 12px 10px 4px;
+        letter-spacing: 0.02em;
+      }
+
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 9px;
+        font-size: 13.5px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.15s;
+        border: none;
+        background: transparent;
+        width: 100%;
+        text-align: left;
+      }
+
+      .nav-item:hover {
+        background: rgba(0,0,0,0.04);
+        color: var(--text-primary);
+      }
+
+      .nav-item.active {
+        background: var(--primary-light);
+        color: var(--primary);
+        font-weight: 650;
+      }
+
+      .sidebar-footer {
+        padding: 14px 16px;
+        border-top: 1px solid var(--border-color);
+        font-size: 12px;
+        color: var(--text-muted);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .footer-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #059669;
+        font-weight: 600;
+        font-size: 11.5px;
+      }
+
+      .footer-dot {
+        width: 7px;
+        height: 7px;
+        background: #10b981;
+        border-radius: 50%;
+      }
+
+      /* 主工作区 */
+      .main-workspace {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+        background: var(--bg-canvas);
+      }
+
+      /* 教师顶栏：醒目提示当前带班 */
+      .topbar {
+        height: 56px;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-surface);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        flex-shrink: 0;
+        z-index: 10;
+      }
+
+      .topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .collapsed-trigger {
+        display: none;
+      }
+
+      .app-shell.sidebar-collapsed .collapsed-trigger {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      /* 教师专属：当前班级醒目标签 */
+      .current-class-badge {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #f1f5f9;
+        padding: 5px 14px;
+        border-radius: 9999px;
+        border: 1px solid var(--border-color);
+        font-size: 13px;
+      }
+
+      .current-class-badge span {
+        color: var(--text-muted);
+      }
+
+      .class-select-trigger {
+        border: none;
+        background: transparent;
+        font-weight: 650;
+        color: var(--primary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        outline: none;
+        font-size: 13px;
+      }
+
+      .topbar-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .mode-toggle-group {
+        display: flex;
+        background: #f1f5f9;
+        padding: 3px;
+        border-radius: 9px;
+        border: 1px solid var(--border-color);
+      }
+
+      .mode-pill-btn {
+        padding: 5px 14px;
+        font-size: 12.5px;
+        border-radius: 7px;
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+
+      .mode-pill-btn.active {
+        background: var(--bg-surface);
+        color: var(--primary);
+        font-weight: 650;
+        box-shadow: var(--shadow-xs);
+      }
+
+      /* 对话主视区 (800px 黄金居中流) */
+      .conversation-viewport {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
+
+      .conversation-container {
+        width: 100%;
+        max-width: 820px;
+        margin: 0 auto;
+        padding: 24px 20px 140px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+        min-height: 100%;
+      }
+
+      /* 教师日常工作锦囊 (Daily Teacher Toolkit) */
+      .teacher-welcome {
+        text-align: center;
+        padding: 16px 0 8px;
+      }
+
+      .teacher-welcome h2 {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 6px;
+        letter-spacing: -0.01em;
+      }
+
+      .teacher-welcome p {
+        font-size: 13.5px;
+        color: var(--text-muted);
+        max-width: 520px;
+        margin: 0 auto 18px;
+      }
+
+      /* 4 张日常核心教学事务卡片 */
+      .daily-tasks-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+
+      .task-card {
+        padding: 16px 18px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        cursor: pointer;
+        transition: all 0.2s var(--ease-spring);
+        box-shadow: var(--shadow-xs);
+        text-align: left;
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+
+      .task-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--primary);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .task-icon-box {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        background: var(--primary-light);
+        color: var(--primary);
+        display: grid;
+        place-items: center;
+        font-size: 18px;
+        flex-shrink: 0;
+      }
+
+      .task-content h4 {
+        font-size: 14px;
+        font-weight: 650;
+        color: var(--text-primary);
+        margin-bottom: 2px;
+      }
+
+      .task-content p {
+        font-size: 12.5px;
+        color: var(--text-muted);
+        line-height: 1.5;
+      }
+
+      /* 消息气泡流 */
+      .message-row {
+        display: flex;
+        gap: 14px;
+        width: 100%;
+        animation: springUp 0.24s var(--ease-spring);
+      }
+
+      @keyframes springUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .message-row.user {
+        justify-content: flex-end;
+      }
+
+      .bubble {
+        max-width: 82%;
+        padding: 14px 18px;
+        border-radius: 18px;
+        line-height: 1.68;
+        font-size: 14px;
+      }
+
+      .message-row.user .bubble {
+        background: var(--primary);
+        color: white;
+        border-bottom-right-radius: 4px;
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+      }
+
+      .message-row.assistant .bubble {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-bottom-left-radius: 4px;
+        box-shadow: var(--shadow-xs);
+        width: 100%;
+      }
+
+      .assistant-title-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+
+      .assistant-tag {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12.5px;
+        font-weight: 650;
+        color: var(--primary);
+      }
+
+      /* 教师友好的排座核对单 (清晰直观的变动单，消除任何调试黑话) */
+      .proposal-card {
+        margin: 14px 0 10px;
+        border: 1px solid #bfdbfe;
+        background: #f0f7ff;
+        border-radius: 14px;
+        padding: 16px 18px;
+      }
+
+      .proposal-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #1e40af;
+        font-weight: 650;
+        font-size: 14px;
+        margin-bottom: 8px;
+      }
+
+      .diff-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: white;
+        padding: 10px 14px;
+        border-radius: 8px;
+        border: 1px solid #dbeafe;
+        margin-bottom: 8px;
+        font-size: 13.5px;
+      }
+
+      .badge-before {
+        color: #64748b;
+        background: #f1f5f9;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+      }
+
+      .badge-after {
+        color: #15803d;
+        background: #dcfce7;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+      }
+
+      .confirm-action-btn {
+        margin-top: 10px;
+        padding: 9px 18px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 13.5px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.15s;
+        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+      }
+
+      .confirm-action-btn:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+      }
+
+      /* 思考状态条 */
+      .thinking-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        background: #f0f7ff;
+        border: 1px solid #dbeafe;
+        border-radius: 10px;
+        font-size: 12.5px;
+        color: var(--primary);
+        margin-bottom: 8px;
+      }
+
+      .pulse-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--primary);
+        animation: pulse 1.4s infinite;
+      }
+
+      @keyframes pulse {
+        0%, 100% { transform: scale(0.9); opacity: 0.6; }
+        50% { transform: scale(1.3); opacity: 1; }
+      }
+
+      /* 底部常驻药丸 Composer */
+      .composer-anchor {
+        position: absolute;
+        bottom: 24px;
+        left: 0;
+        right: 0;
+        pointer-events: none;
+        display: flex;
+        justify-content: center;
+        padding: 0 20px;
+      }
+
+      .composer-card {
+        width: 100%;
+        max-width: 800px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: 26px;
+        box-shadow: var(--shadow-float);
+        padding: 10px 14px 10px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        pointer-events: auto;
+        transition: all 0.2s var(--ease-smooth);
+      }
+
+      .composer-card:focus-within {
+        border-color: var(--primary);
+        box-shadow: 0 16px 36px -4px rgba(37, 99, 235, 0.15), 0 0 0 3px var(--primary-ring);
+      }
+
+      .composer-input-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .composer-textarea {
+        flex: 1;
+        border: none;
+        outline: none;
+        resize: none;
+        background: transparent;
+        font-size: 14.5px;
+        line-height: 1.5;
+        max-height: 120px;
+        color: var(--text-primary);
+        padding: 2px 0;
+      }
+
+      .send-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: white;
+        border: none;
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+        transition: all 0.18s var(--ease-spring);
+        flex-shrink: 0;
+      }
+
+      .send-btn:hover {
+        background: var(--primary-hover);
+        transform: scale(1.05);
+      }
+
+      .composer-bottom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 4px;
+        border-top: 1px solid var(--border-subtle);
+      }
+
+      .quick-capsules {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .capsule-chip {
+        padding: 3px 10px;
+        border-radius: 6px;
+        background: #f1f5f9;
+        font-size: 12px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: all 0.15s;
+      }
+
+      .capsule-chip:hover {
+        background: var(--primary-light);
+        color: var(--primary);
+        border-color: #bfdbfe;
+      }
+
+      .safety-tip {
+        font-size: 11.5px;
+        color: var(--text-muted);
+      }
+
+      /* 专业工坊模式切换视图 (全屏大表/排座图) */
+      .studio-view {
+        display: none;
+        padding: 28px 36px;
+        max-width: 1400px;
+        margin: 0 auto;
+        width: 100%;
+        overflow-y: auto;
+      }
+
+      .studio-view.active {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell" id="appShell">
+      <!-- 侧边栏：面向教师的业务分类，完全移除工程师术语 -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="brand">
+            <div class="brand-icon">🏫</div>
+            <span>班级教学管家</span>
+          </div>
+          <button class="icon-btn" id="collapseSidebarBtn" title="收起侧边栏">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 9-3 3 3 3"/>
+            </svg>
+          </button>
+        </div>
+
+        <button class="new-chat-btn" id="newChatBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          <span>开启新对话</span>
+        </button>
+
+        <nav class="sidebar-nav">
+          <div class="nav-group-title">助教中心</div>
+          <button class="nav-item active" data-view="agent">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span>💬 教学对话助手</span>
+          </button>
+
+          <div class="nav-group-title">日常教学与班务工坊</div>
+          <button class="nav-item" data-view="roster">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+            </svg>
+            <span>📋 班级在籍名册</span>
+          </button>
+          <button class="nav-item" data-view="scores">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20v-6M6 20V10M18 20V4"/>
+            </svg>
+            <span>📊 考试成绩分析</span>
+          </button>
+          <button class="nav-item" data-view="seating">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/>
+            </svg>
+            <span>🪑 教室座次编排</span>
+          </button>
+          <button class="nav-item" data-view="duty">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span>🧹 卫生值日轮换</span>
+          </button>
+          <button class="nav-item" data-view="lessons">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </svg>
+            <span>📖 备课教案中心</span>
+          </button>
+
+          <div class="nav-group-title">工具与设置</div>
+          <button class="nav-item" data-view="settings">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            <span>⚙️ 软件设置与备份</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="footer-badge">
+            <span class="footer-dot"></span>
+            <span>本地安全存储 · 断网可用</span>
+          </div>
+          <span>数据仅保存在本机电脑</span>
+        </div>
+      </aside>
+
+      <!-- 主视图 -->
+      <main class="main-workspace">
+        <!-- 顶栏：突出班级状态 -->
+        <header class="topbar">
+          <div class="topbar-left">
+            <div class="collapsed-trigger">
+              <button class="icon-btn" id="expandSidebarBtn" title="展开侧边栏">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m11 9 3 3-3 3"/>
+                </svg>
+              </button>
+              <button class="icon-btn" id="topbarNewChatBtn" title="新对话">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+              </button>
+            </div>
+
+            <!-- 教师关心的班级直接切换器 -->
+            <div class="current-class-badge">
+              <span>当前管理：</span>
+              <select class="class-select-trigger" id="classSelect">
+                <option value="c1">高一(1)班（42人在籍 · 李老师）</option>
+                <option value="c2">高一(2)班（40人在籍）</option>
+                <option value="c3">高一(3)班（45人在籍）</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="topbar-right">
+            <div class="mode-toggle-group">
+              <button class="mode-pill-btn active" id="modeAgentBtn">✨ 教学对话助手</button>
+              <button class="mode-pill-btn" id="modeStudioBtn">📐 专业大表工坊</button>
+            </div>
+          </div>
+        </header>
+
+        <!-- 视图一：智能助教对话流 (ChatGPT 风格) -->
+        <section class="conversation-viewport" id="agentViewport">
+          <div class="conversation-container" id="chatContainer">
+            
+            <!-- 教师专属欢迎台 -->
+            <div class="teacher-welcome">
+              <h2>李老师，今天需要处理哪项班务？</h2>
+              <p>您可以直接打字告诉我需求，或直接点击下方日常高频事务锦囊：</p>
+              
+              <!-- 4 张贴合教师日常场景的锦囊卡片 -->
+              <div class="daily-tasks-grid" id="dailyTasksGrid">
+                <div class="task-card" data-prompt="请帮我调取高一(1)班最新的学生在籍名册，按学号顺序排列">
+                  <div class="task-icon-box">📋</div>
+                  <div class="task-content">
+                    <h4>查班级学生名册</h4>
+                    <p>快速核对学号、视力健康与在籍情况</p>
+                  </div>
+                </div>
+
+                <div class="task-card" data-prompt="近期有几位同学反映看不清黑板，请帮我给高一(1)班做一次座位调整建议">
+                  <div class="task-icon-box">🪑</div>
+                  <div class="task-content">
+                    <h4>教室智能调座</h4>
+                    <p>近视关注往前调、同桌互助智能平衡</p>
+                  </div>
+                </div>
+
+                <div class="task-card" data-prompt="请分析高一(1)班期中数学测验成绩，总结平均分与需要重点关注的同学">
+                  <div class="task-icon-box">📈</div>
+                  <div class="task-content">
+                    <h4>考生成绩分析</h4>
+                    <p>平均分、及格率与薄弱学生名单</p>
+                  </div>
+                </div>
+
+                <div class="task-card" data-prompt="查看今天高一(1)班值日生是谁？黑板和公共卫生区由哪组负责？">
+                  <div class="task-icon-box">🧹</div>
+                  <div class="task-content">
+                    <h4>今日值日生查询</h4>
+                    <p>查看今日轮换组员与包干责任区</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 对话示范一：排座智能建议 (展示教师关心的调整核对单，完全消除调试卡片) -->
+            <div class="message-row user">
+              <div class="bubble">
+                近期有几位同学反映看不清黑板，请帮我给高一(1)班做一次座位调整建议。
+              </div>
+            </div>
+
+            <div class="message-row assistant">
+              <div class="bubble">
+                <div class="assistant-title-bar">
+                  <div class="assistant-tag">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/>
+                    </svg>
+                    <span>智能调座建议方案</span>
+                  </div>
+                  <span style="font-size: 12px; color: var(--text-muted);">高一(1)班 · 视力关注优先</span>
+                </div>
+
+                <p>李老师您好！已查阅 <strong>高一(1)班</strong> 最新视力档案，发现 <strong>李沐阳</strong> 同学近期反馈视力近视，需要向前排调整。为您拟定了一套微调互换方案，其他大部分同学位置保持稳定：</p>
+
+                <!-- 教师友好的变动核对单 -->
+                <div class="proposal-card">
+                  <div class="proposal-header">
+                    <span>📝 拟调整座位清单 (共 2 处调换)</span>
+                  </div>
+                  <div class="diff-row">
+                    <div>
+                      <strong>李沐阳</strong>（学号 20260102 · 近视建议前排）
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="badge-before">原位置: 第3排靠窗</span>
+                      <span>→</span>
+                      <span class="badge-after">调至: 第1排第2列 (正对黑板)</span>
+                    </div>
+                  </div>
+                  <div class="diff-row">
+                    <div>
+                      <strong>陈子涵</strong>（学号 20260101 · 视力良好）
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="badge-before">原位置: 第1排第2列</span>
+                      <span>→</span>
+                      <span class="badge-after">调至: 第3排靠窗</span>
+                    </div>
+                  </div>
+
+                  <button class="confirm-action-btn" onclick="alert('✅ 已将新座位方案同步至【教室座次编排】工坊中，您可以随时前往打印！')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span>确认应用此排座方案并保存</span>
+                  </button>
+                </div>
+
+                <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">
+                  💡 如果您还想单独调整其他同学，也可以直接告诉我：“把张雨欣调到靠门前排”。
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 底部常驻输入胶囊 (ChatGPT 药丸 Composer) -->
+          <div class="composer-anchor">
+            <div class="composer-card">
+              <div class="composer-input-row">
+                <textarea
+                  id="composerInput"
+                  class="composer-textarea"
+                  rows="1"
+                  placeholder="给助教下达指令，例如：“帮我调座位”、“看期中成绩”、“查值日生” (按回车发送)..."
+                ></textarea>
+                <button class="send-btn" id="sendBtn" title="发送消息">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="composer-bottom">
+                <div class="quick-capsules">
+                  <span style="font-size: 11.5px; color: var(--text-muted); margin-right: 2px;">常用直达:</span>
+                  <div class="capsule-chip" id="chipRoster">📋 名册</div>
+                  <div class="capsule-chip" id="chipScores">📊 考分</div>
+                  <div class="capsule-chip" id="chipSeating">🪑 换座</div>
+                  <div class="capsule-chip" id="chipDuty">🧹 值日</div>
+                </div>
+                <div class="safety-tip">
+                  🔒 所有数据保存在本机，正式调整前均由您核对确认
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 视图二：专业大表工坊视图 (名册与排座大看板展示) -->
+        <section class="studio-view" id="studioViewport">
+          <div style="background: white; border: 1px solid var(--border-color); border-radius: 16px; padding: 24px; box-shadow: var(--shadow-sm);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+              <div>
+                <h3 style="font-size: 18px; font-weight: 700; color: var(--text-primary);">高一(1)班 · 完整学籍在册表</h3>
+                <p style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">全班 42 人 · 男生 22 人 · 女生 20 人 · 全员在籍</p>
+              </div>
+              <div style="display: flex; gap: 10px;">
+                <button style="padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color); background: white; font-weight: 600; cursor: pointer;">
+                  🖨️ 打印名册表
+                </button>
+                <button style="padding: 8px 16px; border-radius: 8px; background: var(--primary); color: white; border: none; font-weight: 600; cursor: pointer;">
+                  + 登记新学生
+                </button>
+              </div>
+            </div>
+
+            <!-- 高度可读的现代大表 -->
+            <table style="width: 100%; border-collapse: collapse; font-size: 13.5px;">
+              <thead>
+                <tr style="background: #f8fafc; border-bottom: 2px solid var(--border-color); text-align: left;">
+                  <th style="padding: 12px 16px; color: var(--text-secondary);">学号</th>
+                  <th style="padding: 12px 16px; color: var(--text-secondary);">姓名</th>
+                  <th style="padding: 12px 16px; color: var(--text-secondary);">性别</th>
+                  <th style="padding: 12px 16px; color: var(--text-secondary);">健康与视力情况</th>
+                  <th style="padding: 12px 16px; color: var(--text-secondary);">当前座次</th>
+                  <th style="padding: 12px 16px; color: var(--text-secondary);">状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom: 1px solid var(--border-subtle);">
+                  <td style="padding: 12px 16px;"><strong>20260101</strong></td>
+                  <td style="padding: 12px 16px; font-weight: 600;">陈子涵</td>
+                  <td style="padding: 12px 16px;">男</td>
+                  <td style="padding: 12px 16px;">视力良好 (5.0)</td>
+                  <td style="padding: 12px 16px;">第 3 排靠窗</td>
+                  <td style="padding: 12px 16px;"><span style="color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 600;">正常在籍</span></td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-subtle);">
+                  <td style="padding: 12px 16px;"><strong>20260102</strong></td>
+                  <td style="padding: 12px 16px; font-weight: 600;">李沐阳</td>
+                  <td style="padding: 12px 16px;">男</td>
+                  <td style="padding: 12px 16px; color: #b45309;">近视 (建议前排)</td>
+                  <td style="padding: 12px 16px;">第 1 排中间</td>
+                  <td style="padding: 12px 16px;"><span style="color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 600;">正常在籍</span></td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-subtle);">
+                  <td style="padding: 12px 16px;"><strong>20260103</strong></td>
+                  <td style="padding: 12px 16px; font-weight: 600;">张雨欣</td>
+                  <td style="padding: 12px 16px;">女</td>
+                  <td style="padding: 12px 16px;">视力良好</td>
+                  <td style="padding: 12px 16px;">第 2 排中间</td>
+                  <td style="padding: 12px 16px;"><span style="color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 600;">正常在籍</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      // 原型交互脚本
+      const appShell = document.getElementById('appShell');
+      const collapseBtn = document.getElementById('collapseSidebarBtn');
+      const expandBtn = document.getElementById('expandSidebarBtn');
+      const newChatBtn = document.getElementById('newChatBtn');
+      const topbarNewChatBtn = document.getElementById('topbarNewChatBtn');
+      const composerInput = document.getElementById('composerInput');
+      const sendBtn = document.getElementById('sendBtn');
+      const chatContainer = document.getElementById('chatContainer');
+      const dailyTasksGrid = document.getElementById('dailyTasksGrid');
+      const modeAgentBtn = document.getElementById('modeAgentBtn');
+      const modeStudioBtn = document.getElementById('modeStudioBtn');
+      const agentViewport = document.getElementById('agentViewport');
+      const studioViewport = document.getElementById('studioViewport');
+
+      // 1. 侧栏伸缩
+      collapseBtn.addEventListener('click', () => appShell.classList.add('sidebar-collapsed'));
+      expandBtn.addEventListener('click', () => appShell.classList.remove('sidebar-collapsed'));
+
+      // 2. 双模式切换
+      modeAgentBtn.addEventListener('click', () => {
+        modeAgentBtn.classList.add('active');
+        modeStudioBtn.classList.remove('active');
+        agentViewport.style.display = 'flex';
+        studioViewport.classList.remove('active');
+      });
+
+      modeStudioBtn.addEventListener('click', () => {
+        modeStudioBtn.classList.add('active');
+        modeAgentBtn.classList.remove('active');
+        agentViewport.style.display = 'none';
+        studioViewport.classList.add('active');
+      });
+
+      // 3. 消息发送与模拟响应 (完全消除任何调试代码与黑话)
+      function sendTeacherMessage(text) {
+        if (!text || !text.trim()) return;
+
+        // 插入用户气泡
+        const userRow = document.createElement('div');
+        userRow.className = 'message-row user';
+        userRow.innerHTML = `<div class="bubble">${escapeHtml(text.trim())}</div>`;
+        chatContainer.appendChild(userRow);
+        composerInput.value = '';
+
+        // 插入脉冲等待
+        const thinkingRow = document.createElement('div');
+        thinkingRow.className = 'message-row assistant';
+        thinkingRow.innerHTML = `
+          <div class="bubble">
+            <div class="thinking-bar">
+              <span class="pulse-dot"></span>
+              <span>助教正在查阅高一(1)班最新档案，请稍候...</span>
+            </div>
+          </div>
+        `;
+        chatContainer.appendChild(thinkingRow);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+
+        // 模拟 1 秒后产出亲切的教学建议
+        setTimeout(() => {
+          thinkingRow.innerHTML = `
+            <div class="bubble">
+              <div class="assistant-title-bar">
+                <div class="assistant-tag">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>
+                  </svg>
+                  <span>处理建议已生成</span>
+                </div>
+                <span style="font-size: 12px; color: var(--text-muted);">高一(1)班业务快照</span>
+              </div>
+              <p>李老师，针对您提出的：<strong>“${escapeHtml(text.trim())}”</strong>，已为您准备好处理建议：</p>
+              <div style="background: #f8fafc; border-radius: 10px; padding: 12px 14px; margin: 10px 0; border: 1px solid var(--border-color); font-size: 13.5px;">
+                📌 <strong>学籍正常</strong>：高一(1)班全部 42 位同学档案完备，近期未有请假或学籍变动记录。
+              </div>
+              <p style="font-size: 13px; color: var(--text-muted);">
+                您可以直接打字告诉我下一步该怎么做，比如：“把某某同学调到前排” 或 “打印考生成绩单”。
+              </p>
+            </div>
+          `;
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        }, 1000);
+      }
+
+      function escapeHtml(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+
+      sendBtn.addEventListener('click', () => sendTeacherMessage(composerInput.value));
+
+      composerInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendTeacherMessage(composerInput.value);
+        }
+      });
+
+      // 4. 点击锦囊卡片快速发问
+      dailyTasksGrid.querySelectorAll('.task-card').forEach((card) => {
+        card.addEventListener('click', () => {
+          const prompt = card.getAttribute('data-prompt');
+          sendTeacherMessage(prompt);
+        });
+      });
+
+      // 5. 底部常用直达小胶囊
+      document.getElementById('chipRoster').addEventListener('click', () => sendTeacherMessage('查看班级学生名册'));
+      document.getElementById('chipScores').addEventListener('click', () => sendTeacherMessage('分析期中考生成绩'));
+      document.getElementById('chipSeating').addEventListener('click', () => sendTeacherMessage('进行智能教室调座'));
+      document.getElementById('chipDuty').addEventListener('click', () => sendTeacherMessage('查看今天谁值日'));
+
+      // 新对话重置
+      function resetChat() {
+        const rows = chatContainer.querySelectorAll('.message-row');
+        rows.forEach((r, i) => {
+          if (i >= 2) r.remove();
+        });
+      }
+      newChatBtn.addEventListener('click', resetChat);
+      topbarNewChatBtn.addEventListener('click', resetChat);
+    </script>
+  </body>
+</html>

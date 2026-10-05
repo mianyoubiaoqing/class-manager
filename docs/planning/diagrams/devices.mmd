@@ -1,0 +1,57 @@
+classDiagram
+direction TB
+class DevicePage {
+  +readStatus()
+  +measureOnce()
+  +confirmCall()
+  +queryOriginal()
+}
+class DeviceGateway {
+  +guardEpochAndStudent()
+  +boundedRequest()
+  +queryReceipt()
+  +cancel()
+}
+class NoiseMonitorAdapter {
+  <<interface>>
+  +status(signal)
+  +measure(request, signal)
+}
+class StudentCallAdapter {
+  <<interface>>
+  +status(signal)
+  +request(confirmedRequest, signal)
+  +read(operationId, signal)
+  +cancel(operationId, signal)
+}
+class DisconnectedNoiseMonitor
+class DisconnectedStudentCall
+class StoredCall {
+  +confirmedRequest
+  +mode
+  +outcome
+}
+class CallOutcome {
+  +unavailable
+  +accepted
+  +delivered
+  +failed
+  +cancelled
+  +unknown
+}
+class NoiseSample {
+  +relativeAmplitudeOrCalibratedSPL
+  +mode
+  +durationMs
+}
+DevicePage --> DeviceGateway : named teacher IPC
+DeviceGateway --> NoiseMonitorAdapter : validated bounded sampling
+DeviceGateway --> StudentCallAdapter : ID deduplication and query
+DisconnectedNoiseMonitor ..|> NoiseMonitorAdapter
+DisconnectedStudentCall ..|> StudentCallAdapter
+NoiseMonitorAdapter --> NoiseSample : ready only
+StudentCallAdapter --> StoredCall : future persistent protocol receipt
+StoredCall *-- CallOutcome
+note for DisconnectedNoiseMonitor "No audio permission, samples or alarms"
+note for DisconnectedStudentCall "No network, acceptance or delivery"
+note for CallOutcome "Accepted does not prove delivery; cancel/timeout may be unknown"

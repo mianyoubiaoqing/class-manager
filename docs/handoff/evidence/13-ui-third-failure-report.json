@@ -1,0 +1,15 @@
+{
+  "status": "failed",
+  "root": "H:\\WorkSpace\\class-manager\\output\\playwright\\growth\\run-jSWmAm",
+  "packaged": false,
+  "externalRequests": 0,
+  "syntheticProviderCalls": 0,
+  "errors": [],
+  "gates": [],
+  "runtime": {
+    "electron": "44.4.5",
+    "node": "24.21.0",
+    "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-electron-probe-qXAqES\\electron.exe"
+  },
+  "failure": "locator.fill: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('后续结果', { exact: true })\u001b[22m\n\n    at H:\\WorkSpace\\class-manager\\scripts\\growth-ui-smoke.mjs:172:23"
+}

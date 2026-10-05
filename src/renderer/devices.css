@@ -1,0 +1,45 @@
+.device-page {
+  display: grid;
+  gap: 16px;
+}
+.device-panel {
+  background: var(--surface-2, #1c1916);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  border-radius: 8px;
+  padding: 20px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  color: var(--text-primary);
+}
+.device-panel h2,
+.device-panel p {
+  margin: 0;
+}
+.device-panel label {
+  display: grid;
+  gap: 6px;
+}
+.device-panel .device-check {
+  display: flex;
+  align-items: start;
+  gap: 8px;
+}
+.device-panel .device-check input {
+  flex: 0 0 auto;
+  width: auto;
+}
+.device-page p,
+.device-page [role='status'] {
+  overflow-wrap: anywhere;
+}
+.device-panel select,
+.device-panel input {
+  max-width: 100%;
+  min-width: 0;
+}
+@media (max-width: 600px) {
+  .device-panel {
+    padding: 12px;
+  }
+}

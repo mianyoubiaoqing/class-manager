@@ -1,0 +1,26 @@
+{
+  "status": "passed",
+  "seeded": {
+    "epoch": "99ecfc5d-a4d5-4270-8515-213bb45ccb38",
+    "draftId": "6393ed4d-48b1-4c53-9806-a34139a857b9",
+    "latestVersionId": "47eb85a7-7d19-4759-8608-5f58d03c05bb",
+    "versionId": "dd68d39a-cf03-4399-98ec-76ecbef8c361",
+    "contentHash": "e5279161d58617e92ea10173b542f47b031002d77f17d9e557a95f34d3002710"
+  },
+  "networkRequests": 0,
+  "files": [
+    {
+      "format": "docx",
+      "path": "H:\\WorkSpace\\class-manager\\output\\playwright\\office\\run-Fu6xa9\\ui-default.docx",
+      "sha256": "73514b039c08498575c720cc92d5ea084126b24e4600fafb4514395a33ee9068",
+      "contentHash": "e5279161d58617e92ea10173b542f47b031002d77f17d9e557a95f34d3002710"
+    },
+    {
+      "format": "pptx",
+      "path": "H:\\WorkSpace\\class-manager\\output\\playwright\\office\\run-Fu6xa9\\ui-default.pptx",
+      "sha256": "c5c1537403b0280dec19cee4e398cd3d4888c8b19abe001906558e722df2a32f",
+      "contentHash": "e5279161d58617e92ea10173b542f47b031002d77f17d9e557a95f34d3002710"
+    }
+  ],
+  "errors": []
+}

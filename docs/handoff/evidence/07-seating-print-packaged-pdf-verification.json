@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "sourceReportAt": "2026-09-30T11:16:16.913Z",
+  "maximumPages": 28,
+  "historicalPages": 1,
+  "uniqueStudentNumbers": 400,
+  "longNameCharacters": 24000,
+  "a4Landscape": true,
+  "allGlyphsWithinPage": true,
+  "physicalPrinterVerified": false
+}

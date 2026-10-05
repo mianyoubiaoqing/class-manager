@@ -1,0 +1,71 @@
+{
+  "at": "2026-09-30T16:12:04.259Z",
+  "version": {
+    "id": "b40eb1d6-0a2e-4c28-afa3-a13bd944de03",
+    "format": "pdf",
+    "sha256": "150eb7406ebb54192456cca151896a60e78e9b67206d7a69a02a97f3c6a80857",
+    "originalAssetId": "e7b4dbcd-4001-451f-b14b-58448f50761c",
+    "bytes": 1622,
+    "completeness": "partial",
+    "warnings": [
+      "PDF 文本提取可能改变阅读顺序；图表、扫描页及不能提取的文字保留为页面图像，尚未进行 OCR 或内容识别，请对照原文确认选中范围。"
+    ],
+    "fragments": [
+      {
+        "id": 1,
+        "kind": "text",
+        "locator": {
+          "kind": "page",
+          "index": 1
+        },
+        "text": "Synthetic text and scan"
+      },
+      {
+        "id": 2,
+        "kind": "image",
+        "locator": {
+          "kind": "page",
+          "index": 1
+        },
+        "assetId": "3cd059f7-c050-43b8-87a0-1ce3bf931dde",
+        "sha256": "c8bc6d78fcb39b0f6de405b4eb43f69e955c9b238fe3da1e9a7b2d13b6f3be5b",
+        "width": 450,
+        "height": 150
+      },
+      {
+        "id": 3,
+        "kind": "image",
+        "locator": {
+          "kind": "page",
+          "index": 2
+        },
+        "assetId": "d9f4545e-6d96-42cd-9a53-67641e272253",
+        "sha256": "df4ea38a3d3fdc94bc529d022515d420c938b15d8e6a2f419dfe2764f36381a7",
+        "width": 270,
+        "height": 150
+      },
+      {
+        "id": 4,
+        "kind": "text",
+        "locator": {
+          "kind": "page",
+          "index": 3
+        },
+        "text": "Final source page"
+      },
+      {
+        "id": 5,
+        "kind": "image",
+        "locator": {
+          "kind": "page",
+          "index": 3
+        },
+        "assetId": "a62f9f82-5175-45d1-97e5-8d6af655ec7c",
+        "sha256": "ce5f10e1d03ffc9c4f9d4139bce81ae4b4295688816c02a0e04854424469777f",
+        "width": 270,
+        "height": 150
+      }
+    ]
+  },
+  "original": "H:\\WorkSpace\\class-manager\\output\\pdf\\material08\\synthetic-original.pdf"
+}

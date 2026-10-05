@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "root": "H:\\WorkSpace\\class-manager\\output\\playwright\\providers\\run-enJOZU",
+  "packaged": true,
+  "externalRequests": 0,
+  "errors": [],
+  "gates": [
+    "3 providers save/select without automatic fetch; exact confirmed text/vision preview once; 3 encrypted keys and isolated ledgers",
+    "false confirmation blocks; 503/malformed JSON/cancel remain single calls and release busy slot with unknown usage",
+    "360px/desktop screenshots; actual classroom denies all 9 methods; Schema11 backup excludes config/key/ledger; restore/reopen retains provider state without network; isolated deletion retains usage"
+  ],
+  "runtime": {
+    "electron": "44.4.5",
+    "node": "24.21.0",
+    "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-conversation-audit17-bG6zJA\\Class Manager.exe"
+  }
+}

@@ -189,7 +189,7 @@ describe('DeepSeek Client & Connection Verification', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
-  test('429 rate limit performs limited retry then throws RATE_LIMIT', async () => {
+  test('429 rate limit is rejected without automatic paid retry', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 429,
@@ -201,8 +201,8 @@ describe('DeepSeek Client & Connection Verification', () => {
     await expect(client.checkTextConnection(testKey)).rejects.toMatchObject({
       code: 'RATE_LIMIT',
     });
-    // Initial attempt + 1 retry = 2 attempts
-    expect(mockFetch).toHaveBeenCalledTimes(2);
+    // 新多供应商契约：回包不明仍可能计费，只请求一次。
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
   test('errors do not leak raw API key in error message', async () => {
@@ -623,7 +623,7 @@ describe('DeepSeek Response Validation & Usage Nuance', () => {
     expect(result.usage).toBeNull();
   });
 
-  test('reading body stream interrupted by network drops triggers retry and throws NETWORK_ERROR', async () => {
+  test('reading body stream interrupted by network drops throws NETWORK_ERROR without retry', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -636,8 +636,7 @@ describe('DeepSeek Response Validation & Usage Nuance', () => {
     await expect(client.checkTextConnection(testKey)).rejects.toMatchObject({
       code: 'NETWORK_ERROR',
     });
-    // Verifies it entered network retry path (initial + 1 retry = 2 calls)
-    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
   test('reading body stream aborted with AbortSignal throws ABORTED without retry and without INVALID_RESPONSE', async () => {

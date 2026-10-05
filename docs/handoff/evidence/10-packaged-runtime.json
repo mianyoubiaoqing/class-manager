@@ -1,0 +1,63 @@
+{
+  "createdAt": "2026-10-01T06:20:09.541Z",
+  "source": "H:\\WorkSpace\\class-manager\\output\\release-audit10\\win-unpacked",
+  "target": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-packaged-audit10-mrrwWg",
+  "executable": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-packaged-audit10-mrrwWg\\Class Manager.exe",
+  "copiedFiles": 82,
+  "exeSha256": "b423ebd1995f79e4fe42bf1c42d87c054bb547aaa4579796f47b49996e0c3c0b",
+  "asarSha256": "11b629daf37d87778566c6de1cf4e0896191dbd096dba2ad6a29396575f2742a",
+  "built": [
+    {
+      "path": "dist/main/classroom-preload.cjs",
+      "sha256": "1ab1e43f3cdc1b2c953996bde26a4a5c50e41dadb7fa178cc95a1f163dedc625"
+    },
+    {
+      "path": "dist/main/main.cjs",
+      "sha256": "59883a58d68ec04839621ca8b84cff6d2e5bd8f5851f23ff809d7101bd55aa37"
+    },
+    {
+      "path": "dist/main/material-process.cjs",
+      "sha256": "79d7cfb3a7c705ab603bae68cc169627ec7dbbba6ebbd1948236998c999361d6"
+    },
+    {
+      "path": "dist/main/office-process.cjs",
+      "sha256": "05a034e2364de04bc0506b22000d8bff6aa35cb5f9f28e2354454dd3d1527231"
+    },
+    {
+      "path": "dist/main/preload.cjs",
+      "sha256": "48fbedb3cbc031505be3cb1dc2d4d3823a1fb4eb8b601024559d32f95e55f6bd"
+    },
+    {
+      "path": "dist/main/worker.cjs",
+      "sha256": "2be94e61d8a32f9901678c05c3cdc642eac7b7e297e6705a2fee3d581f8061e5"
+    },
+    {
+      "path": "dist/renderer/assets/classroom-BaHW0gX8.css",
+      "sha256": "b374d5fed83685471312a83afc4b71161991927fe8360cceb86853a81d63986b"
+    },
+    {
+      "path": "dist/renderer/assets/classroom-YsdJ4hX2.js",
+      "sha256": "9a3b7a5f7005fd73c60ef13a544efe979878b399bbc0221e41f6917f0364cc17"
+    },
+    {
+      "path": "dist/renderer/assets/jsx-runtime-C3kwI0iC.js",
+      "sha256": "cb286134d6e5acb78ab63e008c3a5e0848e10e9c07e2fae71ae626e1144ad4a9"
+    },
+    {
+      "path": "dist/renderer/assets/main-BN0tC045.js",
+      "sha256": "838141083f840ad31d1b34bb384f180c0a33f231864132a3b735c01500889831"
+    },
+    {
+      "path": "dist/renderer/assets/main-C-lSzSxu.css",
+      "sha256": "5b7706e784481a6f584017e2f18626c389bed68dd8ee837454865420fe858a26"
+    },
+    {
+      "path": "dist/renderer/classroom.html",
+      "sha256": "1def2ba71310453c02726fd6ec138cfcdee36061c7c37f298a24650a5b300a36"
+    },
+    {
+      "path": "dist/renderer/index.html",
+      "sha256": "672006af4b2cfa373c542b758056421ac12d400c2e90a34e345c9a041e176170"
+    }
+  ]
+}

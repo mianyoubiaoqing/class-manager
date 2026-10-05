@@ -1,0 +1,162 @@
+{
+  "startedAt": "2026-09-30T11:48:13.328Z",
+  "at": "2026-09-30T11:48:14.769Z",
+  "status": "passed",
+  "visualReview": "not-performed",
+  "results": [
+    {
+      "name": "long",
+      "pageCount": 8,
+      "failures": []
+    },
+    {
+      "name": "line-separator",
+      "pageCount": 8,
+      "failures": []
+    },
+    {
+      "name": "paragraph-separator",
+      "pageCount": 8,
+      "failures": []
+    },
+    {
+      "name": "combining",
+      "pageCount": 8,
+      "failures": []
+    }
+  ],
+  "galleryResults": [
+    {
+      "width": 360,
+      "contentWidth": 360,
+      "images": [
+        {
+          "source": "07-duty-print-packaged-maximum-pdf-page-1.png",
+          "loaded": true
+        },
+        {
+          "source": "07-duty-print-packaged-maximum-pdf-page-42.png",
+          "loaded": true
+        },
+        {
+          "source": "07-duty-print-packaged-maximum-pdf-page-82.png",
+          "loaded": true
+        },
+        {
+          "source": "07-duty-print-packaged-history-pdf-page-1.png",
+          "loaded": true
+        },
+        {
+          "source": "07-duty-print-packaged-history-pdf-page-2.png",
+          "loaded": true
+        },
+        {
+          "source": "07-duty-print-packaged-history-pdf-page-3.png",
+          "loaded": true
+        },
+        {
+          "source": "07-duty-print-packaged-batch-1-pdf-page-100.png",
+          "loaded": true
+        },
+        {
+          "source": "07-duty-print-packaged-batch-2-pdf-page-1.png",
+          "loaded": true
+        },
+        {
+          "source": "07-duty-print-packaged-batch-2-pdf-page-73.png",
+          "loaded": true
+        },
+        {
+          "source": "07-seating-print-packaged-maximum-pdf-page-1.png",
+          "loaded": true
+        },
+        {
+          "source": "07-seating-print-packaged-maximum-pdf-page-28.png",
+          "loaded": true
+        },
+        {
+          "source": "07-ui-duty-draft-desktop.png",
+          "loaded": true
+        },
+        {
+          "source": "07-ui-duty-history-desktop.png",
+          "loaded": true
+        },
+        {
+          "source": "07-ui-duty-draft-390.png",
+          "loaded": true
+        },
+        {
+          "source": "07-ui-duty-draft-360.png",
+          "loaded": true
+        }
+      ]
+    },
+    {
+      "width": 1280,
+      "contentWidth": 1280,
+      "images": [
+        {
+          "source": "07-duty-print-packaged-maximum-pdf-page-1.png",
+          "loaded": true
+        },
+        {
+          "source": "07-duty-print-packaged-maximum-pdf-page-42.png",
+          "loaded": true
+        },
+        {
+          "source": "07-duty-print-packaged-maximum-pdf-page-82.png",
+          "loaded": true
+        },
+        {
+          "source": "07-duty-print-packaged-history-pdf-page-1.png",
+          "loaded": true
+        },
+        {
+          "source": "07-duty-print-packaged-history-pdf-page-2.png",
+          "loaded": true
+        },
+        {
+          "source": "07-duty-print-packaged-history-pdf-page-3.png",
+          "loaded": true
+        },
+        {
+          "source": "07-duty-print-packaged-batch-1-pdf-page-100.png",
+          "loaded": true
+        },
+        {
+          "source": "07-duty-print-packaged-batch-2-pdf-page-1.png",
+          "loaded": true
+        },
+        {
+          "source": "07-duty-print-packaged-batch-2-pdf-page-73.png",
+          "loaded": true
+        },
+        {
+          "source": "07-seating-print-packaged-maximum-pdf-page-1.png",
+          "loaded": true
+        },
+        {
+          "source": "07-seating-print-packaged-maximum-pdf-page-28.png",
+          "loaded": true
+        },
+        {
+          "source": "07-ui-duty-draft-desktop.png",
+          "loaded": true
+        },
+        {
+          "source": "07-ui-duty-history-desktop.png",
+          "loaded": true
+        },
+        {
+          "source": "07-ui-duty-draft-390.png",
+          "loaded": true
+        },
+        {
+          "source": "07-ui-duty-draft-360.png",
+          "loaded": true
+        }
+      ]
+    }
+  ]
+}

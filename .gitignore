@@ -10,5 +10,7 @@ coverage/
 .env.*
 !.env.example
 *.sqlite
+!tests/fixtures/frozen-v7.sqlite
+!tests/fixtures/frozen-v6-lessons.sqlite
 *.sqlite-*
 *.cmbackup

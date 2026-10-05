@@ -1,0 +1,16 @@
+flowchart TD
+  UI[教师模型设置 / 原业务页面] --> Bridge[124项冻结管理Preload]
+  Bridge --> Main[Main来源校验 / payload限额 / 单付费槽]
+  Main --> Runtime[ModelRuntime: 配置revision / 固定协议 / 凭据 / 用量]
+  Main --> Runners[解释 / 成长 / 备课 / 阅卷Runner]
+  Runners --> Runtime
+  Runners --> Worker[Worker: 准备 / claim / 输出校验 / 提交准入]
+  Worker --> DB[Schema11 SQLite / 不可变附件]
+  Runtime --> Config[userData: 独立配置 / 加密Key / 分供应商账本]
+  Runtime --> Preview[确切JSON / 地址 / token / 哈希预览]
+  Preview --> Confirm{教师明确确认}
+  Confirm -->|一次发送| Client[有界传输 / 取消 / 超时 / 无重试回退]
+  Client --> Providers[DeepSeek / Kimi / 豆包固定端点]
+  Main --> Invalidate[配置变化: 取消Runner与检查 / 作废Worker准备]
+  Invalidate --> Worker
+  Class[课堂Preload仅3项展示操作] -. 管理方法拒绝 .-> Main

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>工单 07 视觉核验</title>
+  <style>
+    * { box-sizing: border-box; letter-spacing: 0; }
+    body { margin: 0; background: #f4f6f5; color: #202824; font: 16px/1.6 system-ui, sans-serif; }
+    main { max-width: 1320px; margin: auto; padding: 24px; }
+    h1 { font-size: 26px; margin: 0 0 12px; }
+    h2 { font-size: 21px; margin: 36px 0 12px; border-bottom: 2px solid #b4c4bc; }
+    h3 { font-size: 17px; margin: 0 0 8px; }
+    p { max-width: 85ch; }
+    a { color: #155f91; overflow-wrap: anywhere; }
+    figure { margin: 20px 0 32px; }
+    img { display: block; width: 100%; height: auto; background: white; border: 1px solid #bbc6c0; }
+    figcaption { margin-top: 8px; }
+    .narrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 24px; align-items: start; }
+    .narrow img { max-width: 480px; }
+    .status { padding: 12px 16px; border-left: 4px solid #a55b00; background: #fff5e5; }
+    @media (max-width: 600px) { main { padding: 16px; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>工单 07 视觉核验</h1>
+  <p class="status">2026-09-30 用户反馈：暂时未发现文字模糊等问题，可继续。已据此记录人工视觉核验结果；不是助手自动视觉通过，也不代表实体出纸验收。以下均为虚构测试资料，不包含真实学生信息。</p>
+  <p>请核对中文清晰、文字不重叠、不被裁切，表头与页脚分离，跨批页码连续。页面展示的是已归档的渲染样本，点击原 PDF 可查看其他页。若发现问题，请记录图件标题和页码。</p>
+  <h2>值日长名单</h2>
+  <p><a href="07-duty-print-packaged-maximum.pdf">原始 PDF：82 页，400 名参与学生</a></p>
+  <figure><h3>长名单第 1 页</h3><img src="07-duty-print-packaged-maximum-pdf-page-1.png" alt="值日长名单第 1 页"><figcaption>检查长班级名、计划名、编号与姓名。</figcaption></figure>
+  <figure><h3>长名单第 42 页</h3><img loading="lazy" src="07-duty-print-packaged-maximum-pdf-page-42.png" alt="值日长名单第 42 页"></figure>
+  <figure><h3>长名单第 82 页</h3><img loading="lazy" src="07-duty-print-packaged-maximum-pdf-page-82.png" alt="值日长名单第 82 页"><figcaption>检查最后一页的表格、版本标识和页码。</figcaption></figure>
+  <h2>历史版本</h2>
+  <p><a href="07-duty-print-packaged-history.pdf">原始历史 PDF：3 页</a></p>
+  <figure><h3>历史第 1 页</h3><img loading="lazy" src="07-duty-print-packaged-history-pdf-page-1.png" alt="值日历史第 1 页"><figcaption>测试文字包含 HTML 字样，应显示为普通文字，而不是图片或脚本。</figcaption></figure>
+  <figure><h3>历史第 2 页</h3><img loading="lazy" src="07-duty-print-packaged-history-pdf-page-2.png" alt="值日历史第 2 页"></figure>
+  <figure><h3>历史第 3 页</h3><img loading="lazy" src="07-duty-print-packaged-history-pdf-page-3.png" alt="值日历史第 3 页"></figure>
+  <h2>打印分批边界</h2>
+  <p><a href="07-duty-print-packaged-batch-1.pdf">第一批：第 1–100 页</a> · <a href="07-duty-print-packaged-batch-2.pdf">第二批：第 101–173 页</a></p>
+  <figure><h3>第一批末页：总表第 100 页</h3><img loading="lazy" src="07-duty-print-packaged-batch-1-pdf-page-100.png" alt="第一批第 100 页"></figure>
+  <figure><h3>第二批首页：总表第 101 页</h3><img loading="lazy" src="07-duty-print-packaged-batch-2-pdf-page-1.png" alt="第二批首页，总表第 101 页"></figure>
+  <figure><h3>第二批末页：总表第 173 页</h3><img loading="lazy" src="07-duty-print-packaged-batch-2-pdf-page-73.png" alt="第二批末页，总表第 173 页"></figure>
+  <h2>共用打印实现的座位回归</h2>
+  <p><a href="07-seating-print-packaged-maximum.pdf">原始座位 PDF：28 页，400 名学生</a></p>
+  <figure><h3>座位第 1 页</h3><img loading="lazy" src="07-seating-print-packaged-maximum-pdf-page-1.png" alt="座位长名单第 1 页"></figure>
+  <figure><h3>座位第 28 页</h3><img loading="lazy" src="07-seating-print-packaged-maximum-pdf-page-28.png" alt="座位长名单第 28 页"></figure>
+  <h2>教师页面与窄窗口</h2>
+  <figure><h3>值日草案，桌面窗口</h3><img loading="lazy" src="07-ui-duty-draft-desktop.png" alt="值日草案桌面窗口"></figure>
+  <figure><h3>值日历史，桌面窗口</h3><img loading="lazy" src="07-ui-duty-history-desktop.png" alt="值日历史桌面窗口"></figure>
+  <div class="narrow">
+    <figure><h3>390 像素窗口</h3><img loading="lazy" src="07-ui-duty-draft-390.png" alt="390 像素宽度的值日草案"></figure>
+    <figure><h3>360 像素窗口</h3><img loading="lazy" src="07-ui-duty-draft-360.png" alt="360 像素宽度的值日草案"></figure>
+  </div>
+  <p>实体打印机出纸、客户安装与独立接手仍未在此验收，不因图件可读而自动通过。</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,31 @@
+{
+  "status": "passed",
+  "root": "H:\\WorkSpace\\class-manager\\output\\playwright\\growth\\run-D35vmm",
+  "packaged": false,
+  "externalRequests": 0,
+  "syntheticProviderCalls": 4,
+  "errors": [],
+  "gates": [
+    "all event fields protect unsaved input",
+    "offline actual event correction and complete immutable history",
+    "student switch clears unchanged event correction context",
+    "offline independent manual draft and explicit teacher confirmation",
+    "repeat formal confirmation and durable entry query",
+    "exact score version and student provenance",
+    "actual outbound preview and text boundary",
+    "AI draft stays unreviewed until teacher save and explicit formal confirmation",
+    "invalid/offline provider retains facts with no retry",
+    "visible cancel failure and late response rejected",
+    "source correction flags history stale without rewriting",
+    "formal correction creates successor and retains parent",
+    "360px no horizontal overflow",
+    "actual classroom preload excludes archives and Main denies archive read",
+    "Schema10 backup/restore counts and old epoch rejection",
+    "no-credential reopen retains formal history"
+  ],
+  "runtime": {
+    "electron": "44.4.5",
+    "node": "24.21.0",
+    "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-electron-probe-qXAqES\\electron.exe"
+  }
+}

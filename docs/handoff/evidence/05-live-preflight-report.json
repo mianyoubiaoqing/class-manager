@@ -1,0 +1,54 @@
+{
+  "status": "failed",
+  "startedAt": "2026-09-30T06:17:59.957Z",
+  "generationAttempted": true,
+  "dataDirectory": "H:\\WorkSpace\\class-manager\\output\\live-explanation\\isolated-m1D3cF",
+  "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-packaged-audit05-b308a7d8dfcd4f7da3730463fca95e76\\Class Manager.exe",
+  "syntheticDataOnly": true,
+  "transport": "real-provider-with-single-request-guard",
+  "outboundFacts": {
+    "formatVersion": 1,
+    "scope": "class",
+    "facts": [
+      {
+        "id": "F001",
+        "subject": "S01",
+        "metric": "fullScore",
+        "value": "150"
+      },
+      {
+        "id": "F002",
+        "subject": "S01",
+        "metric": "validCount",
+        "value": 50
+      },
+      {
+        "id": "F003",
+        "subject": "S01",
+        "metric": "mean",
+        "value": "100.00"
+      }
+    ]
+  },
+  "requestCount": 0,
+  "ledger": {
+    "totalCalls": 0,
+    "successCalls": 0,
+    "totalTokens": 0,
+    "promptTokens": 0,
+    "completionTokens": 0,
+    "recentEntries": []
+  },
+  "generation": {
+    "ok": false,
+    "error": {
+      "code": "DECRYPTION_FAILED",
+      "message": "无法解密 DeepSeek 密钥，可能由于系统凭据环境已更改。",
+      "operationId": "533d04f0-52c2-4317-b786-ff2ab923eb62"
+    }
+  },
+  "error": "DECRYPTION_FAILED: 无法解密 DeepSeek 密钥，可能由于系统凭据环境已更改。",
+  "copiedCredentialsRemoved": true,
+  "originalCredentialsUnchanged": true,
+  "completedAt": "2026-09-30T06:18:01.811Z"
+}

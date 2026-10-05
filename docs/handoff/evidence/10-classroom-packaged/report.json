@@ -1,0 +1,42 @@
+{
+  "status": "passed",
+  "runtime": {
+    "electron": "44.4.5",
+    "node": "24.21.0",
+    "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-packaged-audit10-mrrwWg\\Class Manager.exe"
+  },
+  "networkRequests": 0,
+  "errors": [],
+  "seeded": {
+    "epoch": "5ddd456f-5c9a-48df-be30-8b10c38bab85",
+    "versionId": "19eb21ac-ca76-48ae-83aa-7fed3f745dac",
+    "versionRevision": 3
+  },
+  "initialReadGuard": true,
+  "postOpenReadFailureGuard": true,
+  "displayCapabilities": {
+    "keys": [
+      "readClock",
+      "readProjection",
+      "setFullscreen"
+    ],
+    "frozen": true,
+    "admin": "undefined",
+    "node": "undefined",
+    "process": "undefined"
+  },
+  "adminDenied": true,
+  "hiddenTimerDeltaMs": 2242,
+  "reopened": true,
+  "normalExitSavedRunningTimer": true,
+  "crashRecovered": {
+    "checkpointElapsedMs": 7939,
+    "status": "paused",
+    "interrupted": true
+  },
+  "restoreClosedDisplay": {
+    "oldEpochRejected": true,
+    "progressPaused": true,
+    "countdownRestored": true
+  }
+}

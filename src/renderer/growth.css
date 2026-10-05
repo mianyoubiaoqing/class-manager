@@ -1,0 +1,91 @@
+.growth-page {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.growth-section {
+  background: var(--surface-2, #1c1916);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  border-radius: 8px;
+  padding: 20px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.growth-section h2 {
+  margin-top: 0;
+  color: var(--text-primary);
+}
+.growth-section article {
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  padding-top: 14px;
+  margin-top: 14px;
+}
+.growth-section label {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+}
+.growth-section fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.growth-page input:not([type='checkbox']),
+.growth-page select,
+.growth-page textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.growth-page textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+.growth-controls {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+.growth-controls label {
+  flex: 1;
+  min-width: 160px;
+}
+.growth-section .growth-check,
+.growth-outbound .growth-check {
+  display: flex;
+  align-items: start;
+  gap: 8px;
+}
+.growth-check input {
+  flex: 0 0 auto;
+  margin-top: 4px;
+}
+.growth-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.growth-page button {
+  margin: 6px 6px 6px 0;
+  white-space: normal;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.growth-outbound {
+  background: var(--surface-3, #26211e);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  padding: 16px;
+  border-radius: 8px;
+}
+@media (max-width: 600px) {
+  .growth-section {
+    padding: 12px;
+  }
+  .growth-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .growth-controls label {
+    min-width: 0;
+  }
+}

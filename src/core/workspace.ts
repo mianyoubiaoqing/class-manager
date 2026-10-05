@@ -18,9 +18,23 @@ import { openDatabase, transaction } from './database';
 import { DomainError } from './errors';
 import { atomicWrite, durableWrite, requireDirectory, requireRegularFile } from './files';
 import { readSnapshot } from './snapshot';
+import { MAX_DATABASE_BYTES, MAX_ASSETS, MAX_ASSETS_BYTES } from './storage-limits';
+import { MaterialBook, type MaterialCheckpoint } from './material-book';
+import { LessonBook, type LessonCheckpoint } from './lesson-book';
+import { ClassroomBook } from './classroom-book';
+import { GradingBook, type GradingCheckpoint } from './grading-book';
+import { ScoreBook, type ScoreCheckpoint } from './score-book';
+import type { PublicationCheckpoint } from './score-publication';
+import { GrowthBook, type GrowthCheckpoint } from './growth-book';
+import { PupilBook } from './pupil-book';
+import { ExplanationBook, type ExplanationCheckpoint } from './explanation-book';
+import { SeatingBook, type SeatingCheckpoint } from './seating-book';
+import { DutyBook, type DutyCheckpoint } from './duty-book';
+import { advanceDutyDate } from './duty-records';
 import {
   createBackup,
   removeStaging,
+  recoverBackupStaging,
   stageBackup,
   validateAssets,
   validateStaged,
@@ -40,11 +54,30 @@ export class Workspace {
   private epoch: string;
   private directory: string;
   private pendingRestore?: StagedBackup;
+  private scoreBook?: ScoreBook;
+  private explanationBook?: ExplanationBook;
+  private seatingBook?: SeatingBook;
+  private dutyBook?: DutyBook;
+  private materialBook?: MaterialBook;
+  private lessonBook?: LessonBook;
+  private classroomBook?: ClassroomBook;
+  private gradingBook?: GradingBook;
+  private growthBook?: GrowthBook;
+  private pupilBook?: PupilBook;
   readonly root: string;
 
   constructor(
     root: string,
     private readonly restoreCheckpoint?: (stage: 'staged' | 'published') => void,
+    private readonly scoreCheckpoint?: ScoreCheckpoint,
+    private readonly explanationCheckpoint?: ExplanationCheckpoint,
+    private readonly seatingCheckpoint?: SeatingCheckpoint,
+    private readonly dutyCheckpoint?: DutyCheckpoint,
+    private readonly materialCheckpoint?: MaterialCheckpoint,
+    private readonly lessonCheckpoint?: LessonCheckpoint,
+    private readonly gradingCheckpoint?: GradingCheckpoint,
+    private readonly publicationCheckpoint?: PublicationCheckpoint,
+    private readonly growthCheckpoint?: GrowthCheckpoint,
   ) {
     this.root = resolve(root);
     mkdirSync(this.root, { recursive: true });
@@ -54,6 +87,7 @@ export class Workspace {
     requireDirectory(spaces);
     mkdirSync(join(this.root, 'staging'), { recursive: true });
     requireDirectory(join(this.root, 'staging'));
+    recoverBackupStaging(this.root);
     const pointerPath = join(this.root, 'current.json');
     if (!existsSync(pointerPath)) {
       if (readdirSync(spaces).length !== 0) {
@@ -78,10 +112,16 @@ export class Workspace {
     this.directory = join(spaces, this.epoch);
     requireDirectory(this.directory);
     requireDirectory(join(this.directory, 'assets'));
-    requireRegularFile(join(this.directory, 'data.sqlite'), 8 * 1024 * 1024);
-    this.db = openDatabase(join(this.directory, 'data.sqlite'), 'open');
+    requireRegularFile(join(this.directory, 'data.sqlite'), MAX_DATABASE_BYTES);
+    this.db = openDatabase(join(this.directory, 'data.sqlite'), 'open', {
+      validateBeforeMigration: (db) =>
+        validateAssets(this.directory, readSnapshot(db, this.epoch, this.root), db),
+    });
     try {
-      validateAssets(this.directory, this.snapshot());
+      validateAssets(this.directory, this.snapshot(), this.db);
+      advanceDutyDate(this.db);
+      this.classroomBook = new ClassroomBook(this.db, () => this.epoch);
+      this.gradingBook = new GradingBook(this.db, () => this.epoch, this.gradingCheckpoint);
     } catch (error) {
       this.db.close();
       throw error;
@@ -89,7 +129,81 @@ export class Workspace {
   }
 
   close(): void {
+    this.classroomBook?.pauseAll();
+    this.classroomBook?.dispose();
+    this.gradingBook?.dispose();
+    this.growthBook?.dispose();
+    this.pupilBook?.dispose();
+    this.materialBook?.dispose();
+    this.lessonBook?.dispose();
+    this.dutyBook?.dispose();
+    this.seatingBook?.dispose();
+    this.explanationBook?.dispose();
+    this.scoreBook?.dispose();
     this.db.close();
+  }
+
+  get materials(): MaterialBook {
+    return (this.materialBook ??= new MaterialBook(
+      this.db,
+      () => this.epoch,
+      () => this.directory,
+      this.materialCheckpoint,
+    ));
+  }
+  get lessons(): LessonBook {
+    return (this.lessonBook ??= new LessonBook(this.db, () => this.epoch, this.lessonCheckpoint));
+  }
+  get classroom(): ClassroomBook {
+    return (this.classroomBook ??= new ClassroomBook(this.db, () => this.epoch));
+  }
+  get grading(): GradingBook {
+    return (this.gradingBook ??= new GradingBook(
+      this.db,
+      () => this.epoch,
+      this.gradingCheckpoint,
+    ));
+  }
+
+  get scores(): ScoreBook {
+    return (this.scoreBook ??= new ScoreBook(
+      this.db,
+      () => this.snapshot(),
+      this.scoreCheckpoint,
+      this.publicationCheckpoint,
+    ));
+  }
+
+  get growth(): GrowthBook {
+    return (this.growthBook ??= new GrowthBook(
+      this.db,
+      () => this.snapshot(),
+      this.growthCheckpoint,
+    ));
+  }
+  get pupils(): PupilBook {
+    return (this.pupilBook ??= new PupilBook(this.db, () => this.snapshot()));
+  }
+
+  get seating(): SeatingBook {
+    return (this.seatingBook ??= new SeatingBook(
+      this.db,
+      () => this.snapshot(),
+      this.seatingCheckpoint,
+    ));
+  }
+
+  get duties(): DutyBook {
+    return (this.dutyBook ??= new DutyBook(this.db, () => this.snapshot(), this.dutyCheckpoint));
+  }
+
+  get explanations(): ExplanationBook {
+    return (this.explanationBook ??= new ExplanationBook(
+      this.db,
+      () => this.epoch,
+      (versionId) => this.scores.read({ epoch: this.epoch, versionId }),
+      this.explanationCheckpoint,
+    ));
   }
 
   snapshot(): Snapshot {
@@ -116,12 +230,33 @@ export class Workspace {
   }
 
   private membershipTimestamp(studentId?: string): string {
-    // 系统时钟可能回拨；归属记录的结束时间不能早于已有开始时间。
+    // 时钟回拨时，归属结束不能早于已确认座位；按曾属班级取上界，避免解析全部历史载荷。
     const history = studentId
       ? this.snapshot().enrollments.filter((entry) => entry.studentId === studentId)
       : [];
+    const seatingBoundary = studentId
+      ? this.db
+          .prepare(
+            `SELECT MAX(created_at) AS timestamp FROM seating_versions
+             WHERE class_id IN (SELECT class_id FROM enrollments WHERE student_id=?)`,
+          )
+          .get(studentId)?.timestamp
+      : undefined;
+    const dutyBoundary = studentId
+      ? this.db
+          .prepare(
+            `SELECT MAX(created_at) AS timestamp FROM duty_versions
+          WHERE class_id IN (SELECT class_id FROM enrollments WHERE student_id=?)`,
+          )
+          .get(studentId)?.timestamp
+      : undefined;
     return new Date(
-      Math.max(Date.now(), ...history.map((entry) => Date.parse(entry.validTo ?? entry.validFrom))),
+      Math.max(
+        Date.now(),
+        ...history.map((entry) => Date.parse(entry.validTo ?? entry.validFrom)),
+        seatingBoundary ? Date.parse(String(seatingBoundary)) : 0,
+        dutyBoundary ? Date.parse(String(dutyBoundary)) : 0,
+      ),
     ).toISOString();
   }
 
@@ -254,11 +389,24 @@ export class Workspace {
   addSyntheticAsset(raw: unknown): Snapshot {
     const input = epochInput.parse(raw);
     this.guard(input.epoch);
-    if (this.snapshot().assets.length >= 32)
+    if (
+      Number(
+        this.db
+          .prepare(
+            'SELECT COUNT(*) AS count FROM assets WHERE id NOT IN (SELECT asset_id FROM material_assets)',
+          )
+          .get()?.count,
+      ) >= 32
+    )
       throw new DomainError('VALIDATION', '验证附件上限为 32 份。');
     const id = randomUUID();
     const bytes = Buffer.from('Class Manager M0\n合成备份验证附件。不包含真实学生数据。\n', 'utf8');
     const sha256 = createHash('sha256').update(bytes).digest('hex');
+    const quota = this.db
+      .prepare('SELECT COUNT(*) AS count, COALESCE(SUM(bytes),0) AS bytes FROM assets')
+      .get()!;
+    if (Number(quota.count) >= MAX_ASSETS || Number(quota.bytes) + bytes.length > MAX_ASSETS_BYTES)
+      throw new DomainError('VALIDATION', '附件存储已达到上限。');
     // 先持久保存不可变附件再登记引用；中断最多留下孤立文件，不会提交悬空引用。
     durableWrite(join(this.directory, 'assets', `${id}.bin`), bytes);
     this.db
@@ -270,6 +418,7 @@ export class Workspace {
   exportBackup(raw: unknown): Buffer {
     const input = epochInput.parse(raw);
     this.guard(input.epoch);
+    this.classroomBook?.checkpoint();
     return createBackup(this.db, this.directory, this.root, this.snapshot());
   }
 
@@ -286,6 +435,27 @@ export class Workspace {
       classCount: snapshot.classes.length,
       studentCount: snapshot.students.length,
       assetCount: snapshot.assets.length,
+      examCount: snapshot.examCount,
+      scoreVersionCount: snapshot.scoreVersionCount,
+      explanationDraftCount: snapshot.explanationDraftCount,
+      seatingVersionCount: snapshot.seatingVersionCount,
+      dutyVersionCount: snapshot.dutyVersionCount,
+      materialVersionCount: snapshot.materialVersionCount,
+      lessonDraftCount: snapshot.lessonDraftCount,
+      lessonVersionCount: snapshot.lessonVersionCount,
+      teachingSessionCount: snapshot.teachingSessionCount,
+      countdownCount: snapshot.countdownCount,
+      rubricVersionCount: snapshot.rubricVersionCount,
+      gradingDraftCount: snapshot.gradingDraftCount,
+      gradingReviewCount: snapshot.gradingReviewCount,
+      gradingAttemptCount: snapshot.gradingAttemptCount,
+      gradingRevisionCount: snapshot.gradingRevisionCount,
+      gradingPublicationCount: snapshot.gradingPublicationCount,
+      growthEventCount: snapshot.growthEventCount,
+      growthSummaryCount: snapshot.growthSummaryCount,
+      growthEntryCount: snapshot.growthEntryCount,
+      attendanceCount: snapshot.attendanceCount,
+      studentProfileCount: snapshot.studentProfileCount,
     };
   }
 
@@ -296,7 +466,7 @@ export class Workspace {
     if (!pointer.previousWorkspaceId) throw new DomainError('NOT_FOUND', '尚无恢复前副本。');
     const directory = join(this.root, 'workspaces', pointer.previousWorkspaceId);
     requireDirectory(directory);
-    requireRegularFile(join(directory, 'data.sqlite'), 8 * 1024 * 1024);
+    requireRegularFile(join(directory, 'data.sqlite'), MAX_DATABASE_BYTES);
     const previous = openDatabase(join(directory, 'data.sqlite'), 'readonly');
     try {
       const snapshot = readSnapshot(previous, pointer.previousWorkspaceId, directory);
@@ -321,6 +491,10 @@ export class Workspace {
     const candidate = openDatabase(join(directory, 'data.sqlite'), 'open');
     let published = false;
     try {
+      const candidateClassroom = new ClassroomBook(candidate, () => this.epoch);
+      const candidateGrading = new GradingBook(candidate, () => this.epoch, this.gradingCheckpoint);
+      advanceDutyDate(candidate, advanceDutyDate(this.db));
+      this.classroomBook?.pauseAll();
       this.restoreCheckpoint?.('staged');
       atomicWrite(
         join(this.root, 'current.json'),
@@ -332,7 +506,29 @@ export class Workspace {
       );
       published = true;
       const previous = this.db;
+      this.classroomBook?.dispose();
+      this.classroomBook = undefined;
+      this.gradingBook?.dispose();
+      this.gradingBook = undefined;
+      this.growthBook?.dispose();
+      this.growthBook = undefined;
+      this.pupilBook?.dispose();
+      this.pupilBook = undefined;
+      this.materialBook?.dispose();
+      this.materialBook = undefined;
+      this.lessonBook?.dispose();
+      this.lessonBook = undefined;
+      this.dutyBook?.dispose();
+      this.dutyBook = undefined;
+      this.seatingBook?.dispose();
+      this.seatingBook = undefined;
+      this.explanationBook?.dispose();
+      this.explanationBook = undefined;
+      this.scoreBook?.dispose();
+      this.scoreBook = undefined;
       this.db = candidate;
+      this.classroomBook = candidateClassroom;
+      this.gradingBook = candidateGrading;
       this.epoch = staged.token;
       this.directory = directory;
       previous.close();

@@ -1,0 +1,34 @@
+{
+  "at": "2026-09-30T23:42:09.735Z",
+  "archive": "H:\\WorkSpace\\class-manager\\output\\ticket08-pack\\win-unpacked\\resources\\app.asar",
+  "files": [
+    {
+      "file": "dist/main/main.cjs",
+      "sha256": "22142b3f2da1fb547f629b6641be02c0f3d0649b9781e2680e10d7f7dce1f9a8"
+    },
+    {
+      "file": "dist/main/material-process.cjs",
+      "sha256": "79d7cfb3a7c705ab603bae68cc169627ec7dbbba6ebbd1948236998c999361d6"
+    },
+    {
+      "file": "dist/main/preload.cjs",
+      "sha256": "f9f17631df31c093955ffeedeae44ee6ec6d1f72955e157d50fcbaadfa706532"
+    },
+    {
+      "file": "dist/main/worker.cjs",
+      "sha256": "ddf58028d20251a48dd38c4380488814cd67f22b46f187749f589f10c4956b2c"
+    },
+    {
+      "file": "dist/renderer/index.html",
+      "sha256": "92caea33e34285c3ec0ed0bc9d325b1130836b4341fa39e9ed89087758e4cf0d"
+    },
+    {
+      "file": "dist/renderer/assets/index-Br-doCEj.js",
+      "sha256": "70810c3a0bd77fb23a0e542948b43cfd11159165f89c680c805846597e37f077"
+    },
+    {
+      "file": "dist/renderer/assets/index-Ds-a49E7.css",
+      "sha256": "36affb4716571e808468c5f5403776be7121b3a03d99b29acad50117c6546eef"
+    }
+  ]
+}

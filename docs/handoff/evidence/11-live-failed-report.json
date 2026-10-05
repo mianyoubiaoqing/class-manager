@@ -1,0 +1,44 @@
+{
+  "status": "failed",
+  "startedAt": "2026-10-01T19:32:56.272Z",
+  "generationAttempted": true,
+  "authorizationConsumed": true,
+  "requestCount": 1,
+  "externalRequests": 1,
+  "credentialReads": 2,
+  "transport": "real-provider",
+  "syntheticDataOnly": true,
+  "retries": 0,
+  "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-grading-audit11-YbbrYN\\Class Manager.exe",
+  "dataDirectory": "H:\\WorkSpace\\class-manager\\output\\live-grading\\isolated-kSJsca",
+  "wireHash": "f38ca0d8d78332ec753d6a95f6c6099952a80f13f730f1c87c22ddfa02076c12",
+  "pages": 2,
+  "questions": 6,
+  "draftId": "571459a6-a056-4b05-bc0a-56b56d20e718",
+  "attemptStatus": "failed",
+  "provider": null,
+  "ledger": {
+    "totalCalls": 1,
+    "successCalls": 0,
+    "totalTokens": 0,
+    "promptTokens": 0,
+    "completionTokens": 0,
+    "recentEntries": [
+      {
+        "id": "dda82da1-3dc7-4bc7-86b5-446721107e80",
+        "timestamp": "2026-10-01T19:32:59.634Z",
+        "type": "grading",
+        "requestModel": "deepseek-flash",
+        "status": "failed",
+        "durationMs": 60043,
+        "promptVersion": "grading-images-v1",
+        "errorCode": "TIMEOUT"
+      }
+    ]
+  },
+  "error": "TIMEOUT: 模型生成超过 60 秒，已取消；可核对用量后显式重试。",
+  "originalCredentialsUnchanged": true,
+  "temporaryCredentialsRemoved": true,
+  "temporaryContextRemoved": true,
+  "completedAt": "2026-10-01T19:34:00.095Z"
+}

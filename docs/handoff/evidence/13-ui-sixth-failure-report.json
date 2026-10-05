@@ -1,0 +1,28 @@
+{
+  "status": "failed",
+  "root": "H:\\WorkSpace\\class-manager\\output\\playwright\\growth\\run-aqDZOw",
+  "packaged": false,
+  "externalRequests": 0,
+  "syntheticProviderCalls": 0,
+  "errors": [],
+  "gates": [
+    "all event fields protect unsaved input",
+    "offline actual event correction and complete immutable history",
+    "student switch clears unchanged event correction context",
+    "offline independent manual draft and explicit teacher confirmation",
+    "repeat formal confirmation and durable entry query",
+    "exact score version and student provenance",
+    "actual outbound preview and text boundary",
+    "AI draft stays unreviewed until teacher save and explicit formal confirmation",
+    "invalid/offline provider retains facts with no retry",
+    "visible cancel failure and late response rejected",
+    "source correction flags history stale without rewriting",
+    "formal correction creates successor and retains parent"
+  ],
+  "runtime": {
+    "electron": "44.4.5",
+    "node": "24.21.0",
+    "executablePath": "C:\\Users\\flow032417\\AppData\\Local\\class-manager-electron-probe-qXAqES\\electron.exe"
+  },
+  "failure": "electronApplication.evaluate: TypeError: A dynamic import callback was not specified.\n    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:280:9)\n    at eval (eval at evaluate (:311:30), <anonymous>:2:18)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at H:\\WorkSpace\\class-manager\\scripts\\growth-ui-smoke.mjs:370:29"
+}

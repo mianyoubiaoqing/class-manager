@@ -1,0 +1,15 @@
+flowchart TD
+  Home[默认对话首页 侧栏首项] --> Send[用户直接发送消息]
+  Send --> Context[Main会话 脱敏输入与多轮上下文]
+  Context --> Model[当前供应商与型号 独立用量]
+  Model --> Check[严格具名动作校验]
+  Check -->|自然回复| Answer[本地显示 可还原已知代号]
+  Check -->|只读查询| Tool[原Worker业务工具]
+  Tool --> Clean[ConversationPrivacy 清洗字段与自由文字]
+  Clean -->|只回传脱敏结果| Model
+  Check -->|正式写入提议| Preview[真实对象 前后差异与全部内容]
+  Preview -->|用户确认| Commit[原Worker CAS事务]
+  Commit --> Receipt[明确回执 脱敏加入后续上下文]
+  Receipt --> Context
+  Check -->|入分 总结 冻结 恢复| Original[原业务页继续审核]
+  Stop[取消 配置变化 恢复或退出] --> Invalid[停止后续调用 拒绝迟到结果 不自动重试]

@@ -60,17 +60,31 @@ class GradingReview {
   +confirmedDraftRevision
   +confirmedAt
 }
-class GrowthEntry {
+class GrowthEvent {
   +id
   +kind
   +occurredAt
   +content
+  +revision
+  +followUp
+}
+class GrowthEventRevision {
+  +revision
+  +reason
 }
 class SummaryDraft {
   +id
   +revision
   +period
   +status
+  +reviewed
+  +inputHash
+}
+class FormalGrowthEntry {
+  +id
+  +draftRevision
+  +confirmedAt
+  +inputHash
 }
 Exam "1" *-- "1..*" ExamSubject : subjects
 ExamSubject "1" --> "0..*" ScoreRevision : score history
@@ -86,9 +100,11 @@ GradingDraft "0..*" --> "1" RubricVersion : scoring basis
 GradingDraft "1" *-- "0..*" QuestionAssessment : results
 GradingReview "0..1" --> "1" GradingDraft : frozen reviewed version
 ScoreRevision "0..1" --> "0..1" GradingReview : publication origin
-GrowthEntry "0..*" --> "1" Enrollment : belongs to
-GrowthEntry "0..*" --> "0..*" ScoreRevision : referenced facts
+GrowthEvent "0..*" --> "1" Enrollment : belongs to
+GrowthEvent "1" *-- "1..*" GrowthEventRevision : immutable history
 SummaryDraft "0..*" --> "1" Enrollment : subject
-SummaryDraft "0..*" --> "0..*" GrowthEntry : source facts
+SummaryDraft "0..*" --> "0..*" GrowthEventRevision : exact event sources
 SummaryDraft "0..*" --> "0..*" ScoreRevision : source scores
-SummaryDraft "0..1" --> "0..1" GrowthEntry : confirmed summary entry
+SummaryDraft "1" --> "0..1" FormalGrowthEntry : explicit confirmation
+FormalGrowthEntry "0..*" --> "1" Enrollment : subject
+FormalGrowthEntry "0..1" --> "0..1" FormalGrowthEntry : supersedes

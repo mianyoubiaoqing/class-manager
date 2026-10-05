@@ -1,0 +1,93 @@
+.classroom-control {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.classroom-control > section {
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  background: var(--surface-2, #1c1916);
+  color: var(--text-primary);
+  padding: 1.1rem;
+  border-radius: 0.65rem;
+  min-width: 0;
+}
+.classroom-control h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+.classroom-control p {
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text-secondary);
+}
+.classroom-control label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+  min-width: 0;
+  color: var(--text-secondary);
+}
+.classroom-control input:not([type='checkbox']),
+.classroom-control select {
+  font: inherit;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  padding: 0.55rem;
+  border: 1px solid var(--border-default);
+  background: var(--surface-3, #26211e);
+  color: var(--text-primary);
+  border-radius: 0.35rem;
+}
+.classroom-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+.classroom-control .classroom-check {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.5rem;
+  overflow-wrap: anywhere;
+}
+.classroom-check input {
+  width: auto;
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+}
+.classroom-control fieldset {
+  border: 1px solid var(--border-default);
+  background: var(--surface-3, #26211e);
+  max-height: 18rem;
+  overflow: auto;
+}
+.classroom-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.65rem 0;
+}
+.classroom-actions button {
+  white-space: normal;
+}
+.countdown-home {
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  background: var(--surface-2, #1c1916);
+  color: var(--text-primary);
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 800px) {
+  .classroom-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .classroom-control > section {
+    padding: 0.8rem;
+  }
+}
