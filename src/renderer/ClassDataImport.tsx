@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Check, CircleHelp, Plus, Upload } from 'lucide-react';
 import type { Snapshot } from '../shared/contracts';
 import type {
@@ -42,6 +42,26 @@ export function ClassDataImport({
     alive = useRef(true);
   const configChanged =
     !!preview && JSON.stringify(configuration) !== JSON.stringify(preview.configuration);
+  const tableRows = useMemo(() => {
+    if (!preview) return [];
+    const matchedScoreStudents = new Set(
+      preview.rows
+        .filter(
+          (row) =>
+            row.key.startsWith(`${preview.configuration.scoreSheet}:`) &&
+            (row.status === 'new' || row.status === 'existing') &&
+            row.studentId,
+        )
+        .map((row) => row.studentId),
+    );
+    return preview.rows.filter(
+      (row) =>
+        !row.key.startsWith(`${preview.configuration.studentSheet}:`) ||
+        row.scores.length > 0 ||
+        (row.status !== 'new' && row.status !== 'existing') ||
+        !matchedScoreStudents.has(row.studentId),
+    );
+  }, [preview]);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -677,7 +697,7 @@ export function ClassDataImport({
                 </tr>
               </thead>
               <tbody>
-                {preview.rows.slice(page * 3, page * 3 + 3).map((row) => (
+                {tableRows.slice(page * 3, page * 3 + 3).map((row) => (
                   <tr key={row.key}>
                     <td>{row.studentNumber || '确认后生成'}</td>
                     <td>
@@ -711,7 +731,11 @@ export function ClassDataImport({
             </table>
           </div>
           <div className="shared-row shared-pagination">
-            <small>共 {preview.rows.length} 行 · 每页 3 行</small>
+            <small>
+              共 {tableRows.length} 条核对结果
+              {tableRows.length !== preview.rows.length && ` · 原表 ${preview.rows.length} 行`}
+              {' · 每页 3 条'}
+            </small>
             <div className="push-right">
               <button
                 aria-label="资料上一页"
@@ -721,11 +745,11 @@ export function ClassDataImport({
                 ‹
               </button>
               <span>
-                {page + 1} / {Math.max(1, Math.ceil(preview.rows.length / 3))}
+                {page + 1} / {Math.max(1, Math.ceil(tableRows.length / 3))}
               </span>
               <button
                 aria-label="资料下一页"
-                disabled={(page + 1) * 3 >= preview.rows.length || busy}
+                disabled={(page + 1) * 3 >= tableRows.length || busy}
                 onClick={() => setPage(page + 1)}
               >
                 ›

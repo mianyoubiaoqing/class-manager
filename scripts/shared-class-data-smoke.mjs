@@ -107,6 +107,11 @@ try {
   await page
     .getByRole('button', { name: '确认保存并开始使用', exact: true })
     .waitFor({ state: 'visible' });
+  assert.equal(await page.locator('.shared-table-scroll tbody tr').count(), 3);
+  await page.getByRole('cell', { name: '116', exact: true }).waitFor();
+  await page.getByRole('cell', { name: '128', exact: true }).waitFor();
+  await page.getByText('共 3 条核对结果 · 原表 6 行 · 每页 3 条', { exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: '资料下一页' }).isDisabled(), true);
   await screenshot('38-preview');
   await page.getByRole('button', { name: '确认保存并开始使用', exact: true }).click();
   await page.getByRole('heading', { name: '共享资料合成班，资料已准备好', exact: true }).waitFor();
