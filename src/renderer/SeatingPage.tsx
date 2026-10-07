@@ -36,13 +36,17 @@ export function SeatingPage({
   snapshot,
   onDirtyChange,
   navigationBusy,
+  selectedClass,
 }: {
   snapshot: Snapshot;
   onDirtyChange: (dirty: boolean) => void;
   navigationBusy: boolean;
+  selectedClass?: string;
 }) {
   const api = window.classManager;
-  const [classId, setClassId] = useState(snapshot.classes[0]?.id ?? '');
+  const [classId, setClassId] = useState(
+    snapshot.classes.find((c) => c.id === selectedClass)?.id ?? snapshot.classes[0]?.id ?? '',
+  );
   const [history, setHistory] = useState<SeatingVersion[]>([]);
   const [version, setVersion] = useState<SeatingVersionView>();
   const [draft, setDraft] = useState<SeatingPreparation>();

@@ -21,7 +21,7 @@ import { ResourceHub } from './ResourceHub';
 
 export type WorkspaceAreaId = 'teaching' | 'classManagement' | 'settings';
 export type AppView =
-  BusinessView | 'conversation' | 'modelSettings' | 'sessions' | WorkspaceAreaId;
+  BusinessView | 'students' | 'conversation' | 'modelSettings' | 'sessions' | WorkspaceAreaId;
 interface WorkspaceEntry {
   view: BusinessView;
   label: string;
@@ -145,10 +145,12 @@ export function areaForView(view: AppView): WorkspaceArea | undefined {
     (area) =>
       area.id === view ||
       area.entries.some((entry) => entry.view === view) ||
+      (view === 'students' && area.id === 'classManagement') ||
       (view === 'modelSettings' && area.id === 'settings'),
   );
 }
 export function viewLabel(view: AppView): string {
+  if (view === 'students') return '学生与成绩';
   if (view === 'conversation') return '智能对话';
   if (view === 'sessions') return '历史会话';
   if (view === 'modelSettings') return 'DeepSeek 兼容设置';
@@ -223,6 +225,72 @@ export function WorkspaceLinks({
 }) {
   const area = areaForView(view);
   if (!area) return null;
+  if (area.id === 'classManagement') {
+    const group = ['students', 'roster', 'profiles', 'scores'].includes(view)
+      ? 'students'
+      : ['attendance', 'seating', 'duty'].includes(view)
+        ? 'attendance'
+        : view;
+    return (
+      <>
+        <nav className="workspace-tabs shared-class-tabs" aria-label="班主任管理功能">
+          {(
+            [
+              ['classManagement', '班级总览'],
+              ['students', '学生与成绩'],
+              ['attendance', '上课与排班'],
+              ['growth', '成长记录'],
+            ] as const
+          ).map(([target, label]) => (
+            <button
+              key={target}
+              className={group === target ? 'selected' : ''}
+              aria-current={group === target ? 'page' : undefined}
+              disabled={disabled}
+              onClick={() => onNavigate(target)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+        {['roster', 'profiles', 'scores'].includes(view) && (
+          <nav className="shared-subnavigation" aria-label="学生与成绩工具">
+            <button disabled={disabled} onClick={() => onNavigate('students')}>
+              返回学生与成绩
+            </button>
+            {area.entries
+              .filter((entry) => ['roster', 'profiles', 'scores'].includes(entry.view))
+              .map((entry) => (
+                <button
+                  key={entry.view}
+                  aria-current={view === entry.view ? 'page' : undefined}
+                  disabled={disabled}
+                  onClick={() => onNavigate(entry.view)}
+                >
+                  {entry.label}
+                </button>
+              ))}
+          </nav>
+        )}
+        {group === 'attendance' && (
+          <nav className="shared-subnavigation" aria-label="上课与排班工具">
+            {area.entries
+              .filter((entry) => ['attendance', 'seating', 'duty'].includes(entry.view))
+              .map((entry) => (
+                <button
+                  key={entry.view}
+                  aria-current={view === entry.view ? 'page' : undefined}
+                  disabled={disabled}
+                  onClick={() => onNavigate(entry.view)}
+                >
+                  {entry.label}
+                </button>
+              ))}
+          </nav>
+        )}
+      </>
+    );
+  }
   return (
     <nav className="workspace-tabs" aria-label={`${area.label}功能`}>
       <button
@@ -231,11 +299,7 @@ export function WorkspaceLinks({
         disabled={disabled}
         onClick={() => onNavigate(area.id)}
       >
-        {area.id === 'teaching'
-          ? '资源工作台'
-          : area.id === 'classManagement'
-            ? '工作台'
-            : '设置概览'}
+        {area.id === 'teaching' ? '资源工作台' : '设置概览'}
       </button>
       {area.entries.map((entry) => (
         <button

@@ -6,5 +6,6 @@ import './figma-workspace.css';
 import './figma-fidelity.css';
 import './guided-workflows.css';
 import './floating-assistant.css';
+import './shared-class-data.css';
 
 createRoot(document.getElementById('root')!).render(<App />);

@@ -1,11 +1,12 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { openWorkspacePage } from './workspace-ui-navigation.mjs';
 
 /** Native file dialogs are deterministic doubles; every score action uses the real visible UI. */
 export async function exerciseScoreUi(application, page, root, output) {
-  await page.getByRole('button', { name: '成绩管理', exact: true }).click();
-  await page.getByRole('button', { name: '新建考试导入', exact: true }).click();
+  await openWorkspacePage(page, '班主任管理', '成绩管理');
+  await page.getByRole('button', { name: '高级考试配置', exact: true }).click();
   await page.getByLabel('考试名称', { exact: true }).fill('桌面点击合成考试');
   assert.equal(await page.getByLabel('分数口径', { exact: true }).inputValue(), 'unknown');
   await page.getByLabel('分数口径', { exact: true }).selectOption('raw');
@@ -165,7 +166,7 @@ export async function exerciseScoreUi(application, page, root, output) {
           resolve({ canceled: true, filePaths: [] });
       });
   }, currentSnapshot);
-  await page.getByRole('button', { name: '新建考试导入', exact: true }).click();
+  await page.getByRole('button', { name: '高级考试配置', exact: true }).click();
   await page.getByLabel('考试名称', { exact: true }).fill('刷新交错合成考试');
   await page.getByLabel('自定义科目名称').fill('校本A');
   await page.getByRole('button', { name: '添加科目', exact: true }).click();

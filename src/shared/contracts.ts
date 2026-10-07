@@ -750,6 +750,18 @@ export interface DesktopApi {
     input: z.input<typeof explanationDiscardInput>,
   ): Promise<Result<ExplanationDraftReceipt>>;
   snapshot(): Promise<Result<Snapshot>>;
+  selectClassData(input: {
+    epoch: string;
+    classId: string;
+  }): Promise<Result<import('./class-data-import').ClassDataPreview | null>>;
+  configureClassData(
+    input: import('./class-data-import').ClassDataConfiguration,
+  ): Promise<Result<import('./class-data-import').ClassDataPreview>>;
+  confirmClassData(input: {
+    epoch: string;
+    token: string;
+  }): Promise<Result<import('./class-data-import').ClassDataReceipt>>;
+  cancelClassData(input: { epoch: string; classId: string }): Promise<Result<void>>;
   createClass(input: z.infer<typeof createClassInput>): Promise<Result<Snapshot>>;
   renameClass(input: z.infer<typeof renameClassInput>): Promise<Result<Snapshot>>;
   saveStudent(input: StudentInput): Promise<Result<Snapshot>>;
@@ -797,6 +809,10 @@ export interface DesktopApi {
 
 // The preload exposes only these named operations, never an arbitrary IPC caller.
 export const CHANNELS = [
+  'selectClassData',
+  'configureClassData',
+  'confirmClassData',
+  'cancelClassData',
   'previewRosterImport',
   'confirmRosterImport',
   'exportRosterTemplate',

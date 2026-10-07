@@ -22,11 +22,17 @@ export function ScorePage({
   onDirtyChange,
   navigationBusy,
   onRoster,
+  onUnifiedImport,
+  selectedClass,
+  initialVersionId,
 }: {
   snapshot: Snapshot;
   onDirtyChange: (dirty: boolean) => void;
   navigationBusy: boolean;
   onRoster?: () => void;
+  onUnifiedImport?: () => void;
+  selectedClass?: string;
+  initialVersionId?: string;
 }) {
   const api = window.classManager;
   const [exams, setExams] = useState<ExamSummary[]>([]);
@@ -100,11 +106,17 @@ export function ScorePage({
     setStudentHistory(undefined);
     setCommand(undefined);
     void api
-      .listExams({ epoch: snapshot.epoch })
+      .listExams({
+        epoch: snapshot.epoch,
+        ...(snapshot.classes.some((c) => c.id === selectedClass) ? { classId: selectedClass } : {}),
+      })
       .then((result) => {
         if (disposed) return;
-        if (result.ok) setExams(result.value);
-        else setMessage({ text: result.error.message, error: true });
+        if (result.ok) {
+          setExams(result.value);
+          if (initialVersionId && result.value.some((exam) => exam.versionId === initialVersionId))
+            openVersion(initialVersionId);
+        } else setMessage({ text: result.error.message, error: true });
       })
       .catch(() => {
         if (!disposed) setMessage({ text: '无法读取考试记录。', error: true });
@@ -115,7 +127,7 @@ export function ScorePage({
       locked.current = false;
       void api.cancelScorePreview({ epoch: snapshot.epoch }).catch(() => {});
     };
-  }, [api, snapshot]);
+  }, [api, snapshot, selectedClass, initialVersionId]);
 
   useEffect(() => {
     if (!preview?.expiresAt) return;
@@ -257,11 +269,37 @@ export function ScorePage({
           type="button"
           className="primary"
           disabled={Boolean(busy) || explanationDirty || !snapshot.classes.length}
-          onClick={() => startDraft(newExam(snapshot, snapshot.classes[0]!.id))}
+          onClick={() =>
+            onUnifiedImport
+              ? onUnifiedImport()
+              : startDraft(
+                  newExam(
+                    snapshot,
+                    snapshot.classes.find((c) => c.id === selectedClass)?.id ??
+                      snapshot.classes[0]!.id,
+                  ),
+                )
+          }
         >
           <Plus size={16} />
           新建考试导入
         </button>
+        {onUnifiedImport && (
+          <button
+            disabled={Boolean(busy) || explanationDirty || !snapshot.classes.length}
+            onClick={() =>
+              startDraft(
+                newExam(
+                  snapshot,
+                  snapshot.classes.find((c) => c.id === selectedClass)?.id ??
+                    snapshot.classes[0]!.id,
+                ),
+              )
+            }
+          >
+            高级考试配置
+          </button>
+        )}
         <button
           type="button"
           disabled={Boolean(busy) || explanationDirty}

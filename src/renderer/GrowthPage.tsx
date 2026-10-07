@@ -40,14 +40,27 @@ export function GrowthPage({
   snapshot,
   onDirtyChange,
   navigationBusy,
+  selectedClass,
+  initialStudentId,
+  initialScores = [],
 }: {
   snapshot: Snapshot;
   onDirtyChange: (dirty: boolean) => void;
   navigationBusy: boolean;
+  selectedClass?: string;
+  initialStudentId?: string;
+  initialScores?: GrowthSelection['scores'];
 }) {
   const api = window.classManager;
-  const [tab, setTab] = useState<'timeline' | 'record' | 'summary'>('timeline');
-  const [studentId, setStudentId] = useState(snapshot.students[0]?.id ?? ''),
+  const students = snapshot.students.filter(
+    (s) => !selectedClass || selectedClass === 'all' || s.classId === selectedClass,
+  );
+  const [tab, setTab] = useState<'timeline' | 'record' | 'summary'>(
+    initialScores.length ? 'summary' : 'timeline',
+  );
+  const [studentId, setStudentId] = useState(
+      students.find((s) => s.id === initialStudentId)?.id ?? students[0]?.id ?? '',
+    ),
     [timeline, setTimeline] = useState<GrowthTimeline>();
   const [event, setEvent] = useState(emptyEvent),
     [eventId, setEventId] = useState<string>(),
@@ -127,7 +140,23 @@ export function GrowthPage({
         if (!alive.current || current !== sequence.current) return;
         if (history.ok) setTimeline(history.value);
         else setMessage(`${history.error.message}（${history.error.code}）`);
-        if (list.ok) setExams(list.value);
+        if (list.ok) {
+          const classExams = list.value.filter(
+            (e) => !selectedClass || selectedClass === 'all' || e.classId === selectedClass,
+          );
+          setExams(classExams);
+          if (studentId === initialStudentId && initialScores.length) {
+            const seed = initialScores.filter((s) =>
+              classExams.some((e) => e.versionId === s.versionId),
+            );
+            setScores(seed);
+            const dates = classExams
+              .filter((e) => seed.some((s) => s.versionId === e.versionId))
+              .map((e) => e.definition.date)
+              .sort();
+            if (dates[0]) setFrom(dates[0]);
+          }
+        }
         if (status.ok) {
           const selected = status.value.providers.find(
             (p) => p.provider === status.value.selectedProvider,
@@ -223,7 +252,7 @@ export function GrowthPage({
               setStudentId(e.target.value);
             }}
           >
-            {snapshot.students.map((s) => (
+            {students.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.studentNumber} {s.displayName}
                 {s.active ? '' : '（已停用）'}

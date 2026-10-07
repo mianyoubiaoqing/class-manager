@@ -90,11 +90,11 @@ const report = {
 };
 const save = () =>
   fs.writeFile(path.join(root, 'release-report.json'), JSON.stringify(report, null, 2));
-async function run(stage, args) {
+async function run(stage, args, extraEnv = {}) {
   await verifySource();
   console.log(JSON.stringify({ stage, status: 'running', root }));
   const child = spawn('rtk', args, {
-    env: { ...process.env, TEMP: temp, TMP: temp },
+    env: { ...process.env, TEMP: temp, TMP: temp, ...extraEnv },
     windowsHide: true,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -414,6 +414,10 @@ try {
   await verifySource();
   report.gates = smoke.gates;
   report.smokeReport = path.join(root, 'smoke/portable-smoke-report.json');
+  await run('shared-class-data-smoke', ['proxy', 'node', 'scripts/shared-class-data-smoke.mjs'], {
+    CLASS_MANAGER_SHARED_EXECUTABLE: report.executable,
+  });
+  report.sharedClassDataSmoke = 'passed';
   report.status = 'passed';
   report.completedAt = new Date().toISOString();
   await save();

@@ -3,6 +3,10 @@ import { randomUUID } from 'node:crypto';
 import type { Result } from '../shared/contracts';
 
 export type WorkerOperation =
+  | 'selectClassDataBytes'
+  | 'configureClassData'
+  | 'confirmClassData'
+  | 'cancelClassData'
   | 'previewRosterBytes'
   | 'cancelRosterPreview'
   | 'confirmRosterImport'

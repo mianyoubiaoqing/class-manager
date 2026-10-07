@@ -1,5 +1,10 @@
 import { GrowthRunner } from './growth-runner';
 import {
+  classDataSelectInput,
+  classDataConfigureInput,
+  classDataConfirmInput,
+} from '../shared/class-data-import';
+import {
   rosterImportInput,
   rosterConfirmInput,
   rosterTemplateInput,
@@ -832,6 +837,41 @@ if (!app.requestSingleInstanceLock()) {
               configuration: parsed,
             });
           }
+          case 'selectClassData': {
+            const parsed = classDataSelectInput.parse(input);
+            const snapshot = await worker.call<Snapshot>('snapshot');
+            if (!snapshot.ok) return snapshot;
+            if (
+              snapshot.value.epoch !== parsed.epoch ||
+              !snapshot.value.classes.some((c) => c.id === parsed.classId)
+            )
+              throw new DomainError('CONFLICT', '班级或数据空间已变化，请刷新。');
+            const cancelled = await worker.call('cancelClassData', parsed);
+            if (!cancelled.ok) return cancelled;
+            const selected = await dialog.showOpenDialog(window!, {
+              title: '选择学生信息 / 成绩文件（最多两份）',
+              properties: ['openFile', 'multiSelections'],
+              filters: [{ name: '班级资料', extensions: ['xlsx', 'csv'] }],
+            });
+            if (selected.canceled || !selected.filePaths.length) return { ok: true, value: null };
+            if (selected.filePaths.length > 2)
+              throw new DomainError(
+                'VALIDATION',
+                '最多选择两份文件；可以把学生信息和成绩放在同一工作簿。',
+              );
+            const files = [];
+            for (const path of selected.filePaths) {
+              const file = await readScoreFile(path, parsed.epoch);
+              files.push({ bytes: file.bytes, format: file.format, fileName: file.name });
+            }
+            return worker.call('selectClassDataBytes', { files, configuration: parsed });
+          }
+          case 'configureClassData':
+            return worker.call('configureClassData', classDataConfigureInput.parse(input));
+          case 'confirmClassData':
+            return worker.call('confirmClassData', classDataConfirmInput.parse(input));
+          case 'cancelClassData':
+            return worker.call('cancelClassData', classDataSelectInput.parse(input));
           case 'confirmRosterImport':
             return worker.call('confirmRosterImport', rosterConfirmInput.parse(input));
           case 'exportRosterTemplate': {
@@ -1104,6 +1144,10 @@ if (!app.requestSingleInstanceLock()) {
         'renameClass',
         'saveStudent',
         'previewRosterImport',
+        'selectClassData',
+        'configureClassData',
+        'confirmClassData',
+        'cancelClassData',
         'confirmRosterImport',
         'exportRosterTemplate',
         'saveStudentProfile',
@@ -1161,6 +1205,7 @@ if (!app.requestSingleInstanceLock()) {
                             : channel === 'prepareLesson'
                               ? 64 * 1024
                               : channel === 'previewScores' ||
+                                  channel === 'configureClassData' ||
                                   channel === 'exportScoreTemplate' ||
                                   channel === 'editExplanation'
                                 ? MAX_SCORE_COMMAND_BYTES

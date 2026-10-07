@@ -2,6 +2,10 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { DesktopApi } from '../shared/contracts';
 
 const api: DesktopApi = {
+  selectClassData: (input) => ipcRenderer.invoke('cm:selectClassData', input),
+  configureClassData: (input) => ipcRenderer.invoke('cm:configureClassData', input),
+  confirmClassData: (input) => ipcRenderer.invoke('cm:confirmClassData', input),
+  cancelClassData: (input) => ipcRenderer.invoke('cm:cancelClassData', input),
   previewRosterImport: (input) => ipcRenderer.invoke('cm:previewRosterImport', input),
   confirmRosterImport: (input) => ipcRenderer.invoke('cm:confirmRosterImport', input),
   exportRosterTemplate: (input) => ipcRenderer.invoke('cm:exportRosterTemplate', input),

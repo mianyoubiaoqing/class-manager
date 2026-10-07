@@ -1,9 +1,10 @@
 import { strict as assert } from 'node:assert';
 import { join } from 'node:path';
+import { openWorkspacePage } from './workspace-ui-navigation.mjs';
 
 /** Teacher-facing flows use real IPC/worker/storage in the isolated synthetic desktop suite. */
 export async function exerciseDutyUi(application, page, output) {
-  await page.getByRole('button', { name: '值日轮换', exact: true }).click();
+  await openWorkspacePage(page, '班主任管理', '值日轮换');
   const area = page.getByRole('region', { name: '值日轮换工作区' });
   const classId = await area.getByLabel('值日班级', { exact: true }).inputValue();
   const snapshot = await page.evaluate(() => window.classManager.snapshot());
@@ -68,7 +69,10 @@ export async function exerciseDutyUi(application, page, output) {
     await area.getByRole('button', { name: '确认保存值日', exact: true }).isDisabled(),
     true,
   );
-  await page.getByRole('button', { name: '班级名册', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: '主导航', exact: true })
+    .getByRole('button', { name: '教师备课', exact: true })
+    .click();
   await page.getByText('先完成值日轮换中的当前操作', { exact: true }).waitFor();
   await page.getByRole('heading', { name: '值日轮换', exact: true, level: 1 }).waitFor();
   await area.getByText('未保存值日草案', { exact: true }).waitFor();

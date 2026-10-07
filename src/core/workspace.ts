@@ -28,6 +28,7 @@ import type { PublicationCheckpoint } from './score-publication';
 import { GrowthBook, type GrowthCheckpoint } from './growth-book';
 import { PupilBook } from './pupil-book';
 import { parseRosterImport } from './roster-import';
+import { ClassDataImporter } from './class-data-import';
 import {
   rosterImportInput,
   rosterConfirmInput,
@@ -61,6 +62,7 @@ export class Workspace {
   private directory: string;
   private pendingRestore?: StagedBackup;
   private scoreBook?: ScoreBook;
+  private classDataImporter?: ClassDataImporter;
   private explanationBook?: ExplanationBook;
   private seatingBook?: SeatingBook;
   private dutyBook?: DutyBook;
@@ -154,6 +156,7 @@ export class Workspace {
     this.seatingBook?.dispose();
     this.explanationBook?.dispose();
     this.scoreBook?.dispose();
+    this.classDataImporter?.dispose();
     this.db.close();
   }
 
@@ -186,6 +189,10 @@ export class Workspace {
       this.scoreCheckpoint,
       this.publicationCheckpoint,
     ));
+  }
+
+  get classData(): ClassDataImporter {
+    return (this.classDataImporter ??= new ClassDataImporter(this.db, () => this.snapshot()));
   }
 
   get growth(): GrowthBook {
@@ -628,6 +635,8 @@ export class Workspace {
       this.explanationBook = undefined;
       this.scoreBook?.dispose();
       this.scoreBook = undefined;
+      this.classDataImporter?.dispose();
+      this.classDataImporter = undefined;
       this.db = candidate;
       this.classroomBook = candidateClassroom;
       this.gradingBook = candidateGrading;

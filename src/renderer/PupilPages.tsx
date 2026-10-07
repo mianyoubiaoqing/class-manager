@@ -484,12 +484,19 @@ export function AttendancePage({
   );
 }
 
-export function StudentProfilesPage({ snapshot, selectedClass, onDirtyChange }: Props) {
+export function StudentProfilesPage({
+  snapshot,
+  selectedClass,
+  onDirtyChange,
+  initialStudentId,
+}: Props & { initialStudentId?: string }) {
   const api = window.classManager;
   const students = snapshot.students.filter(
     (s) => selectedClass === 'all' || s.classId === selectedClass,
   );
-  const [studentId, setStudentId] = useState(students[0]?.id ?? ''),
+  const [studentId, setStudentId] = useState(
+      students.find((s) => s.id === initialStudentId)?.id ?? students[0]?.id ?? '',
+    ),
     [profile, setProfile] = useState<StudentProfile>();
   const [content, setContent] = useState(profileContent.parse({})),
     [history, setHistory] = useState<PupilRevision<StudentProfile>[]>([]);

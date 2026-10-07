@@ -1,15 +1,16 @@
 import { strict as assert } from 'node:assert';
 import { join } from 'node:path';
+import { openWorkspacePage } from './workspace-ui-navigation.mjs';
 
 /** Real UI and worker operations, using only the smoke suite's isolated synthetic roster. */
 export async function exerciseSeatingUi(application, page, output) {
-  await page.getByRole('button', { name: '座位编排', exact: true }).click();
+  await openWorkspacePage(page, '班主任管理', '座位编排');
   const area = page.getByRole('region', { name: '座位编排工作区' });
   await area.getByRole('button', { name: '新建座位草案', exact: true }).waitFor();
   await area.getByRole('button', { name: '新建座位草案', exact: true }).click();
   await area.getByText('未保存草案', { exact: true }).waitFor();
   assert.equal(
-    await page.getByRole('button', { name: '班级名册', exact: true }).isDisabled(),
+    await page.getByRole('button', { name: '学生与成绩', exact: true }).isDisabled(),
     true,
   );
   assert.equal(
@@ -173,7 +174,7 @@ export async function exerciseSeatingUi(application, page, output) {
     await area.getByRole('button', { name: '关闭草案并核对历史', exact: true }).click();
     await area.getByText(/本地草案已关闭/).waitFor();
     assert.equal(
-      await page.getByRole('button', { name: '班级名册', exact: true }).isEnabled(),
+      await page.getByRole('button', { name: '学生与成绩', exact: true }).isEnabled(),
       true,
     );
   } finally {
@@ -261,7 +262,7 @@ export async function exerciseSeatingCapacity(application, page, snapshot, outpu
     ipcMain.handle('cm:snapshot', () => ({ ok: true, value: snapshot }));
   }, latest);
   await page.getByRole('button', { name: '重新读取数据', exact: true }).click();
-  await page.getByRole('button', { name: '座位编排', exact: true }).click();
+  await openWorkspacePage(page, '班主任管理', '座位编排');
   const area = page.getByRole('region', { name: '座位编排工作区' });
   await area.getByRole('button', { name: '从最新版本调整', exact: true }).click();
   await area.getByRole('alert').filter({ hasText: '成员或姓名已变化' }).waitFor();

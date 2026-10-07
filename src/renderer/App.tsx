@@ -60,7 +60,9 @@ import { ModelSelectionSummary } from './ModelSelectionSummary';
 import { ConversationWorkspace } from './ConversationWorkspace';
 import { FloatingAssistant } from './FloatingAssistant';
 import { AttendancePage, StudentProfilesPage } from './PupilPages';
-import { HomeroomHome } from './HomeroomHome';
+import { SharedHomeroomHome } from './SharedHomeroomHome';
+import { SharedStudentPage } from './SharedStudentPage';
+import type { GrowthSelection } from '../shared/growth';
 import { RosterImportDialog } from './RosterImportDialog';
 import {
   workspaceAreas,
@@ -156,6 +158,10 @@ export function App() {
   const navigationFeedbackRef = useRef<HTMLDivElement>(null);
   const [scoreDirty, setScoreDirty] = useState(false);
   const [rosterImportOpen, setRosterImportOpen] = useState(false);
+  const [classDataImportRequest, setClassDataImportRequest] = useState(0);
+  const [selectedPupilId, setSelectedPupilId] = useState('');
+  const [selectedScoreVersion, setSelectedScoreVersion] = useState('');
+  const [growthScoreSeed, setGrowthScoreSeed] = useState<GrowthSelection['scores']>([]);
   const [rosterImportDirty, setRosterImportDirty] = useState(false);
   const [seatingDirty, setSeatingDirty] = useState(false);
   const [dutyDirty, setDutyDirty] = useState(false);
@@ -234,6 +240,10 @@ export function App() {
   const [notice, setNotice] = useState<Notice>();
   const [modal, setModal] = useState<Modal>();
   const [selectedClass, setSelectedClass] = useState('all');
+  useEffect(() => {
+    if (area?.id === 'classManagement' && selectedClass === 'all' && snapshot?.classes.length)
+      setSelectedClass(snapshot.classes[0]!.id);
+  }, [area?.id, selectedClass, snapshot]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('active');
   const [page, setPage] = useState(0);
@@ -483,7 +493,15 @@ export function App() {
               name,
             })
           : api.createClass({ epoch: snapshot.epoch, name }),
-      acceptSnapshot,
+      (value) => {
+        acceptSnapshot(value);
+        if (!current) {
+          const created = value.classes.find(
+            (c) => !snapshot.classes.some((old) => old.id === c.id),
+          );
+          if (created) setSelectedClass(created.id);
+        }
+      },
       '班级已保存。',
     );
     if (success) setModal(undefined);
@@ -597,8 +615,12 @@ export function App() {
           ))}
         </section>
         <button className="sidebar-guide" onClick={() => navigate('settings')}>
-          <strong>第一次使用？</strong>
-          <span>三步准备好工作台</span>
+          <strong>{area?.id === 'classManagement' ? '一份资料，全班共用' : '第一次使用？'}</strong>
+          <span>
+            {area?.id === 'classManagement'
+              ? '学生信息与成绩导入后，在各功能中直接选用。'
+              : '三步准备好工作台'}
+          </span>
           <small>查看入门引导 →</small>
         </button>
         <div className="sidebar-bottom">
@@ -815,22 +837,63 @@ export function App() {
               </button>
             </div>
           )}
-          {snapshot && (
-            <WorkspaceLinks view={view} onNavigate={navigate} disabled={busy || loading} />
+          {snapshot && view !== 'classManagement' && view !== 'students' && (
+            <WorkspaceLinks
+              view={view}
+              onNavigate={navigate}
+              disabled={
+                busy ||
+                loading ||
+                pendingViews.some(([source, dirty]) => source !== 'conversation' && dirty)
+              }
+            />
           )}
           {snapshot && view === 'classManagement' && (
-            <HomeroomHome
+            <SharedHomeroomHome
               key={`workbench:${snapshot.epoch}`}
               snapshot={snapshot}
               selectedClass={selectedClass}
               onNavigate={navigate}
-              onImportStudents={() => {
-                setView('roster');
-                setRosterImportOpen(true);
+              onCreateClass={() => setModal({ kind: 'class' })}
+              onSelectClass={setSelectedClass}
+              onSaved={acceptSnapshot}
+              onDirtyChange={setRosterImportDirty}
+              importRequest={classDataImportRequest}
+              onSelectStudent={(id) => {
+                setSelectedPupilId(id);
+                navigate('students');
               }}
-              onAddStudent={() =>
-                setModal(snapshot.classes.length ? { kind: 'student' } : { kind: 'class' })
-              }
+              onSelectExam={(id) => {
+                setSelectedScoreVersion(id);
+                navigate('scores');
+              }}
+              onManualEntry={() => {
+                setRosterImportDirty(false);
+                setView('roster');
+              }}
+            />
+          )}
+          {snapshot && view === 'students' && (
+            <SharedStudentPage
+              key={`shared-students:${snapshot.epoch}:${selectedClass}`}
+              snapshot={snapshot}
+              selectedClass={selectedClass}
+              initialStudentId={selectedPupilId}
+              onNavigate={navigate}
+              onSelectStudent={setSelectedPupilId}
+              onEditProfile={(id) => {
+                setSelectedPupilId(id);
+                navigate('profiles');
+              }}
+              onAddStudent={() => setModal({ kind: 'student' })}
+              onImport={() => {
+                if (navigate('classManagement')) setClassDataImportRequest((n) => n + 1);
+              }}
+              onGrowth={(id, scores) => {
+                setSelectedPupilId(id);
+                setGrowthScoreSeed(scores);
+                navigate('growth');
+              }}
             />
           )}
           {snapshot && area?.id === view && view !== 'classManagement' && (
@@ -850,7 +913,8 @@ export function App() {
           )}
           {snapshot && view === 'profiles' && (
             <StudentProfilesPage
-              key={`profiles:${snapshot.epoch}`}
+              key={`profiles:${snapshot.epoch}:${selectedClass}:${selectedPupilId}`}
+              initialStudentId={selectedPupilId}
               snapshot={snapshot}
               selectedClass={selectedClass}
               onDirtyChange={setPupilDirty}
@@ -874,7 +938,10 @@ export function App() {
           )}
           {snapshot && view === 'growth' && (
             <GrowthPage
-              key={`growth:${snapshot.epoch}`}
+              key={`growth:${snapshot.epoch}:${selectedClass}:${selectedPupilId}`}
+              selectedClass={selectedClass}
+              initialStudentId={selectedPupilId}
+              initialScores={growthScoreSeed}
               snapshot={snapshot}
               onDirtyChange={setGrowthDirty}
               navigationBusy={busy || loading}
@@ -903,7 +970,8 @@ export function App() {
           )}
           {snapshot && view === 'seating' && (
             <SeatingPage
-              key={`seating:${snapshot.epoch}`}
+              key={`seating:${snapshot.epoch}:${selectedClass}`}
+              selectedClass={selectedClass}
               snapshot={snapshot}
               onDirtyChange={setSeatingDirty}
               navigationBusy={busy}
@@ -919,7 +987,8 @@ export function App() {
           )}
           {snapshot && view === 'duty' && (
             <DutyPage
-              key={`duty:${snapshot.epoch}`}
+              key={`duty:${snapshot.epoch}:${selectedClass}`}
+              selectedClass={selectedClass}
               snapshot={snapshot}
               onDirtyChange={setDutyDirty}
               navigationBusy={busy || loading}
@@ -927,7 +996,12 @@ export function App() {
           )}
           {snapshot && view === 'scores' && (
             <ScorePage
-              key={`scores:${snapshot.epoch}`}
+              key={`scores:${snapshot.epoch}:${selectedClass}:${selectedScoreVersion}`}
+              selectedClass={selectedClass}
+              initialVersionId={selectedScoreVersion}
+              onUnifiedImport={() => {
+                if (navigate('classManagement')) setClassDataImportRequest((n) => n + 1);
+              }}
               snapshot={snapshot}
               onDirtyChange={setScoreDirty}
               navigationBusy={busy || loading}

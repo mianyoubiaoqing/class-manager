@@ -2,6 +2,8 @@ import type { DesktopApi, Snapshot } from '../shared/contracts';
 import type { ScoreDifferences, ScoreVersionView } from '../shared/score-commands';
 import type { ScoreVersionPayload } from '../shared/score-records';
 import type { ScoreSubject, ScoreValue } from '../shared/scores';
+import { SUBJECT_CATALOG } from '../shared/score-subjects';
+export { SUBJECT_CATALOG } from '../shared/score-subjects';
 
 export type ScoreConfiguration = Parameters<DesktopApi['previewScores']>[0];
 export interface ExamDraft {
@@ -11,24 +13,6 @@ export interface ExamDraft {
 }
 
 // Keep these identifiers stable: history joins subjects by ID, never by translated label.
-export const SUBJECT_CATALOG: ScoreSubject[] = [
-  '语文',
-  '数学',
-  '英语',
-  '物理',
-  '化学',
-  '生物学',
-  '思想政治',
-  '历史',
-  '地理',
-  '日语',
-  '俄语',
-].map((name, index) => ({
-  id: `c1000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
-  name,
-  maxScore: index < 3 || index > 8 ? '150' : '100',
-  precision: 0,
-}));
 
 /** Custom subjects use a namespace-specific digest so the same name survives backup/reinstall. */
 export async function customSubject(name: string): Promise<ScoreSubject> {

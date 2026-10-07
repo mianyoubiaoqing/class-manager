@@ -49,11 +49,10 @@ try {
   });
   const originalPreserved = readFileSync(originalPath, 'utf8') === original;
   report.checks.push({ existingTemplateRejected: !protectedExport.ok, originalPreserved });
-  const nav = page.getByRole('navigation', { name: '班主任管理功能', exact: true });
-  await nav.getByRole('button', { name: '上课点名', exact: true }).click();
+  await openWorkspacePage(page, '班主任管理', '上课点名');
   await page.getByRole('heading', { name: '上课点名', level: 1, exact: true }).waitFor();
   report.checks.push('Empty roster alone does not lock navigation');
-  await nav.getByRole('button', { name: '班级名册', exact: true }).click();
+  await openWorkspacePage(page, '班主任管理', '班级名册');
   await page.getByRole('button', { name: '批量导入学生', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: '把学生名单导入班级', exact: true });
   await dialog.waitFor();
@@ -64,8 +63,8 @@ try {
   const progressLabel = await dialog.getByLabel('导入进度（按顺序完成）', { exact: true }).count();
   report.checks.push({ downloadLabel, progressLabel });
   await dialog.getByRole('button', { name: '关闭批量导入', exact: true }).click();
-  await nav.getByRole('button', { name: '成绩管理', exact: true }).click();
-  await page.getByRole('button', { name: '新建考试导入', exact: true }).click();
+  await openWorkspacePage(page, '班主任管理', '成绩管理');
+  await page.getByRole('button', { name: '高级考试配置', exact: true }).click();
   await page.getByText('该班级没有在籍学生。', { exact: true }).waitFor();
   const emptyRosterAction = await page
     .getByRole('button', { name: '先导入学生名单', exact: true })

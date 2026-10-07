@@ -7,6 +7,7 @@ import { SCORE_FILE_LIMITS } from '../shared/score-import';
 export interface ScoreCell {
   value: string | number | null;
   problem?: string;
+  numberFormat?: string;
 }
 export type ScoreTable = ScoreCell[][];
 
@@ -65,46 +66,63 @@ export async function readScoreTable(
   bytes: Uint8Array,
   format: 'csv' | 'xlsx',
 ): Promise<ScoreTable> {
+  const tables = await readClassDataTables(bytes, format);
+  if (tables.length !== 1) {
+    throw new DomainError('SCORE_WORKSHEETS', '请仅保留一张成绩工作表，不能自动猜测导入范围。');
+  }
+  return tables[0]!.table;
+}
+
+/** Multiple worksheets are exposed for explicit selection in the shared class import. */
+export async function readClassDataTables(
+  bytes: Uint8Array,
+  format: 'csv' | 'xlsx',
+): Promise<Array<{ name: string; table: ScoreTable }>> {
   if (bytes.byteLength === 0 || bytes.byteLength > SCORE_FILE_LIMITS.bytes) {
     throw new DomainError('SCORE_FILE_LIMIT', '成绩文件为空或超过 5 MiB，未导入任何数据。');
   }
-  if (format === 'csv') return csvTable(bytes);
+  if (format === 'csv') return [{ name: 'CSV', table: csvTable(bytes) }];
   if (format !== 'xlsx') throw new DomainError('SCORE_FILE_TYPE', '只接受 XLSX 或 UTF-8 CSV。');
   await inspectScoreWorkbook(Buffer.from(bytes));
   try {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(Uint8Array.from(bytes).buffer);
-    if (workbook.worksheets.length !== 1) {
-      throw new DomainError('SCORE_WORKSHEETS', '请仅保留一张成绩工作表，不能自动猜测导入范围。');
-    }
-    const sheet = workbook.worksheets[0]!;
-    if (sheet.state !== 'visible') {
-      throw new DomainError('SCORE_WORKSHEETS', '成绩工作表必须可见。');
-    }
-    validateTableSize(sheet.rowCount, sheet.columnCount);
-    const rows: ScoreTable = [];
-    for (let rowIndex = 1; rowIndex <= sheet.rowCount; rowIndex++) {
-      const row = sheet.getRow(rowIndex);
-      if (row.hidden) {
-        throw new DomainError('SCORE_HIDDEN_ROWS', `第 ${rowIndex} 行被隐藏，请先取消隐藏。`);
+    if (!workbook.worksheets.length || workbook.worksheets.length > 10)
+      throw new DomainError('SCORE_WORKSHEETS', '工作簿需包含 1–10 张工作表。');
+    const tables: Array<{ name: string; table: ScoreTable }> = [];
+    for (const sheet of workbook.worksheets) {
+      if (sheet.state !== 'visible') {
+        throw new DomainError('SCORE_WORKSHEETS', '成绩工作表必须可见。');
       }
-      const values: ScoreCell[] = [];
-      for (let column = 1; column <= sheet.columnCount; column++) {
-        if (sheet.getColumn(column).hidden) {
-          throw new DomainError('SCORE_HIDDEN_COLUMNS', `第 ${column} 列被隐藏，请先取消隐藏。`);
+      validateTableSize(sheet.rowCount, sheet.columnCount);
+      const rows: ScoreTable = [];
+      for (let rowIndex = 1; rowIndex <= sheet.rowCount; rowIndex++) {
+        const row = sheet.getRow(rowIndex);
+        if (row.hidden) {
+          throw new DomainError('SCORE_HIDDEN_ROWS', `第 ${rowIndex} 行被隐藏，请先取消隐藏。`);
         }
-        const current = row.getCell(column);
-        if (current.isMerged) {
-          throw new DomainError(
-            'SCORE_MERGED',
-            `第 ${rowIndex} 行存在合并单元格，请使用单行表头。`,
-          );
+        const values: ScoreCell[] = [];
+        for (let column = 1; column <= sheet.columnCount; column++) {
+          if (sheet.getColumn(column).hidden) {
+            throw new DomainError('SCORE_HIDDEN_COLUMNS', `第 ${column} 列被隐藏，请先取消隐藏。`);
+          }
+          const current = row.getCell(column);
+          if (current.isMerged) {
+            throw new DomainError(
+              'SCORE_MERGED',
+              `第 ${rowIndex} 行存在合并单元格，请使用单行表头。`,
+            );
+          }
+          values.push({
+            ...cell(current.value),
+            ...(current.numFmt ? { numberFormat: current.numFmt } : {}),
+          });
         }
-        values.push(cell(current.value));
+        rows.push(values);
       }
-      rows.push(values);
+      tables.push({ name: sheet.name, table: rows });
     }
-    return rows;
+    return tables;
   } catch (error) {
     if (error instanceof DomainError) throw error;
     throw new DomainError(

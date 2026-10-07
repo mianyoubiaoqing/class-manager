@@ -19,6 +19,10 @@ const requestSchema = z
   .object({
     id: z.number().int(),
     operation: z.enum([
+      'selectClassDataBytes',
+      'configureClassData',
+      'confirmClassData',
+      'cancelClassData',
       'previewRosterBytes',
       'cancelRosterPreview',
       'confirmRosterImport',
@@ -567,6 +571,38 @@ try {
           );
           break;
         }
+        case 'selectClassDataBytes': {
+          const request = z
+            .object({
+              files: z
+                .array(
+                  z
+                    .object({
+                      bytes: z.instanceof(Uint8Array),
+                      format: z.enum(['csv', 'xlsx']),
+                      fileName: z.string().min(1).max(255),
+                    })
+                    .strict(),
+                )
+                .min(1)
+                .max(2),
+              configuration: z.unknown(),
+            })
+            .strict()
+            .parse(input);
+          value = await workspace.classData.select(request.files, request.configuration);
+          break;
+        }
+        case 'configureClassData':
+          value = workspace.classData.configure(input);
+          break;
+        case 'confirmClassData':
+          value = workspace.classData.confirm(input);
+          break;
+        case 'cancelClassData':
+          workspace.classData.cancel(input);
+          value = null;
+          break;
         case 'confirmRosterImport':
           value = workspace.confirmRoster(input);
           break;
