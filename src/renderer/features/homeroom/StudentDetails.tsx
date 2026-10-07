@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Check, Plus, Search } from 'lucide-react';
-import type { Snapshot } from '../shared/contracts';
-import type { ExamSummary, ScoreVersionView } from '../shared/score-commands';
-import type { AttendanceRecord, StudentProfile } from '../shared/pupils';
-import type { GrowthTimeline, GrowthSelection } from '../shared/growth';
-import { WorkspaceLinks, type AppView } from './WorkspaceNavigation';
-import { scoreText } from './score-editor';
+import type { Snapshot } from '../../../shared/contracts';
+import type { ExamSummary, ScoreVersionView } from '../../../shared/score-commands';
+import type { AttendanceRecord, StudentProfile } from '../../../shared/pupils';
+import type { GrowthTimeline, GrowthSelection } from '../../../shared/growth';
+import { WorkspaceLinks, type AppView } from '../../WorkspaceNavigation';
+import { scoreText } from '../../score-editor';
 
 function summary(version: ScoreVersionView, studentId: string) {
   const group = version.payload.analysis.groups.find(
@@ -38,6 +38,7 @@ export function SharedStudentPage({
   onAddStudent,
   onImport,
   onGrowth,
+  compact = false,
 }: {
   snapshot: Snapshot;
   selectedClass: string;
@@ -48,6 +49,7 @@ export function SharedStudentPage({
   onAddStudent: () => void;
   onImport: () => void;
   onGrowth: (id: string, scores: GrowthSelection['scores']) => void;
+  compact?: boolean;
 }) {
   const classId = selectedClass === 'all' ? (snapshot.classes[0]?.id ?? '') : selectedClass;
   const students = snapshot.students.filter((s) => s.active && s.classId === classId);
@@ -170,25 +172,29 @@ export function SharedStudentPage({
     .slice(0, 20);
   return (
     <section className="shared-students" aria-label="学生与成绩资料">
-      <header className="shared-heading">
-        <div>
-          <h1>学生与成绩，放在一起看</h1>
-          <p>选中一个学生，查看同一份资料里的成绩、点名和成长记录。</p>
+      {!compact && (
+        <header className="shared-heading">
+          <div>
+            <h1>学生与成绩，放在一起看</h1>
+            <p>选中一个学生，查看同一份资料里的成绩、点名和成长记录。</p>
+          </div>
+          <button className="shared-text-button" onClick={() => onNavigate('classManagement')}>
+            返回班级总览
+          </button>
+        </header>
+      )}
+      {!compact && <WorkspaceLinks view="students" onNavigate={onNavigate} />}
+      {!compact && (
+        <div className="shared-student-tools">
+          <button onClick={onImport}>导入学生信息 / 成绩</button>
+          <button className="shared-text-button" onClick={() => onNavigate('roster')}>
+            管理班级名册
+          </button>
+          <button className="shared-text-button" onClick={() => onNavigate('scores')}>
+            全部考试与成绩统计（{exams.length} 次）
+          </button>
         </div>
-        <button className="shared-text-button" onClick={() => onNavigate('classManagement')}>
-          返回班级总览
-        </button>
-      </header>
-      <WorkspaceLinks view="students" onNavigate={onNavigate} />
-      <div className="shared-student-tools">
-        <button onClick={onImport}>导入学生信息 / 成绩</button>
-        <button className="shared-text-button" onClick={() => onNavigate('roster')}>
-          管理班级名册
-        </button>
-        <button className="shared-text-button" onClick={() => onNavigate('scores')}>
-          全部考试与成绩统计（{exams.length} 次）
-        </button>
-      </div>
+      )}
       {notice && (
         <p className="shared-warning" role="alert">
           {notice}

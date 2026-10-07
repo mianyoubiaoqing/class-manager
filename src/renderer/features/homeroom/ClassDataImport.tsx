@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Check, CircleHelp, Plus, Upload } from 'lucide-react';
-import type { Snapshot } from '../shared/contracts';
+import type { Snapshot } from '../../../shared/contracts';
 import type {
   ClassDataConfiguration,
   ClassDataPreview,
   ClassDataRow,
-} from '../shared/class-data-import';
-import { scoreText } from './score-editor';
-import { WorkspaceLinks, type AppView } from './WorkspaceNavigation';
+} from '../../../shared/class-data-import';
+import { scoreText } from '../../score-editor';
+import { WorkspaceLinks, type AppView } from '../../WorkspaceNavigation';
 
 export function ClassDataImport({
   snapshot,

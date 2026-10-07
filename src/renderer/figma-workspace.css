@@ -41,8 +41,8 @@ input[type='radio'] {
   grid-template-columns: 208px minmax(0, 1fr);
 }
 .sidebar {
-  background: #12382d;
-  color: #c8dacf;
+  background: linear-gradient(180deg, #edf6ef, #edf5fb);
+  color: #49665b;
   padding: 24px 16px 16px;
   border: none;
   gap: 16px;
@@ -52,20 +52,20 @@ input[type='radio'] {
   gap: 4px;
 }
 .brand {
-  color: #fff;
+  color: #187454;
   font-size: 18px;
   gap: 12px;
 }
 .brand small {
-  color: #c8dacf;
+  color: #64796f;
   font-size: 12px;
 }
 .brand-mark {
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: #2c5744;
-  color: #fff;
+  background: #d8ede0;
+  color: #187454;
   box-shadow: none;
 }
 .sidebar-toggle-btn {
@@ -74,7 +74,7 @@ input[type='radio'] {
   min-height: 30px;
   background: transparent;
   border: none;
-  color: #c8dacf;
+  color: #49665b;
 }
 .sidebar-new-chat-btn,
 .environment {
@@ -88,14 +88,14 @@ input[type='radio'] {
   min-height: 48px;
   padding: 12px 14px;
   border-radius: 12px;
-  color: #c8dacf;
+  color: #49665b;
   gap: 12px;
   border: none;
 }
 .primary-navigation .nav-item.selected,
 .primary-navigation .nav-item:hover {
-  background: #2c5744;
-  color: #fff;
+  background: #fff;
+  color: #187454;
 }
 .primary-navigation .nav-item::before,
 .nav-item-arrow {
@@ -107,45 +107,45 @@ input[type='radio'] {
   align-items: start;
   gap: 9px;
   padding: 18px 16px;
-  background: #2c5744;
+  background: #e0eee5;
   border: none;
-  color: #fff;
+  color: #187454;
   text-align: left;
   border-radius: 16px;
 }
 .sidebar-guide span,
 .sidebar-guide small {
-  color: #c8dacf;
+  color: #64796f;
   font-size: 12px;
 }
 .sidebar-bottom {
   margin-top: 0;
   padding: 4px 8px;
   border: none;
-  color: #c8dacf;
+  color: #64796f;
   font-size: 12px;
 }
 .sidebar-bottom svg,
 .sidebar-bottom small {
-  color: #c8dacf;
+  color: #64796f;
 }
 .class-navigation {
-  border-top: 1px solid #2c5744;
+  border-top: 1px solid #dbe6e1;
   max-height: 240px;
   overflow: auto;
 }
 .sidebar .section-label,
 .sidebar .class-nav,
 .sidebar .class-nav small {
-  color: #c8dacf;
+  color: #49665b;
 }
 .sidebar .class-nav.current {
-  background: #2c5744;
-  color: #fff;
+  background: #fff;
+  color: #187454;
 }
 .sidebar .icon-button {
   background: transparent;
-  color: #c8dacf;
+  color: #49665b;
 }
 main {
   min-width: 0;

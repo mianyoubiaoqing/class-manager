@@ -109,16 +109,16 @@ export async function exerciseExplanationUi(application, page, root, output, exa
     await detail.getByText('合成模型解释，尚未核实', { exact: true }).waitFor();
     await detail.getByLabel('教师复核记录', { exact: true }).fill('教师合成修订：等待核对原卷');
     assert.equal(
-      await page.getByRole('button', { name: '班级名册', exact: true }).isDisabled(),
+      await page.getByRole('button', { name: '花名册', exact: true }).isDisabled(),
       true,
     );
     await page
       .getByRole('navigation', { name: '主导航', exact: true })
       .getByRole('button', { name: '教师备课', exact: true })
       .click();
-    await page.getByText('先完成成绩管理中的当前操作', { exact: true }).waitFor();
+    await page.getByText('先完成成绩分析中的当前操作', { exact: true }).waitFor();
     assert.equal(
-      await page.getByRole('heading', { name: '成绩管理', exact: true, level: 1 }).count(),
+      await page.getByRole('heading', { name: '成绩分析', exact: true, level: 1 }).count(),
       1,
     );
     assert.equal(
@@ -132,10 +132,7 @@ export async function exerciseExplanationUi(application, page, root, output, exa
     assert.equal(await page.getByLabel('选择成绩版本').isDisabled(), true);
     await detail.getByRole('button', { name: '保存教师编辑', exact: true }).click();
     await section.getByRole('status').filter({ hasText: '教师编辑已保存' }).waitFor();
-    assert.equal(
-      await page.getByRole('button', { name: '班级名册', exact: true }).isEnabled(),
-      true,
-    );
+    assert.equal(await page.getByRole('button', { name: '花名册', exact: true }).isEnabled(), true);
     assert.equal(
       await detail.getByLabel('教师复核记录').inputValue(),
       '教师合成修订：等待核对原卷',
@@ -217,8 +214,8 @@ export async function exerciseExplanationUi(application, page, root, output, exa
       await detail.getByLabel('教师复核记录').inputValue(),
       '教师合成修订：等待核对原卷',
     );
-    await page.getByRole('button', { name: '班级名册', exact: true }).click();
-    await page.getByRole('button', { name: '成绩管理', exact: true }).click();
+    await page.getByRole('button', { name: '花名册', exact: true }).click();
+    await page.getByRole('button', { name: '成绩分析', exact: true }).click();
     await page.getByRole('button', { name: `查看 ${examName}`, exact: true }).click();
     await section.getByRole('button', { name: '查看草案', exact: true }).last().click();
     assert.equal(

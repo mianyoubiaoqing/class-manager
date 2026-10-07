@@ -44,7 +44,7 @@ try {
   const ledger = await page.evaluate(() => window.classManager.getDeepSeekLedger());
   assert.equal(ledger.ok, true);
   assert.deepEqual(ledger.value, live.ledger);
-  await page.getByRole('button', { name: '成绩管理', exact: true }).click();
+  await page.getByRole('button', { name: '成绩分析', exact: true }).click();
   await page.getByRole('button', { name: '查看 合成真实接口验收', exact: true }).click();
   await page.getByRole('button', { name: '查看草案', exact: true }).click();
   const detail = page.getByRole('region', { name: '解释草案详情', exact: true });

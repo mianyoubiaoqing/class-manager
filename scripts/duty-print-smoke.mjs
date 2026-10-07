@@ -227,7 +227,7 @@ try {
     };
   });
   await page.getByRole('button', { name: '重新读取数据', exact: true }).click();
-  await page.getByRole('button', { name: '值日轮换', exact: true }).click();
+  await page.getByRole('button', { name: '值日表', exact: true }).click();
   const area = page.getByRole('region', { name: '值日轮换工作区' });
   await area.getByLabel('值日班级').selectOption(fixture.smallClassId);
   await area.getByLabel('已确认值日版本').selectOption(fixture.oldId);

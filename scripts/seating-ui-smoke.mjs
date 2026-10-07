@@ -10,7 +10,7 @@ export async function exerciseSeatingUi(application, page, output) {
   await area.getByRole('button', { name: '新建座位草案', exact: true }).click();
   await area.getByText('未保存草案', { exact: true }).waitFor();
   assert.equal(
-    await page.getByRole('button', { name: '学生与成绩', exact: true }).isDisabled(),
+    await page.getByRole('button', { name: '学生档案', exact: true }).isDisabled(),
     true,
   );
   assert.equal(
@@ -174,7 +174,7 @@ export async function exerciseSeatingUi(application, page, output) {
     await area.getByRole('button', { name: '关闭草案并核对历史', exact: true }).click();
     await area.getByText(/本地草案已关闭/).waitFor();
     assert.equal(
-      await page.getByRole('button', { name: '学生与成绩', exact: true }).isEnabled(),
+      await page.getByRole('button', { name: '学生档案', exact: true }).isEnabled(),
       true,
     );
   } finally {

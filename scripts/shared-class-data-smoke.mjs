@@ -84,11 +84,12 @@ try {
   await launch();
   await size(1440, 960);
   await main().getByRole('button', { name: '班主任管理', exact: true }).click();
-  await page.getByRole('heading', { name: '先把班级资料准备好', exact: true }).waitFor();
+  await page.getByRole('heading', { name: '班主任工作台', exact: true }).waitFor();
   await page.getByRole('button', { name: '新建班级', exact: true }).click();
   await page.getByLabel('班级名称', { exact: true }).fill('共享资料合成班');
   await page.getByRole('button', { name: '保存班级', exact: true }).click();
   await screenshot('37-initial');
+  await page.getByRole('button', { name: '导入资料', exact: true }).click();
   const roster = path.join(root, '名单.csv'),
     scores = path.join(root, '成绩.csv');
   await fs.writeFile(roster, '学号,姓名\n001,合成甲\n002,合成乙\n003,合成丙');
@@ -114,7 +115,7 @@ try {
   assert.equal(await page.getByRole('button', { name: '资料下一页' }).isDisabled(), true);
   await screenshot('38-preview');
   await page.getByRole('button', { name: '确认保存并开始使用', exact: true }).click();
-  await page.getByRole('heading', { name: '共享资料合成班，资料已准备好', exact: true }).waitFor();
+  await page.getByRole('heading', { name: '欢迎使用 · 共享资料合成班', exact: true }).waitFor();
   await page.getByText('已保存 3 名学生和 1 次考试', { exact: true }).waitFor();
   snapshot = await call('snapshot');
   assert.equal(snapshot.students.length, 3);
@@ -123,8 +124,9 @@ try {
   await gate(
     'Two files preview without writes, then save one shared roster and one exam through real Main/worker/SQLite.',
   );
-  await tabs().getByRole('button', { name: '学生与成绩', exact: true }).click();
-  await page.getByRole('heading', { name: '学生与成绩，放在一起看', exact: true }).waitFor();
+  await tabs().getByRole('button', { name: '学生档案', exact: true }).click();
+  await page.getByRole('heading', { name: '学生档案', exact: true }).waitFor();
+  await page.getByRole('button', { name: '查看合成甲档案', exact: true }).click();
   await page
     .getByRole('navigation', { name: '学生资料分类', exact: true })
     .getByRole('button', { name: '考试成绩', exact: true })
@@ -132,12 +134,28 @@ try {
   await page.getByRole('heading', { name: '成绩变化', exact: true }).waitFor();
   await page.getByRole('cell', { name: '116', exact: true }).waitFor();
   await screenshot('41-student-scores');
-  await page.getByRole('button', { name: /合成丙.*003/ }).click();
+  const studentDialog = page.getByRole('dialog', { name: '学生档案 · 合成甲', exact: true });
+  assert.ok((await studentDialog.boundingBox()).width >= 900, 'Student dialog remains too narrow');
+  await size(390, 700);
+  await screenshot('student-dialog-390');
+  const narrowDialog = await studentDialog.boundingBox();
+  assert.ok(narrowDialog.x >= 0 && narrowDialog.x + narrowDialog.width <= 391);
+  await page.keyboard.press('Escape');
+  await studentDialog.waitFor({ state: 'hidden' });
+  assert.equal(
+    await page
+      .getByRole('button', { name: '查看合成甲档案' })
+      .evaluate((e) => document.activeElement === e),
+    true,
+  );
+  await size(1440, 960);
+  await page.getByRole('button', { name: '查看合成丙档案', exact: true }).click();
   await page.getByRole('cell', { name: '缺考', exact: true }).waitFor();
   await gate(
     'Student detail reads saved raw scores; absent values remain absent and incomplete totals are labelled.',
   );
-  await tabs().getByRole('button', { name: '上课与排班', exact: true }).click();
+  await page.getByRole('button', { name: '关闭学生档案', exact: true }).click();
+  await tabs().getByRole('button', { name: '上课点名', exact: true }).click();
   await page.getByRole('heading', { name: '上课点名', exact: true }).waitFor();
   await page.getByRole('button', { name: '到课并下一位', exact: true }).click();
   await page.getByRole('button', { name: '迟到并下一位', exact: true }).click();
@@ -145,7 +163,8 @@ try {
   await page.getByRole('button', { name: '保存点名记录', exact: true }).click();
   await page.getByRole('button', { name: '确认保存点名', exact: true }).click();
   await page.getByText('点名记录已保存，后续更正会保留原版本。', { exact: true }).waitFor();
-  await tabs().getByRole('button', { name: '学生与成绩', exact: true }).click();
+  await tabs().getByRole('button', { name: '学生档案', exact: true }).click();
+  await page.getByRole('button', { name: '查看合成丙档案', exact: true }).click();
   await page
     .getByRole('navigation', { name: '学生资料分类' })
     .getByRole('button', { name: '点名记录', exact: true })
@@ -154,7 +173,8 @@ try {
   await gate(
     'The imported roster is immediately usable for roll call; saved attendance reappears in the same student detail.',
   );
-  await tabs().getByRole('button', { name: '班级总览', exact: true }).click();
+  await page.getByRole('button', { name: '关闭学生档案', exact: true }).click();
+  await tabs().getByRole('button', { name: '工作台', exact: true }).click();
   await page.getByRole('button', { name: '导入资料', exact: true }).click();
   await fs.writeFile(
     scores,
@@ -169,8 +189,8 @@ try {
   await page.getByText('已保存 3 名学生和 2 次考试', { exact: true }).waitFor();
   snapshot = await call('snapshot');
   assert.equal(snapshot.students.length, 3);
-  await tabs().getByRole('button', { name: '学生与成绩', exact: true }).click();
-  await page.getByRole('button', { name: /合成甲.*001/ }).click();
+  await tabs().getByRole('button', { name: '学生档案', exact: true }).click();
+  await page.getByRole('button', { name: '查看合成甲档案', exact: true }).click();
   await page
     .getByRole('navigation', { name: '学生资料分类' })
     .getByRole('button', { name: '考试成绩', exact: true })
@@ -182,10 +202,10 @@ try {
     'Another score-only exam matches the original student IDs, compares identical scoring scales and seeds the existing growth workflow.',
   );
   await openWorkspacePage(page, '班主任管理', '班级名册');
-  await page.getByRole('heading', { name: '班级名册', exact: true }).waitFor();
+  await page.getByRole('heading', { name: '花名册', exact: true }).waitFor();
   await gate('Legacy manual roster tools remain accessible under Student and scores.');
   await main().getByRole('button', { name: '班主任管理', exact: true }).click();
-  await tabs().getByRole('button', { name: '班级总览', exact: true }).click();
+  await tabs().getByRole('button', { name: '工作台', exact: true }).click();
   for (const [width, height] of [
     [1440, 960],
     [1280, 720],

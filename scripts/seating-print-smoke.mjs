@@ -137,7 +137,7 @@ try {
     };
   });
   await page.getByRole('button', { name: '重新读取数据', exact: true }).click();
-  await page.getByRole('button', { name: '座位编排', exact: true }).click();
+  await page.getByRole('button', { name: '座次表', exact: true }).click();
   const area = page.getByRole('region', { name: '座位编排工作区' });
   await area.getByLabel('座位班级').selectOption(fixture.smallClassId);
   await area.getByLabel('已确认座位版本').selectOption(fixture.oldId);

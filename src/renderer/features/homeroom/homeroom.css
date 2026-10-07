@@ -1,4 +1,260 @@
-/* Layout and colors from editable Figma frames 57:2015 through 57:2977. */
+/* Homeroom pages: shared import, teacher dashboard and student directory. */
+.teacher-dashboard {
+  gap: 22px;
+}
+.teacher-welcome {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  background: linear-gradient(105deg, #eff7f0, #edf5fc);
+  border: 1px solid #dbe6e1;
+  border-radius: 16px;
+  padding: 24px;
+}
+.teacher-welcome h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+.teacher-welcome p {
+  margin: 0;
+  color: #5d7167;
+}
+.teacher-welcome small {
+  display: block;
+  margin-top: 8px;
+  color: #5d7167;
+}
+.teacher-first-use {
+  padding: 16px 20px;
+  border-left: 3px solid #61ab76;
+  background: #fff;
+  border-radius: 8px;
+}
+.teacher-first-use p {
+  margin: 6px 0;
+  color: #5d7167;
+  line-height: 1.6;
+}
+.teacher-task-section h2 {
+  margin: 0 0 14px;
+  font-size: 18px;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+.teacher-task-section h2::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #67ad79;
+}
+.teacher-task-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.teacher-task-grid .teacher-task-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 12px;
+  padding: 22px 20px;
+  min-height: 180px;
+  background: linear-gradient(150deg, #f5faf5, #fff 70%);
+  border: 1px solid #dbe6e1;
+  border-radius: 16px;
+  box-shadow: 0 3px 12px #173c2710;
+  color: #18352b;
+}
+.teacher-task-grid .teacher-task-card:nth-child(even) {
+  background: linear-gradient(150deg, #f0f7fd, #fff 70%);
+}
+.teacher-task-card:hover:not(:disabled) {
+  border-color: #88baa0;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px #173c2719;
+}
+.teacher-task-icon {
+  color: #258360;
+}
+.teacher-task-card strong {
+  font-size: 16px;
+}
+.teacher-task-card > span:not(.teacher-task-icon) {
+  color: #64796f;
+  line-height: 1.6;
+  font-size: 13px;
+}
+.teacher-task-card small {
+  margin-top: auto;
+  background: #e6f3e8;
+  color: #277345;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+.teacher-task-card:nth-child(even) small {
+  background: #e3eff9;
+  color: #3879a7;
+}
+.teacher-recent {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.teacher-recent h2 {
+  font-size: 16px;
+  margin: 0;
+}
+.teacher-recent button {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: white;
+  border-color: #dbe6e1;
+}
+.teacher-recent span,
+.teacher-recent small {
+  font-size: 12px;
+  color: #64796f;
+}
+.teacher-directory-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.teacher-directory-toolbar .shared-search {
+  flex: 1;
+  min-width: 220px;
+  max-width: 360px;
+}
+.teacher-directory-count {
+  color: #64796f;
+  margin-right: auto;
+}
+.teacher-student-name {
+  border: 0;
+  background: none;
+  color: #187454;
+  font-weight: 600;
+  padding: 4px 0;
+  box-shadow: none;
+}
+.teacher-directory-empty {
+  text-align: center;
+  padding: 40px 20px;
+}
+.teacher-directory-empty button {
+  margin-top: 20px;
+}
+.teacher-class-tools {
+  align-self: flex-start;
+}
+.teacher-student-dialog {
+  width: min(1080px, calc(100vw - 40px));
+  max-height: calc(100dvh - 48px);
+  padding: 0;
+  border: 1px solid #dbe6e1;
+  border-radius: 16px;
+  color: #18352b;
+  background: #f6faf7;
+  overflow: hidden;
+}
+.teacher-student-dialog::backdrop {
+  background: #193a2b55;
+}
+.teacher-student-dialog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: white;
+  border-bottom: 1px solid #dbe6e1;
+}
+.teacher-student-dialog > header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.teacher-student-dialog-body {
+  padding: 20px;
+  overflow: auto;
+  max-height: calc(100dvh - 128px);
+}
+.teacher-student-dialog .shared-student-columns {
+  display: block;
+}
+.teacher-student-dialog .shared-student-list {
+  display: none;
+}
+.teacher-student-dialog .shared-student-detail {
+  width: 100%;
+}
+.teacher-student-dialog .shared-footer,
+.teacher-student-dialog .shared-student-detail > .shared-note {
+  padding-right: 0;
+}
+.homeroom-services {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.score-advanced-menu {
+  position: relative;
+}
+.score-advanced-menu > summary {
+  cursor: pointer;
+  padding: 10px 14px;
+  border: 1px solid #dee8e1;
+  border-radius: 10px;
+  background: white;
+}
+.score-advanced-menu > button {
+  margin-top: 8px;
+}
+.shared-class-tabs {
+  flex-wrap: wrap;
+}
+@media (max-width: 1100px) {
+  .teacher-task-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .homeroom-services {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .teacher-task-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .teacher-task-grid .teacher-task-card {
+    min-height: 150px;
+  }
+  .teacher-welcome {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 20px;
+  }
+  .teacher-directory-toolbar .shared-search {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    flex-basis: 100%;
+  }
+  .teacher-student-dialog {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 24px);
+  }
+  .teacher-student-dialog-body {
+    padding: 12px;
+  }
+  .teacher-recent button {
+    flex-wrap: wrap;
+  }
+}
 .shared-homeroom,
 .class-data-import,
 .shared-students {

@@ -716,7 +716,7 @@ dialog::backdrop {
     right: var(--space-6);
   }
 }
-.app-shell dialog {
+.app-shell dialog:not(.teacher-student-dialog) {
   width: min(520px, calc(100vw - 32px));
   max-width: calc(100vw - 32px);
   max-height: calc(100dvh - 32px);
@@ -729,7 +729,7 @@ dialog::backdrop {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
 }
-.app-shell dialog::backdrop {
+.app-shell dialog:not(.teacher-student-dialog)::backdrop {
   background: rgba(0, 0, 0, 0.65);
 }
 .app-shell dialog .dialog-header {

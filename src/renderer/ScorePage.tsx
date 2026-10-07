@@ -268,7 +268,9 @@ export function ScorePage({
         <button
           type="button"
           className="primary"
-          disabled={Boolean(busy) || explanationDirty || !snapshot.classes.length}
+          disabled={
+            Boolean(busy) || explanationDirty || (!onUnifiedImport && !snapshot.classes.length)
+          }
           onClick={() =>
             onUnifiedImport
               ? onUnifiedImport()
@@ -285,20 +287,23 @@ export function ScorePage({
           新建考试导入
         </button>
         {onUnifiedImport && (
-          <button
-            disabled={Boolean(busy) || explanationDirty || !snapshot.classes.length}
-            onClick={() =>
-              startDraft(
-                newExam(
-                  snapshot,
-                  snapshot.classes.find((c) => c.id === selectedClass)?.id ??
-                    snapshot.classes[0]!.id,
-                ),
-              )
-            }
-          >
-            高级考试配置
-          </button>
+          <details className="score-advanced-menu">
+            <summary>更多考试设置</summary>
+            <button
+              disabled={Boolean(busy) || explanationDirty || !snapshot.classes.length}
+              onClick={() =>
+                startDraft(
+                  newExam(
+                    snapshot,
+                    snapshot.classes.find((c) => c.id === selectedClass)?.id ??
+                      snapshot.classes[0]!.id,
+                  ),
+                )
+              }
+            >
+              高级考试配置
+            </button>
+          </details>
         )}
         <button
           type="button"
@@ -308,7 +313,15 @@ export function ScorePage({
             setDraft(undefined);
             setPreview(undefined);
             setVersion(undefined);
-            void run('刷新记录', () => api.listExams({ epoch: snapshot.epoch }), setExams);
+            void run(
+              '刷新记录',
+              () =>
+                api.listExams({
+                  epoch: snapshot.epoch,
+                  ...(selectedClass && selectedClass !== 'all' ? { classId: selectedClass } : {}),
+                }),
+              setExams,
+            );
           }}
         >
           <RefreshCw size={16} />

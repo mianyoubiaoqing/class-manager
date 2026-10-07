@@ -108,7 +108,7 @@ try {
     value(await page.evaluate(() => window.classManager.getDeepSeekStatus())).configured,
     true,
   );
-  await page.getByRole('button', { name: '班级名册', exact: true }).click();
+  await page.getByRole('button', { name: '花名册', exact: true }).click();
   await page.getByRole('button', { name: '载入合成样例', exact: true }).click();
   await page.getByRole('button', { name: '确认载入', exact: true }).click();
   await page.getByRole('status').filter({ hasText: '合成样例已保存' }).waitFor();
@@ -202,7 +202,7 @@ try {
     value(await page.evaluate((input) => window.classManager.readScoreVersion(input), scoreInput)),
     beforeScore,
   );
-  await page.getByRole('button', { name: '成绩管理', exact: true }).click();
+  await page.getByRole('button', { name: '成绩分析', exact: true }).click();
   await page.getByRole('button', { name: `查看 ${config.definition.name}`, exact: true }).click();
   await page.getByRole('button', { name: '查看草案', exact: true }).click();
   const detail = page.getByRole('region', { name: '解释草案详情', exact: true });

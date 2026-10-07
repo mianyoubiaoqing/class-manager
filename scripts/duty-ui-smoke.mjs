@@ -73,8 +73,8 @@ export async function exerciseDutyUi(application, page, output) {
     .getByRole('navigation', { name: '主导航', exact: true })
     .getByRole('button', { name: '教师备课', exact: true })
     .click();
-  await page.getByText('先完成值日轮换中的当前操作', { exact: true }).waitFor();
-  await page.getByRole('heading', { name: '值日轮换', exact: true, level: 1 }).waitFor();
+  await page.getByText('先完成值日表中的当前操作', { exact: true }).waitFor();
+  await page.getByRole('heading', { name: '值日表', exact: true, level: 1 }).waitFor();
   await area.getByText('未保存值日草案', { exact: true }).waitFor();
   await area.getByRole('button', { name: '取消值日草案', exact: true }).click();
   await area.getByRole('status').filter({ hasText: '已核对确认历史' }).waitFor();

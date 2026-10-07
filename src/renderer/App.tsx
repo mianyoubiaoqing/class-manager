@@ -60,8 +60,7 @@ import { ModelSelectionSummary } from './ModelSelectionSummary';
 import { ConversationWorkspace } from './ConversationWorkspace';
 import { FloatingAssistant } from './FloatingAssistant';
 import { AttendancePage, StudentProfilesPage } from './PupilPages';
-import { SharedHomeroomHome } from './SharedHomeroomHome';
-import { SharedStudentPage } from './SharedStudentPage';
+import { HomeroomDashboard, StudentDirectory } from './features/homeroom';
 import type { GrowthSelection } from '../shared/growth';
 import { RosterImportDialog } from './RosterImportDialog';
 import {
@@ -141,7 +140,7 @@ export function App() {
   const [snapshot, setSnapshot] = useState<Snapshot>();
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<AppView>('teaching');
+  const [view, setView] = useState<AppView>('classManagement');
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [view]);
@@ -849,7 +848,7 @@ export function App() {
             />
           )}
           {snapshot && view === 'classManagement' && (
-            <SharedHomeroomHome
+            <HomeroomDashboard
               key={`workbench:${snapshot.epoch}`}
               snapshot={snapshot}
               selectedClass={selectedClass}
@@ -859,10 +858,6 @@ export function App() {
               onSaved={acceptSnapshot}
               onDirtyChange={setRosterImportDirty}
               importRequest={classDataImportRequest}
-              onSelectStudent={(id) => {
-                setSelectedPupilId(id);
-                navigate('students');
-              }}
               onSelectExam={(id) => {
                 setSelectedScoreVersion(id);
                 navigate('scores');
@@ -874,7 +869,7 @@ export function App() {
             />
           )}
           {snapshot && view === 'students' && (
-            <SharedStudentPage
+            <StudentDirectory
               key={`shared-students:${snapshot.epoch}:${selectedClass}`}
               snapshot={snapshot}
               selectedClass={selectedClass}
@@ -886,6 +881,7 @@ export function App() {
                 navigate('profiles');
               }}
               onAddStudent={() => setModal({ kind: 'student' })}
+              onEditStudent={(student) => setModal({ kind: 'student', student })}
               onImport={() => {
                 if (navigate('classManagement')) setClassDataImportRequest((n) => n + 1);
               }}

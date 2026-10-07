@@ -39,8 +39,20 @@ export async function exerciseExplanationReadRaces(application, page, snapshot, 
     .waitFor();
   await section.getByRole('button', { name: '查看草案', exact: true }).first().click();
   assert.equal(await editor.isEnabled(), true);
+  const refreshResult = await page.evaluate(() => window.classManager.snapshot());
+  assert.equal(refreshResult.ok, true);
+  await application.evaluate(({ ipcMain }, result) => {
+    ipcMain.removeHandler('cm:snapshot');
+    ipcMain.handle(
+      'cm:snapshot',
+      () =>
+        new Promise((resolve) => {
+          globalThis.__cmExplanationSnapshotRelease = () => resolve(result);
+        }),
+    );
+  }, refreshResult);
   await page.getByRole('button', { name: '重新读取数据', exact: true }).click();
   assert.equal(await editor.isDisabled(), true, 'Snapshot read must freeze the existing editor');
-  await application.evaluate(() => globalThis.__cmScoreRefreshFixture.refresh());
+  await application.evaluate(() => globalThis.__cmExplanationSnapshotRelease());
   await page.getByRole('region', { name: '考试记录', exact: true }).waitFor();
 }

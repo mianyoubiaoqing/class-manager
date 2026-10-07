@@ -64,6 +64,8 @@ try {
   report.checks.push({ downloadLabel, progressLabel });
   await dialog.getByRole('button', { name: '关闭批量导入', exact: true }).click();
   await openWorkspacePage(page, '班主任管理', '成绩管理');
+  if (!(await page.getByRole('button', { name: '高级考试配置', exact: true }).isVisible()))
+    await page.getByText('更多考试设置', { exact: true }).click();
   await page.getByRole('button', { name: '高级考试配置', exact: true }).click();
   await page.getByText('该班级没有在籍学生。', { exact: true }).waitFor();
   const emptyRosterAction = await page
