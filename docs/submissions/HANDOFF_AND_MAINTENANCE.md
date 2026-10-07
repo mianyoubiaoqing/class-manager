@@ -4,7 +4,7 @@
 
 ## 源码入口
 
-src/main 负责桌面窗口、文件选择和受控接口。src/preload 暴露桌面接口，src/shared 定义契约，src/core 实现本地业务与 SQLite。
+src/main 负责桌面窗口、文件选择和受控接口。其中 src/main/preload.ts 暴露桌面接口，src/shared 定义契约，src/core 实现本地业务与 SQLite。
 
 src/renderer/features/homeroom 集中放置班主任工作台、资料导入、学生目录、档案小窗及对应样式。App.tsx 继续负责应用状态、导航和已有弹窗。其他业务页面按原模块维护，新增班务界面优先进入该功能目录。
 

@@ -28,7 +28,7 @@ rtk npm run dev
 | `src/renderer/features/homeroom` | 班主任首页、统一导入和学生档案       |
 | `src/renderer`                   | 其余教师页面、导航和界面样式         |
 | `src/core`                       | 数据库、业务规则、文件解析与模型调用 |
-| `src/main` 与 `src/preload`      | 桌面窗口及受限接口                   |
+| `src/main`                       | 桌面窗口、预加载脚本及受限接口       |
 | `src/shared`                     | 前后端契约与校验                     |
 | `tests` 与 `scripts`             | 自动检查、桌面流程与打包             |
 | `docs/submissions`               | 教师文档及比赛材料源文件             |

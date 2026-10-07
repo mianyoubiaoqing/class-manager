@@ -430,16 +430,13 @@ try {
   report.allFileHashesVerified = true;
   report.executable = path.join(extracted, '程序', 'Class Manager.exe');
   await save();
+  const psLiteral = (value) => "'" + value.replaceAll("'", "''") + "'";
   await run('portable-launcher-smoke', [
     'proxy',
     'powershell',
     '-NoProfile',
-    '-File',
-    'scripts/portable-launcher-smoke.ps1',
-    '-PackageRoot',
-    extracted,
-    '-Output',
-    path.join(root, 'launcher-smoke'),
+    '-Command',
+    `& ([scriptblock]::Create((Get-Content -LiteralPath ${psLiteral(path.resolve('scripts/portable-launcher-smoke.ps1'))} -Raw -Encoding UTF8))) -PackageRoot ${psLiteral(extracted)} -Output ${psLiteral(path.join(root, 'launcher-smoke'))}`,
   ]);
   report.launcherSmoke = 'passed';
   console.log(

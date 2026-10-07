@@ -15,7 +15,8 @@ $env:PATH = Join-Path $env:SystemRoot 'System32'
 $owned = @()
 try {
   $arguments = '/d /s /c ""' + $launcher + '""'
-  $runner = Start-Process -FilePath $env:ComSpec -ArgumentList $arguments -WorkingDirectory $packagePath -WindowStyle Hidden -Wait -PassThru
+  $runner = Start-Process -FilePath $env:ComSpec -ArgumentList $arguments -WorkingDirectory $packagePath -WindowStyle Hidden -PassThru
+  if (!$runner.WaitForExit(10000)) { throw 'Launcher command did not return' }
   if ($runner.ExitCode -ne 0) { throw ('Launcher exit: ' + $runner.ExitCode) }
   $deadline = [DateTime]::UtcNow.AddSeconds(30)
   do {
