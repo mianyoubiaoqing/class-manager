@@ -12,6 +12,7 @@ import type { Snapshot, Student, Classroom } from '../shared/contracts';
 import type { CountdownView } from '../shared/classroom';
 import type { DeepSeekGenerationResult, DeepSeekTextMessage } from '../core/deepseek/types';
 import { DeepSeekGenerationError } from '../core/deepseek/client';
+import { ConversationResponseError } from '../core/deepseek/conversation-diagnostics';
 import { conversationTools, parseConversationResponses } from '../core/conversation-response';
 import type { ConversationModelResponse } from '../core/deepseek/types';
 import {
@@ -136,6 +137,7 @@ export class ConversationRunner {
     private readonly now: () => number = () => Date.now(),
     private readonly applicationCall?: (tool: Channel, input: unknown) => Promise<Result<unknown>>,
     private readonly restoreMessages?: (id: string, epoch: string) => ConversationMessage[],
+    private readonly resolveFiles?: (epoch: string, sessionId: string, ids: string[]) => unknown,
   ) {}
   get busy() {
     return !!this.active;
@@ -445,6 +447,13 @@ export class ConversationRunner {
     const snapshot = await this.call<Snapshot>('snapshot');
     if (snapshot.epoch !== input.epoch) throw new DomainError('STALE_WORKSPACE', '工作区已变化。');
     const source = this.source(snapshot, input.classId, input.studentId);
+    const attachments = input.attachmentIds?.length
+      ? input.sessionId && this.resolveFiles
+        ? this.resolveFiles(input.epoch, input.sessionId, input.attachmentIds)
+        : (() => {
+            throw new DomainError('VALIDATION', '附件只能用于当前多轮对话。');
+          })()
+      : undefined;
     let session: Session | undefined;
     let messages: DeepSeekTextMessage[] | undefined;
     if (input.sessionId) {
@@ -502,6 +511,7 @@ export class ConversationRunner {
           role: 'user',
           content: JSON.stringify({
             request: session.privacy.text(input.text),
+            ...(attachments ? { attachments: session.privacy.toolResult(attachments) } : {}),
             context: {
               classRef: session.privacy.reference(input.classId),
               studentRef: session.privacy.reference(input.studentId),
@@ -731,7 +741,24 @@ export class ConversationRunner {
           task.modelSteps = (task.modelSteps ?? 0) + 1;
           task.requestCharged = true;
           await this.compactContext(task, messages);
-          const batch = await this.agentRequest(task, messages);
+          let batch: Awaited<ReturnType<ConversationRunner['agentRequest']>>;
+          try {
+            batch = await this.agentRequest(task, messages);
+          } catch (error) {
+            assertActive();
+            // Only a rejected transport format is known not to have executed any call.
+            // Network, authentication and ambiguous business failures retain their own policy.
+            if (!(error instanceof DomainError) || error.code !== 'INVALID_RESPONSE') throw error;
+            task.retryKey = 'response:transport';
+            this.recoverTool(task, messages, error, 'response', []);
+            if ((task.toolAttempts?.get(task.retryKey) ?? 0) >= 6)
+              throw new DomainError(
+                'TOOL_RETRY_LIMIT',
+                '模型传输格式连续无效，已重试5次，本轮暂停；已完成的操作保留。',
+              );
+            continue;
+          }
+          task.toolAttempts?.delete('response:transport');
           const calls = batch.response.toolCalls;
           const assistant: DeepSeekTextMessage = {
             role: 'assistant',
@@ -1265,6 +1292,10 @@ export class ConversationRunner {
       status: 'in_progress',
       durationMs: 0,
       promptVersion: AGENT_CONVERSATION_PROMPT_VERSION,
+      conversationAttempt: {
+        taskId: task.view.preparation.token,
+        transportAttempt: Math.min(6, (task.toolAttempts?.get('response:transport') ?? 0) + 1),
+      },
     });
     let response: Awaited<ReturnType<ModelRuntime['generateConversation']>> | undefined;
     try {
@@ -1334,6 +1365,16 @@ export class ConversationRunner {
         responseModel: response.model,
         usage: response.usage ?? undefined,
         durationMs: this.now() - start,
+        ...(response.diagnostic
+          ? {
+              responseDiagnostic: {
+                ...response.diagnostic,
+                ...(parseError
+                  ? { stage: 'business' as const, reason: 'business-format' as const }
+                  : {}),
+              },
+            }
+          : {}),
       });
       return { response, operations, parseError, failedCall };
     } catch (error) {
@@ -1341,6 +1382,13 @@ export class ConversationRunner {
         status: 'failed',
         errorCode: error instanceof DomainError ? error.code : 'VALIDATION',
         durationMs: this.now() - start,
+        ...(error instanceof ConversationResponseError || error instanceof DeepSeekGenerationError
+          ? error.diagnostic
+            ? { responseDiagnostic: error.diagnostic }
+            : {}
+          : response?.diagnostic
+            ? { responseDiagnostic: response.diagnostic }
+            : {}),
         ...(response
           ? {
               responseId: response.responseId,

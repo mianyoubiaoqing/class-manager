@@ -419,6 +419,14 @@ export function SeatingPage({
         </div>
       )}
       {busy && <p role="status">正在处理座位数据…</p>}
+      {!draft && !version && (
+        <div className="workspace-empty-guide seating-empty-preview">
+          <Grid2X2 size={40} />
+          <h2>座位预览</h2>
+          <p>先选择班级并新建座位草案，再调整行列、分配学生。</p>
+          <small>预览调整不会直接覆盖已保存的座位方案。</small>
+        </div>
+      )}
       {!draft && version && (
         <button
           disabled={disabled}

@@ -10,6 +10,7 @@ import {
   historyWriteInput,
   type ConversationHistory,
   type ConversationHistorySummary,
+  type ConversationHistoryCatalog,
 } from '../shared/conversation-history';
 import type { CryptoProvider } from './deepseek/credentials';
 import { DomainError } from './errors';
@@ -75,7 +76,10 @@ export class ConversationHistoryStore {
   }
   create(raw: unknown): ConversationHistory {
     const { epoch } = historyEpochInput.parse(raw);
-    if (this.list({ epoch }).length >= 100)
+    if (
+      readdirSync(this.directory).filter((file) => /^[0-9a-f-]{36}\.chat$/iu.test(file)).length >=
+      100
+    )
       throw new DomainError('HISTORY_LIMIT', '会话数量已达100段，请先删除不需要的记录。');
     const at = this.now();
     return this.write({
@@ -87,6 +91,32 @@ export class ConversationHistoryStore {
       updatedAt: at,
       state: { messages: [], draft: '', classId: null, studentId: null },
     });
+  }
+  /** Isolate unreadable records without overwriting them or hiding healthy sessions. */
+  catalog(raw: unknown): ConversationHistoryCatalog {
+    const { epoch } = historyEpochInput.parse(raw);
+    const items: ConversationHistorySummary[] = [];
+    let unreadableCount = 0;
+    for (const file of readdirSync(this.directory).filter((file) =>
+      /^[0-9a-f-]{36}\.chat$/iu.test(file),
+    )) {
+      try {
+        const { state, ...record } = this.readFile(file.slice(0, -5));
+        items.push({
+          ...record,
+          messageCount: state.messages.length,
+          preview: state.messages.at(-1)?.text.slice(0, 100) ?? state.draft.slice(0, 100),
+          archived: record.epoch !== epoch,
+        });
+      } catch (error) {
+        if (!(error instanceof DomainError) || error.code !== 'DATA_CORRUPTED') throw error;
+        unreadableCount++;
+      }
+    }
+    items.sort(
+      (a, b) => b.updatedAt.localeCompare(a.updatedAt) || b.createdAt.localeCompare(a.createdAt),
+    );
+    return { items, unreadableCount };
   }
   read(raw: unknown): ConversationHistory {
     return this.readFile(historyReadInput.parse(raw).id);

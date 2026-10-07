@@ -1,0 +1,296 @@
+.assistant-surface {
+  position: fixed;
+  z-index: 100;
+  right: 24px;
+  bottom: 88px;
+  width: min(440px, calc(100% - 32px));
+  height: min(680px, calc(100dvh - 120px));
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #d5e5dc;
+  border-radius: 20px;
+  box-shadow:
+    0 20px 70px #193a2b26,
+    0 4px 16px #193a2b14;
+  overflow: hidden;
+}
+.assistant-surface.expanded {
+  width: min(1120px, calc(100% - 48px));
+  height: calc(100dvh - 120px);
+}
+.assistant-window-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5ede7;
+  flex: 0 0 auto;
+}
+.assistant-avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #e8f4ed;
+  color: #187454;
+  flex-shrink: 0;
+}
+.assistant-window-header > div {
+  flex: 1;
+  min-width: 0;
+}
+.assistant-window-header h2 {
+  font-size: 15px;
+  margin: 0 0 4px;
+}
+.assistant-window-header small {
+  font-size: 11px;
+  color: #718278;
+  display: block;
+}
+.assistant-window-header .icon-button {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  padding: 6px;
+}
+.assistant-window-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+.assistant-window-body > .chat-workspace-host {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.assistant-window-body .conversation-workspace-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  height: auto;
+}
+.assistant-window-body .conversation-with-history {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+.assistant-window-body .conversation-page {
+  padding: 16px;
+  gap: 12px;
+}
+.assistant-window-body .session-workspace {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+.assistant-window-body .session-manager {
+  padding: 12px;
+  min-height: 0;
+}
+.assistant-window-body .notice {
+  flex: 0 0 auto;
+  margin: 8px;
+}
+.assistant-surface.compact .conversation-with-history {
+  grid-template-columns: minmax(0, 1fr);
+}
+.assistant-surface.compact .conversation-empty {
+  padding: 16px 0;
+}
+.assistant-surface.compact .conversation-welcome-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 16px;
+}
+.assistant-surface.compact .conversation-empty h2 {
+  font-size: 18px;
+  margin: 16px 0 8px;
+}
+.assistant-surface.compact .conversation-empty > p {
+  font-size: 12px;
+  margin: 0 0 20px;
+}
+.assistant-surface.compact .prompt-capsules-container {
+  gap: 8px;
+}
+.assistant-surface.compact .prompt-capsule {
+  padding: 10px;
+  min-height: 64px;
+  gap: 8px;
+}
+.assistant-surface.compact .prompt-capsule-icon {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+}
+.assistant-surface.compact .prompt-capsule-title {
+  font-size: 12px;
+  margin: 0;
+}
+.assistant-surface.compact .prompt-capsule-desc {
+  display: none;
+}
+.assistant-surface.compact .conversation-selectors {
+  gap: 4px;
+}
+.assistant-surface.compact .conversation-selectors label {
+  padding: 0 4px;
+  font-size: 11px;
+}
+.assistant-surface.compact .conversation-selectors select {
+  max-width: 118px;
+  font-size: 11px;
+}
+.assistant-surface.compact .conversation-options {
+  margin-left: 0;
+}
+.assistant-surface.compact .conversation-composer {
+  padding: 12px;
+  max-height: 45%;
+}
+.assistant-surface.compact textarea#conversation-input {
+  font-size: 13px;
+  min-height: 36px;
+}
+.assistant-surface.compact .composer-bottom-bar {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.assistant-surface.compact .composer-chips-row {
+  flex: 1;
+  gap: 8px;
+}
+.assistant-surface.compact .composer-chips-row > .chips-label {
+  display: none;
+}
+.assistant-surface.compact .composer-counter-tip {
+  display: none;
+}
+.assistant-surface.compact .composer-action-group {
+  margin-left: auto;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.assistant-surface.compact .composer-action-group > .primary {
+  min-width: 56px;
+  min-height: 34px;
+  padding: 6px 12px;
+}
+.assistant-surface.compact .composer-upload {
+  font-size: 12px;
+}
+.assistant-surface.compact .conversation-safety-note {
+  font-size: 10px;
+  gap: 6px;
+}
+.assistant-compact-tools {
+  flex: 0 0 auto;
+  padding: 8px 16px;
+  display: none;
+  gap: 8px;
+  border-bottom: 1px solid #e5ede7;
+}
+.assistant-surface.compact .assistant-compact-tools {
+  display: flex;
+}
+.conversation-roster-hint {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 11px;
+  color: #718278;
+}
+.conversation-roster-hint button {
+  border: 0;
+  color: #176c50;
+  font-size: 11px;
+  padding: 2px 6px;
+}
+.assistant-compact-tools button {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.assistant-capsule {
+  position: fixed;
+  z-index: 100;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: #176c50;
+  color: white;
+  border: 1px solid #176c50;
+  border-radius: 999px;
+  min-height: 48px;
+  padding: 12px 18px;
+  box-shadow: 0 6px 24px #176c5030;
+}
+.assistant-capsule:hover {
+  background: #12583f;
+  color: white;
+  border-color: #12583f;
+}
+.assistant-capsule span {
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+}
+.assistant-capsule small {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  margin-top: 3px;
+}
+.assistant-capsule-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #aff5c4;
+}
+.app-shell main > .content {
+  padding-bottom: 96px;
+}
+@media (max-width: 680px) {
+  .assistant-surface,
+  .assistant-surface.expanded {
+    right: 12px;
+    bottom: 76px;
+    width: calc(100% - 24px);
+    height: calc(100dvh - 96px);
+  }
+  .assistant-capsule {
+    right: 12px;
+    bottom: 12px;
+  }
+  .assistant-window-body .conversation-with-history {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .assistant-window-body .conversation-page {
+    padding: 12px;
+  }
+  .assistant-window-body .conversation-history-rail {
+    display: none;
+  }
+  .assistant-window-body .assistant-compact-tools {
+    display: flex;
+  }
+  .assistant-window-body .session-search {
+    gap: 8px;
+  }
+  .assistant-window-body .session-search > button {
+    min-width: 56px;
+  }
+  .assistant-window-body .session-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}

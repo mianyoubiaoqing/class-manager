@@ -3,6 +3,10 @@ import { randomUUID } from 'node:crypto';
 import type { Result } from '../shared/contracts';
 
 export type WorkerOperation =
+  | 'previewRosterBytes'
+  | 'cancelRosterPreview'
+  | 'confirmRosterImport'
+  | 'exportRosterTemplate'
   | 'readStudentProfile'
   | 'saveStudentProfile'
   | 'studentProfileHistory'

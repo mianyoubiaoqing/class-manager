@@ -1,7 +1,7 @@
 import { _electron as electron } from 'playwright';
-import electronPath from 'electron';
+import { isolatedElectronRuntime } from './isolated-electron-runtime.mjs';
 import { strict as assert } from 'node:assert';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { closeAuditApplication, writeAuditReport } from './live-audit-guards.ts';
 import { openWorkspacePage } from './workspace-ui-navigation.mjs';
@@ -10,12 +10,8 @@ const parent = resolve('output/playwright/providers');
 mkdirSync(parent, { recursive: true });
 const root = mkdtempSync(join(parent, 'run-'));
 const executable = process.env.CLASS_MANAGER_PROVIDERS_EXECUTABLE;
-const localBase = join(process.env.USERPROFILE, 'ClassManagerSetupChecks');
-mkdirSync(localBase, { recursive: true });
-const local = mkdtempSync(join(localBase, 'providers-modern-'));
-mkdirSync(join(local, 'temp'));
-const runtime = executable ?? join(local, 'runtime', 'electron.exe');
-if (!executable) cpSync(resolve(electronPath, '..'), join(local, 'runtime'), { recursive: true });
+const { local, executablePath } = isolatedElectronRuntime('providers-modern-');
+const runtime = executable ?? executablePath;
 const env = {
   ...process.env,
   CLASS_MANAGER_DATA_DIR: join(root, 'user-data'),
@@ -53,7 +49,7 @@ async function assertUnsavedNavigationProtected() {
   assert.equal(await destination.isDisabled(), false);
   await destination.click();
   await page.locator('.navigation-feedback').waitFor();
-  assert.equal(await page.locator('h1').innerText(), '模型设置');
+  assert.equal(await page.locator('h1').innerText(), '模型连接');
 }
 async function settled() {
   await page.waitForFunction(
@@ -126,7 +122,7 @@ try {
     require: typeof window.require,
     process: typeof window.process,
   }));
-  assert.equal(surface.keys.length, 148);
+  assert.equal(surface.keys.length, 157);
   assert.equal(surface.frozen, true);
   assert.equal(surface.require, 'undefined');
   assert.equal(surface.process, 'undefined');

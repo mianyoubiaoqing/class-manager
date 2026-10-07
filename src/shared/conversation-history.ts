@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { conversationFileSchema, CONVERSATION_FILE_LIMITS } from './conversation-files';
 import { conversationDocumentSchema } from './conversation';
 import { lessonContentSchema } from './lessons';
 
@@ -6,6 +7,7 @@ export const conversationMessageSchema = z
   .object({
     speaker: z.enum(['user', 'assistant']),
     text: z.string().max(100_000),
+    attachments: z.array(conversationFileSchema).max(CONVERSATION_FILE_LIMITS.files).optional(),
     document: conversationDocumentSchema.optional(),
     documents: z.array(conversationDocumentSchema).max(8).optional(),
     lesson: lessonContentSchema.optional(),
@@ -15,6 +17,7 @@ export const conversationHistoryStateSchema = z
   .object({
     messages: z.array(conversationMessageSchema).max(60),
     draft: z.string().max(2000),
+    attachments: z.array(conversationFileSchema).max(CONVERSATION_FILE_LIMITS.files).optional(),
     classId: z.uuid().nullable(),
     studentId: z.uuid().nullable(),
   })
@@ -47,3 +50,7 @@ export type ConversationHistorySummary = Omit<ConversationHistory, 'state'> & {
   preview: string;
   archived: boolean;
 };
+export interface ConversationHistoryCatalog {
+  items: ConversationHistorySummary[];
+  unreadableCount: number;
+}

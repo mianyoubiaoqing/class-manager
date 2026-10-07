@@ -1127,6 +1127,47 @@ textarea.conversation-input#conversation-input::placeholder {
   padding-top: 8px;
   margin-top: 4px;
 }
+.composer-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.conversation-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.conversation-file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+}
+.conversation-file > span {
+  min-width: 0;
+}
+.conversation-file small {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.conversation-file button {
+  display: inline-flex;
+  padding: 4px;
+}
+.attachment-warning,
+.attachment-hint {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+}
 
 .composer-chips-row {
   display: flex;

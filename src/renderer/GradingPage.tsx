@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { FileCheck2 } from 'lucide-react';
 import type { Result, Snapshot, PublicError } from '../shared/contracts';
 import type { ExamSummary, ScoreVersionView } from '../shared/score-commands';
 import type { MaterialPreview, MaterialSummary, StoredMaterial } from '../shared/material-records';
@@ -357,7 +358,7 @@ export function GradingPage({
     shown?.rows.filter((r) => r.reviewed && r.status === 'suggested' && r.scoreHundredths !== null)
       .length ?? 0;
   return (
-    <div className="grading-workspace">
+    <div className={`grading-workspace ${!score ? 'grading-start' : ''}`}>
       <p className="notice">
         仅使用合成材料。AI
         提供逐题建议，教师对照原图核对；冻结复核后，须另行核对入分差异并确认，才写入正式成绩。
@@ -515,6 +516,19 @@ export function GradingPage({
           </button>
         )}
       </section>
+      {!score && (
+        <section className="panel grading-empty-preview" aria-label="答卷预览">
+          <header>
+            <h2>答卷预览</h2>
+            <p>先选择考试、科目和学生，再导入答卷资料。</p>
+          </header>
+          <div className="workspace-empty-guide">
+            <FileCheck2 size={40} />
+            <h3>还没有待复核答卷</h3>
+            <p>准备评分依据和答卷后，助手提供建议，你确认后才会入分。</p>
+          </div>
+        </section>
+      )}
       {score && (
         <section className="panel">
           <h2>答卷目录</h2>
@@ -1381,6 +1395,15 @@ export function GradingPage({
                   key={`${epoch}/${draft.reviewId}`}
                   epoch={epoch}
                   reviewId={draft.reviewId}
+                  labels={{
+                    students: Object.fromEntries(
+                      snapshot.students.map((s) => [s.id, `${s.studentNumber} · ${s.displayName}`]),
+                    ),
+                    subjects: Object.fromEntries(
+                      (score?.payload.analysis.subjects ?? []).map((s) => [s.id, s.name]),
+                    ),
+                    exams: score ? { [score.record.examId]: score.payload.definition.name } : {},
+                  }}
                   blocked={locked || !!edit || setupChanged || !!rules}
                   onBusyChange={setBusy}
                   onDirtyChange={setPublicationDirty}

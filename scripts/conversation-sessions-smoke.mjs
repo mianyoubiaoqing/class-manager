@@ -5,20 +5,16 @@ import { randomUUID } from 'node:crypto';
 import { _electron as electron } from 'playwright';
 import { closeAuditApplication, writeAuditReport } from './live-audit-guards.ts';
 import { openWorkspacePage } from './workspace-ui-navigation.mjs';
+import { isolatedElectronRuntime } from './isolated-electron-runtime.mjs';
 
 const evidenceBase = path.resolve('output/playwright/conversation-sessions');
 fs.mkdirSync(evidenceBase, { recursive: true });
 const root = fs.mkdtempSync(path.join(evidenceBase, 'run-'));
-const localBase = path.join(process.env.USERPROFILE, 'ClassManagerSetupChecks');
-fs.mkdirSync(localBase, { recursive: true });
-const local = fs.mkdtempSync(path.join(localBase, 'session-check-'));
+const { local, executablePath: cachedRuntime } = isolatedElectronRuntime('session-check-');
 const executable = process.env.CLASS_MANAGER_SESSIONS_EXECUTABLE;
-const runtime = executable ?? path.join(local, 'runtime', 'electron.exe');
-if (!executable)
-  fs.cpSync(path.resolve('node_modules/electron/dist'), path.dirname(runtime), { recursive: true });
+const runtime = executable ?? cachedRuntime;
 const data = path.join(local, 'data'),
   temp = path.join(local, 'temp');
-fs.mkdirSync(temp);
 const env = { ...process.env, CLASS_MANAGER_DATA_DIR: data, TEMP: temp, TMP: temp };
 delete env.ELECTRON_RUN_AS_NODE;
 const report = {
@@ -40,12 +36,16 @@ const call = async (name, input) => {
 };
 const button = (name) => page.getByRole('button', { name, exact: true });
 const nav = (name) =>
-  page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name, exact: true });
+  name === '会话管理'
+    ? page.getByRole('button', { name: '查看全部与管理', exact: true })
+    : name === '业务对话'
+      ? page.getByRole('button', { name: '打开智能对话小窗', exact: true })
+      : page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name, exact: true });
 const field = () => page.getByLabel('发送消息', { exact: true });
 const catalog = async () =>
-  call('listConversationHistory', { epoch: (await call('snapshot')).epoch });
+  (await call('listConversationHistory', { epoch: (await call('snapshot')).epoch })).items;
 const current = async () => {
-  const title = await page.locator('.conversation-context strong').innerText();
+  const title = await page.locator('[data-conversation-title]').innerText();
   return (await catalog()).find((item) =>
     title === '业务助手' ? item.title === '新会话' : item.title === title,
   );
@@ -94,6 +94,7 @@ async function launch() {
   page = await app.firstWindow();
   page.on('pageerror', (error) => report.errors.push(error.message));
   await page.getByText('本地就绪', { exact: true }).waitFor();
+  await nav('业务对话').click();
   await field().waitFor();
 }
 async function closeNormally() {
@@ -128,7 +129,7 @@ try {
     .getByRole('navigation', { name: '主导航' })
     .getByRole('button')
     .allTextContents();
-  assert.deepEqual(navItems.slice(0, 2), ['业务对话', '会话管理']);
+  assert.deepEqual(navItems, ['教师备课', '班主任管理', '系统设置']);
   let snapshot = await call('snapshot');
   snapshot = await call('seedDemo', { epoch: snapshot.epoch });
   await call('saveModelProviderKey', {
@@ -148,13 +149,13 @@ try {
   const first = (await catalog()).find((item) => item.title === '第一段：英语备课');
   assert.ok(first);
   await button('新建会话').click();
-  await page.getByRole('heading', { name: '今天想处理什么？', exact: true }).waitFor();
+  await page.getByRole('heading', { name: '告诉助手，你想完成什么？', exact: true }).waitFor();
   assert.equal(await page.locator('.conversation-message').count(), 0);
   assert.equal(await field().inputValue(), '');
   await mode('second');
   await send('第二段：值日安排');
   await page.waitForFunction(
-    () => document.querySelector('.conversation-context strong').textContent === '第二段：值日安排',
+    () => document.querySelector('[data-conversation-title]').textContent === '第二段：值日安排',
   );
   const second = await current();
   assert.ok(second && second.id !== first.id);
@@ -307,6 +308,7 @@ try {
     .getByRole('article', { name: historical.title, exact: true })
     .getByRole('button', { name: '查看记录', exact: true })
     .click();
+  await page.locator('.conversation-thread').getByText('恢复前的教学讨论').waitFor();
   assert.equal(await field().isDisabled(), true);
   assert.ok((await page.locator('.conversation-thread').innerText()).includes('恢复前的教学讨论'));
   assert.equal(await button('确认正式写入').count(), 0);

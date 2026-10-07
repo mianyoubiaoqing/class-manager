@@ -71,6 +71,9 @@ export class MaterialImporter {
   get busy() {
     return this.active !== undefined;
   }
+  get hasPreview() {
+    return this.pending !== undefined;
+  }
   invalidate() {
     this.pending = undefined;
     if (this.active) Atomics.compareExchange(this.active.cancellation, 0, 0, 1);

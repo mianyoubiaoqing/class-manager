@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { DomainError } from '../errors';
 import { awaitModelResponse, readBoundedResponse } from './bounded-response';
 import type { ConversationToolCall, ConversationStreamUpdate } from './types';
+import {
+  ConversationResponseError,
+  diagnosticIssues,
+  type ConversationDiagnostic,
+} from './conversation-diagnostics';
 
 const usage = z.object({
   prompt_tokens: z.number().int().nonnegative().nullable().optional(),
@@ -23,7 +28,7 @@ const completion = z.object({
         message: z.object({
           content: z.string().nullable().optional(),
           reasoning_content: z.string().optional().nullable(),
-          tool_calls: z.array(tool).max(8).optional(),
+          tool_calls: z.array(tool).max(8).nullish(),
         }),
       }),
     )
@@ -31,6 +36,7 @@ const completion = z.object({
   usage: usage.nullable().optional(),
 });
 export interface ConversationCompletion {
+  diagnostic: ConversationDiagnostic;
   id: string;
   model: string;
   content: string;
@@ -40,8 +46,6 @@ export interface ConversationCompletion {
   usage?: z.infer<typeof usage> | null;
 }
 const maximum = 2 * 1024 * 1024;
-const invalid = () =>
-  new DomainError('INVALID_RESPONSE', '模型传输格式无效，未执行工具；可继续对话。');
 
 /** SSE is decoded incrementally. No call is adopted until a complete finish and DONE frame. */
 export async function readConversationCompletion(
@@ -49,16 +53,56 @@ export async function readConversationCompletion(
   signal: AbortSignal,
   update: (value: ConversationStreamUpdate) => void,
 ): Promise<ConversationCompletion> {
+  const diagnostic: ConversationDiagnostic = {
+    version: 1,
+    transport: 'json',
+    stage: 'body',
+    reason: 'accepted',
+    bytes: 0,
+    frames: 0,
+    done: false,
+    hasId: false,
+    hasModel: false,
+    hasFinish: false,
+    toolCalls: 0,
+    issues: [],
+  };
+  const invalid = (
+    reason: ConversationDiagnostic['reason'],
+    issues: ConversationDiagnostic['issues'] = [],
+  ) =>
+    new ConversationResponseError(
+      { ...diagnostic, reason, issues },
+      reason === 'response-limit' ? 'RESPONSE_LIMIT' : 'INVALID_RESPONSE',
+    );
   if (!response.headers.get('content-type')?.includes('text/event-stream')) {
     let parsed: z.infer<typeof completion>;
+    let raw: unknown;
     try {
-      parsed = completion.parse(JSON.parse(await readBoundedResponse(response, maximum, signal)));
+      const text = await readBoundedResponse(response, maximum, signal);
+      diagnostic.bytes = Buffer.byteLength(text);
+      raw = JSON.parse(text);
+      diagnostic.stage = 'completion';
+      parsed = completion.parse(raw);
     } catch (error) {
+      if (error instanceof DomainError && error.code === 'RESPONSE_LIMIT')
+        throw invalid('response-limit');
       if (error instanceof DomainError) throw error;
-      throw invalid();
+      throw invalid(
+        error instanceof z.ZodError ? 'field-validation' : 'invalid-json',
+        error instanceof z.ZodError ? diagnosticIssues(error, raw) : [],
+      );
     }
     const first = parsed.choices[0]!;
+    Object.assign(diagnostic, {
+      stage: 'finish',
+      hasId: !!parsed.id,
+      hasModel: !!parsed.model,
+      hasFinish: !!first.finish_reason,
+      toolCalls: first.message.tool_calls?.length ?? 0,
+    });
     return {
+      diagnostic,
       id: parsed.id,
       model: parsed.model,
       content: first.message.content ?? '',
@@ -68,10 +112,12 @@ export async function readConversationCompletion(
       usage: parsed.usage,
     };
   }
-  if (!response.body) throw invalid();
+  diagnostic.transport = 'sse';
+  if (!response.body) throw invalid('missing-body');
   const reader = response.body.getReader();
   const decoder = new TextDecoder('utf-8', { fatal: true });
   const result: ConversationCompletion = {
+    diagnostic,
     id: '',
     model: '',
     content: '',
@@ -83,6 +129,15 @@ export async function readConversationCompletion(
   let buffer = '',
     bytes = 0,
     doneFrame = false;
+  const snapshot = () =>
+    Object.assign(diagnostic, {
+      bytes,
+      done: doneFrame,
+      hasId: !!result.id,
+      hasModel: !!result.model,
+      hasFinish: !!result.finishReason,
+      toolCalls: calls.size,
+    });
   const cancel = () => {
     void reader.cancel().catch(() => {});
   };
@@ -103,20 +158,21 @@ export async function readConversationCompletion(
               .array(
                 z.object({
                   index: z.number().int().min(0).max(7),
-                  id: z.string().optional(),
-                  type: z.literal('function').optional(),
+                  id: z.string().nullish(),
+                  type: z.literal('function').nullish(),
                   function: z
-                    .object({ name: z.string().optional(), arguments: z.string().optional() })
-                    .optional(),
+                    .object({ name: z.string().nullish(), arguments: z.string().nullish() })
+                    .nullish(),
                 }),
               )
-              .optional(),
+              .nullish(),
           })
-          .optional(),
+          .nullish(),
       }),
     ),
   });
   const consume = (frame: string) => {
+    diagnostic.stage = 'frame';
     const data = frame
       .split(/\r?\n/)
       .filter((line) => line.startsWith('data:'))
@@ -125,10 +181,23 @@ export async function readConversationCompletion(
     if (!data) return;
     if (data === '[DONE]') {
       doneFrame = true;
+      snapshot();
       return;
     }
-    if (doneFrame) throw invalid();
-    const parsed = chunkSchema.parse(JSON.parse(data));
+    snapshot();
+    if (doneFrame) throw invalid('unexpected-frame');
+    diagnostic.frames++;
+    let raw: unknown;
+    let parsed: z.infer<typeof chunkSchema>;
+    try {
+      raw = JSON.parse(data);
+      parsed = chunkSchema.parse(raw);
+    } catch (error) {
+      throw invalid(
+        error instanceof z.ZodError ? 'field-validation' : 'invalid-json',
+        error instanceof z.ZodError ? diagnosticIssues(error, raw) : [],
+      );
+    }
     if (parsed.id) result.id = parsed.id;
     if (parsed.model) result.model = parsed.model;
     if (parsed.usage) result.usage = parsed.usage;
@@ -149,6 +218,7 @@ export async function readConversationCompletion(
         calls.set(delta.index, current);
       }
     }
+    snapshot();
     update({
       content: result.content,
       reasoningCharacters: result.reasoningContent.length,
@@ -160,11 +230,14 @@ export async function readConversationCompletion(
       const next = await awaitModelResponse(reader.read(), signal);
       if (signal.aborted) throw new DomainError('ABORTED', '对话已停止。');
       if (next.done) {
+        diagnostic.stage = 'decode';
         buffer += decoder.decode();
         break;
       }
       bytes += next.value.byteLength;
-      if (bytes > maximum) throw new DomainError('RESPONSE_LIMIT', '对话响应超过大小上限。');
+      snapshot();
+      if (bytes > maximum) throw invalid('response-limit');
+      diagnostic.stage = 'decode';
       buffer += decoder.decode(next.value, { stream: true });
       let boundary: RegExpMatchArray | null;
       while ((boundary = buffer.match(/\r?\n\r?\n/))) {
@@ -174,17 +247,32 @@ export async function readConversationCompletion(
       if (doneFrame) break;
     }
     if (buffer.trim()) consume(buffer);
-    if (!doneFrame || !result.id || !result.model || !result.finishReason) throw invalid();
+    diagnostic.stage = 'completion';
+    snapshot();
+    if (!doneFrame || !result.id || !result.model || !result.finishReason)
+      throw invalid('missing-completion');
     result.toolCalls = [...calls.entries()]
       .sort(([a], [b]) => a - b)
-      .map(([, call]) => tool.parse(call));
+      .map(([index, call]) => {
+        const checked = tool.safeParse(call);
+        if (!checked.success)
+          throw invalid(
+            'field-validation',
+            diagnosticIssues(checked.error, call).map((issue) => ({
+              ...issue,
+              path: ['tool_calls', index, ...issue.path],
+            })),
+          );
+        return checked.data;
+      });
     if (new Set(result.toolCalls.map((call) => call.id)).size !== result.toolCalls.length)
-      throw invalid();
+      throw invalid('duplicate-tool-id');
+    diagnostic.stage = 'finish';
     return result;
   } catch (error) {
     if (error instanceof DomainError) throw error;
     if (error instanceof z.ZodError || error instanceof SyntaxError || error instanceof TypeError)
-      throw invalid();
+      throw invalid(error instanceof TypeError ? 'invalid-utf8' : 'invalid-json');
     throw error;
   } finally {
     signal.removeEventListener('abort', cancel);

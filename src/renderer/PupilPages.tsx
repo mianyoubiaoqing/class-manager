@@ -9,6 +9,7 @@ import {
 } from '../shared/pupils';
 import './pupils.css';
 import { WorkspaceTabs } from './WorkspaceTabs';
+import { RevealStep } from './RevealStep';
 
 const labels = {
   unmarked: '未点名',
@@ -24,7 +25,12 @@ function message<T>(result: Result<T>): T {
 }
 const day = () => new Date().toLocaleDateString('sv-SE');
 
-export function AttendancePage({ snapshot, selectedClass, onDirtyChange }: Props) {
+export function AttendancePage({
+  snapshot,
+  selectedClass,
+  onDirtyChange,
+  onRoster,
+}: Props & { onRoster: () => void }) {
   const api = window.classManager;
   const [classId, setClassId] = useState(
     selectedClass === 'all' ? (snapshot.classes[0]?.id ?? '') : selectedClass,
@@ -176,249 +182,272 @@ export function AttendancePage({ snapshot, selectedClass, onDirtyChange }: Props
     .map(([key, label]) => `${label} ${rows.filter((r) => r.status === key).length}人`)
     .join(' · ');
   return (
-    <div className="pupil-page">
-      <div className="pupil-toolbar">
-        <label>
-          点名班级
-          <select
-            aria-label="点名班级"
-            value={classId}
-            disabled={dirty || busy || review}
-            onChange={(e) => setClassId(e.target.value)}
-          >
-            {snapshot.classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button disabled={busy || !classId} onClick={() => void load()}>
-          重新开始点名
-        </button>
-        <label>
-          历史记录
-          <select
-            aria-label="点名历史"
-            value={record?.id ?? ''}
-            disabled={dirty || busy || review}
-            onChange={(e) => {
-              if (e.target.value) void read(e.target.value);
-              else if (roster) fresh(roster);
-            }}
-          >
-            <option value="">本次新点名</option>
-            {records.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.date} · {r.title} · 第{r.revision}版
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      {notice && (
-        <p role="status" className="notice">
-          {notice}
-        </p>
-      )}
-      <section className="pupil-panel">
+    <div className="pupil-page attendance-page">
+      <section className="pupil-panel attendance-setup">
+        <h2>本次点名</h2>
+        <p>先确认班级、日期和课程。学生默认未记录，逐个核对后再保存。</p>
         <div className="pupil-toolbar">
           <label>
-            日期
-            <input
-              aria-label="点名日期"
-              type="date"
-              value={date}
-              disabled={busy || review}
-              onChange={(e) => {
-                setDate(e.target.value);
-                setDirty(true);
-                saveId.current = undefined;
-              }}
-            />
+            点名班级
+            <select
+              aria-label="点名班级"
+              value={classId}
+              disabled={dirty || busy || review}
+              onChange={(e) => setClassId(e.target.value)}
+            >
+              {snapshot.classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
           </label>
+          <button disabled={busy || !classId} onClick={() => void load()}>
+            重新开始点名
+          </button>
           <label>
-            课时名称
+            历史记录
+            <select
+              aria-label="点名历史"
+              value={record?.id ?? ''}
+              disabled={dirty || busy || review}
+              onChange={(e) => {
+                if (e.target.value) void read(e.target.value);
+                else if (roster) fresh(roster);
+              }}
+            >
+              <option value="">本次新点名</option>
+              {records.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.date} · {r.title} · 第{r.revision}版
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {notice && (
+          <p role="status" className="notice">
+            {notice}
+          </p>
+        )}
+        <div className="attendance-session-fields">
+          <div className="pupil-toolbar">
+            <label>
+              日期
+              <input
+                aria-label="点名日期"
+                type="date"
+                value={date}
+                disabled={busy || review}
+                onChange={(e) => {
+                  setDate(e.target.value);
+                  setDirty(true);
+                  saveId.current = undefined;
+                }}
+              />
+            </label>
+            <label>
+              课程 / 节次
+              <input
+                aria-label="点名课时名称"
+                value={title}
+                maxLength={120}
+                disabled={busy || review}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setDirty(true);
+                  saveId.current = undefined;
+                }}
+              />
+            </label>
+          </div>
+        </div>
+      </section>
+      <section className="pupil-panel attendance-roster">
+        <h2>点名名单</h2>
+        <p>到课 / 请假 / 迟到 / 缺勤，提交前可统一核对。</p>
+        {!rows.length && (
+          <div className="workspace-empty-guide">
+            <h3>名册还没有学生</h3>
+            <p>先到班级名册添加或批量导入学生，名单会自动出现在这里。</p>
+            <button className="primary" disabled={dirty || busy || review} onClick={onRoster}>
+              前往名册
+            </button>
+          </div>
+        )}
+        <div className="attendance-panel-body" hidden={!rows.length && !records.length}>
+          <WorkspaceTabs
+            id="attendance"
+            label="点名视图"
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: 'roll', label: '逐人点名' },
+              { value: 'list', label: '全班名单' },
+              { value: 'history', label: '更正历史' },
+            ]}
+          />
+          <div className="attendance-counts" aria-label="点名统计">
+            {Object.entries(labels).map(([key, label]) => (
+              <span key={key} className={`attendance-chip status-${key}`}>
+                {label} <strong>{rows.filter((row) => row.status === key).length}</strong>
+              </span>
+            ))}
+          </div>
+          <div
+            role="tabpanel"
+            id="attendance-roll-panel"
+            aria-labelledby="attendance-roll-tab"
+            hidden={tab !== 'roll'}
+          >
+            {rows[cursor] && (
+              <div className="roll-call-card" aria-label="逐人点名">
+                <p>
+                  第 {cursor + 1} / {rows.length} 位
+                </p>
+                <progress
+                  aria-label="已点名进度"
+                  max={rows.length}
+                  value={rows.filter((row) => row.status !== 'unmarked').length}
+                />
+                <h2>{rows[cursor]!.displayName}</h2>
+                <p>
+                  {rows[cursor]!.studentNumber} · {labels[rows[cursor]!.status]}
+                </p>
+                <div className="button-row">
+                  {(['present', 'late', 'excused', 'absent'] as const).map((status) => (
+                    <button
+                      key={status}
+                      disabled={busy || review}
+                      onClick={() => {
+                        mark(cursor, status);
+                        setCursor(Math.min(cursor + 1, rows.length - 1));
+                      }}
+                    >
+                      {labels[status]}
+                      {cursor === rows.length - 1 ? '' : '并下一位'}
+                    </button>
+                  ))}
+                  <button
+                    disabled={cursor === 0 || busy || review}
+                    onClick={() => setCursor(cursor - 1)}
+                  >
+                    上一位
+                  </button>
+                </div>
+                {rows.every((row) => row.status !== 'unmarked') && (
+                  <p role="status">全班点名已完成，请核对统计后点击“保存点名记录”。</p>
+                )}
+              </div>
+            )}
+          </div>
+          <div
+            role="tabpanel"
+            id="attendance-list-panel"
+            aria-labelledby="attendance-list-tab"
+            hidden={tab !== 'list'}
+          >
             <input
-              aria-label="点名课时名称"
-              value={title}
-              maxLength={120}
+              type="search"
+              aria-label="查找点名学生"
+              placeholder="查找姓名或学号"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            <div className="pupil-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>学号</th>
+                    <th>学生</th>
+                    <th>状态</th>
+                    <th>备注</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r, index) =>
+                    !search.trim() ||
+                    `${r.displayName} ${r.studentNumber}`.includes(search.trim()) ? (
+                      <tr key={r.studentId}>
+                        <td>{r.studentNumber}</td>
+                        <td>{r.displayName}</td>
+                        <td>
+                          <select
+                            aria-label={`${r.displayName}点名状态`}
+                            value={r.status}
+                            disabled={busy || review}
+                            onChange={(e) => mark(index, e.target.value as typeof r.status)}
+                          >
+                            {Object.entries(labels).map(([key, label]) => (
+                              <option key={key} value={key}>
+                                {label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td>
+                          <input
+                            aria-label={`${r.displayName}点名备注`}
+                            value={r.note}
+                            maxLength={300}
+                            disabled={busy || review}
+                            onChange={(e) => {
+                              setRows(
+                                rows.map((row, i) =>
+                                  i === index ? { ...row, note: e.target.value } : row,
+                                ),
+                              );
+                              setDirty(true);
+                              saveId.current = undefined;
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    ) : null,
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <label>
+            保存或更正说明
+            <input
+              aria-label="点名保存说明"
+              value={reason}
+              maxLength={300}
               disabled={busy || review}
               onChange={(e) => {
-                setTitle(e.target.value);
+                setReason(e.target.value);
                 setDirty(true);
                 saveId.current = undefined;
               }}
             />
           </label>
-        </div>
-        <WorkspaceTabs
-          id="attendance"
-          label="点名视图"
-          value={tab}
-          onChange={setTab}
-          options={[
-            { value: 'roll', label: '逐人点名' },
-            { value: 'list', label: '全班名单' },
-            { value: 'history', label: '更正历史' },
-          ]}
-        />
-        <div className="attendance-counts" aria-label="点名统计">
-          {Object.entries(labels).map(([key, label]) => (
-            <span key={key} className={`attendance-chip status-${key}`}>
-              {label} <strong>{rows.filter((row) => row.status === key).length}</strong>
-            </span>
-          ))}
-        </div>
-        <div
-          role="tabpanel"
-          id="attendance-roll-panel"
-          aria-labelledby="attendance-roll-tab"
-          hidden={tab !== 'roll'}
-        >
-          {rows[cursor] && (
-            <div className="roll-call-card" aria-label="逐人点名">
+          {review ? (
+            <RevealStep className="pupil-confirm" role="region" aria-label="点名保存确认">
               <p>
-                第 {cursor + 1} / {rows.length} 位
+                请确认 {date} · {title}，{counts}。
+                {record ? '原点名版本会保留。' : '保存当前名册快照。'}
               </p>
-              <progress
-                aria-label="已点名进度"
-                max={rows.length}
-                value={rows.filter((row) => row.status !== 'unmarked').length}
-              />
-              <h2>{rows[cursor]!.displayName}</h2>
-              <p>
-                {rows[cursor]!.studentNumber} · {labels[rows[cursor]!.status]}
-              </p>
-              <div className="button-row">
-                {(['present', 'late', 'excused', 'absent'] as const).map((status) => (
-                  <button
-                    key={status}
-                    disabled={busy || review}
-                    onClick={() => {
-                      mark(cursor, status);
-                      setCursor(Math.min(cursor + 1, rows.length - 1));
-                    }}
-                  >
-                    {labels[status]}并下一位
-                  </button>
-                ))}
-                <button
-                  disabled={cursor === 0 || busy || review}
-                  onClick={() => setCursor(cursor - 1)}
-                >
-                  上一位
-                </button>
-              </div>
-            </div>
+              <button className="primary" disabled={busy} onClick={() => void save()}>
+                确认保存点名
+              </button>
+              <button disabled={busy} onClick={() => setReview(false)}>
+                继续核对
+              </button>
+            </RevealStep>
+          ) : (
+            <button
+              className="primary"
+              disabled={
+                busy || !rows.length || !title.trim() || !reason.trim() || (!dirty && !!record)
+              }
+              onClick={() => setReview(true)}
+            >
+              保存点名记录
+            </button>
           )}
         </div>
-        <div
-          role="tabpanel"
-          id="attendance-list-panel"
-          aria-labelledby="attendance-list-tab"
-          hidden={tab !== 'list'}
-        >
-          <input
-            type="search"
-            aria-label="查找点名学生"
-            placeholder="查找姓名或学号"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <div className="pupil-table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>学号</th>
-                  <th>学生</th>
-                  <th>状态</th>
-                  <th>备注</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, index) =>
-                  !search.trim() ||
-                  `${r.displayName} ${r.studentNumber}`.includes(search.trim()) ? (
-                    <tr key={r.studentId}>
-                      <td>{r.studentNumber}</td>
-                      <td>{r.displayName}</td>
-                      <td>
-                        <select
-                          aria-label={`${r.displayName}点名状态`}
-                          value={r.status}
-                          disabled={busy || review}
-                          onChange={(e) => mark(index, e.target.value as typeof r.status)}
-                        >
-                          {Object.entries(labels).map(([key, label]) => (
-                            <option key={key} value={key}>
-                              {label}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <input
-                          aria-label={`${r.displayName}点名备注`}
-                          value={r.note}
-                          maxLength={300}
-                          disabled={busy || review}
-                          onChange={(e) => {
-                            setRows(
-                              rows.map((row, i) =>
-                                i === index ? { ...row, note: e.target.value } : row,
-                              ),
-                            );
-                            setDirty(true);
-                            saveId.current = undefined;
-                          }}
-                        />
-                      </td>
-                    </tr>
-                  ) : null,
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <label>
-          保存或更正说明
-          <input
-            aria-label="点名保存说明"
-            value={reason}
-            maxLength={300}
-            disabled={busy || review}
-            onChange={(e) => {
-              setReason(e.target.value);
-              setDirty(true);
-              saveId.current = undefined;
-            }}
-          />
-        </label>
-        {review ? (
-          <div className="pupil-confirm" role="region" aria-label="点名保存确认">
-            <p>
-              请确认 {date} · {title}，{counts}。
-              {record ? '原点名版本会保留。' : '保存当前名册快照。'}
-            </p>
-            <button className="primary" disabled={busy} onClick={() => void save()}>
-              确认保存点名
-            </button>
-            <button disabled={busy} onClick={() => setReview(false)}>
-              继续核对
-            </button>
-          </div>
-        ) : (
-          <button
-            className="primary"
-            disabled={
-              busy || !rows.length || !title.trim() || !reason.trim() || (!dirty && !!record)
-            }
-            onClick={() => setReview(true)}
-          >
-            保存点名记录
-          </button>
-        )}
       </section>
       <section
         className="pupil-panel"
@@ -688,7 +717,7 @@ export function StudentProfilesPage({ snapshot, selectedClass, onDirtyChange }: 
             />
           </label>
           {review ? (
-            <div className="pupil-confirm" aria-label="学生资料保存确认">
+            <RevealStep className="pupil-confirm" aria-label="学生资料保存确认">
               <p>确认保存 {student.displayName} 的上述资料？原版本和保存说明会保留。</p>
               <details className="workspace-disclosure" open>
                 <summary>核对本次全部资料</summary>
@@ -724,7 +753,7 @@ export function StudentProfilesPage({ snapshot, selectedClass, onDirtyChange }: 
               <button disabled={busy} onClick={() => setReview(false)}>
                 继续修改
               </button>
-            </div>
+            </RevealStep>
           ) : (
             <button
               className="primary"

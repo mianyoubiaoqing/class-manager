@@ -1,6 +1,7 @@
 import { nodeBundleOptions } from './node-bundle-options.ts';
 import { _electron as electron } from 'playwright';
-import electronPath from 'electron';
+import { isolatedElectronRuntime } from './isolated-electron-runtime.mjs';
+import { openWorkspacePage } from './workspace-ui-navigation.mjs';
 import { build } from 'esbuild';
 import { createRequire } from 'node:module';
 import { strict as assert } from 'node:assert';
@@ -28,7 +29,13 @@ await build(
 const { seedGrowthWorkspace } = createRequire(import.meta.url)(join(root, 'fixture.cjs'));
 const seed = await seedGrowthWorkspace(join(userData, 'workspace-data'));
 const executable = process.env.CLASS_MANAGER_GROWTH_EXECUTABLE;
-const env = { ...process.env, CLASS_MANAGER_DATA_DIR: userData };
+const { local, executablePath } = isolatedElectronRuntime('growth-modern-');
+const env = {
+  ...process.env,
+  CLASS_MANAGER_DATA_DIR: userData,
+  TEMP: join(local, 'temp'),
+  TMP: join(local, 'temp'),
+};
 delete env.ELECTRON_RUN_AS_NODE;
 if (executable) {
   for (const key of Object.keys(env)) if (key.toLowerCase() === 'path') delete env[key];
@@ -54,7 +61,9 @@ const button = (name) => page.getByRole('button', { name, exact: true });
 const label = (name) =>
   ['记录类型', '跟进状态'].includes(name)
     ? page.getByRole('combobox', { name: new RegExp(`^${name}`) })
-    : page.getByLabel(new RegExp(`^${name}`));
+    : page.getByLabel(
+        new RegExp(`^${name === '用于阶段总结的最小事实摘要' ? '给阶段总结用的一句话' : name}`),
+      );
 const status = (text) => page.getByRole('status').filter({ hasText: text }).waitFor();
 const timeline = () => call('growthTimeline', { epoch: seed.epoch, studentId: seed.studentId });
 async function waitForNavigationGuard(locked) {
@@ -64,12 +73,13 @@ async function waitForNavigationGuard(locked) {
     const navigation = [...document.querySelectorAll('button')].find(
       (button) => button.textContent?.trim() === '班级名册',
     );
-    return student?.disabled === locked && navigation?.disabled === locked;
+    // Workspace links remain clickable so they can explain pending changes.
+    return student?.disabled === locked && navigation?.disabled === false;
   }, locked);
 }
 async function launch() {
   app = await electron.launch({
-    executablePath: executable ?? electronPath,
+    executablePath: executable ?? executablePath,
     args: executable ? [] : ['.'],
     cwd: process.cwd(),
     env,
@@ -153,8 +163,9 @@ async function confirm(reason) {
 try {
   await launch();
   assert.equal((await call('getDeepSeekStatus')).configured, false);
-  await button('成长档案').click();
+  await openWorkspacePage(page, '班主任管理', '成长档案');
   await label('档案学生').selectOption(seed.studentId);
+  await page.getByRole('tab', { name: '新增记录', exact: true }).click();
   // 正文为空时，每个其他字段也必须阻止换学生和离开。
   for (const name of [
     '记录来源',
@@ -166,7 +177,10 @@ try {
     await label(name).fill('未保存的合成输入');
     await waitForNavigationGuard(true);
     assert.equal(await label('档案学生').isDisabled(), true, name);
-    assert.equal(await button('班级名册').isDisabled(), true, name);
+    assert.equal(await button('班级名册').isDisabled(), false, name);
+    await button('班级名册').click();
+    await page.getByRole('heading', { name: '成长档案', level: 1, exact: true }).waitFor();
+    assert.equal(await label(name).inputValue(), '未保存的合成输入', name);
     await button('取消事件编辑').click();
     await waitForNavigationGuard(false);
   }
@@ -183,12 +197,14 @@ try {
   await status('事件已保存');
   const event = (await timeline()).events[0];
   assert.equal(event.revision, 1);
+  await page.getByRole('tab', { name: '成长时间线', exact: true }).click();
   await button('更正事件 2026-10-01').click();
   await label('跟进状态').selectOption('completed');
   await label('后续结果').fill('本地核对已完成');
   await label('记录 / 更正说明').fill('合成跟进完成更正');
   await button('保存事件记录').click();
   await status('事件已保存');
+  await page.getByRole('tab', { name: '成长时间线', exact: true }).click();
   await button('查看事件修订 2026-10-01').click();
   const history = page
     .locator('details')
@@ -211,15 +227,17 @@ try {
   await button('更正事件 2026-10-01').click();
   const otherStudent = (await call('snapshot')).students.find((s) => s.id !== seed.studentId);
   await label('档案学生').selectOption(otherStudent.id);
-  await page.getByRole('heading', { name: '记录事件 / 谈话跟进', exact: true }).waitFor();
+  await page.getByRole('heading', { name: '记录一次成长与跟进', exact: true }).waitFor();
   assert.equal(await label('本地事实记录').inputValue(), '');
   await label('档案学生').selectOption(seed.studentId);
   report.gates.push('student switch clears unchanged event correction context');
+  await page.getByRole('tab', { name: '阶段总结', exact: true }).click();
   await label('阶段开始').fill('2026-10-01');
   await label('阶段结束').fill('2026-10-31');
   await label('确认仅使用合成资料，已核对最小摘要并去除可识别信息').check();
-  await button('预览在线总结的实际外发事实').click();
-  await status('没有可用事实');
+  assert.equal(await button('预览在线总结的实际外发事实').isDisabled(), true);
+  assert.equal(await button('保存人工总结草稿').isDisabled(), true);
+  await status('请勾选至少一条有摘要的成长记录');
   await page.getByRole('checkbox', { name: /2026-10-01 · 修订 2/ }).check();
   await label('关联考试').selectOption(seed.score.versionId);
   await page.getByRole('checkbox', { name: /合成学科 · 7/ }).check();
@@ -256,8 +274,9 @@ try {
   // 仅给本脚本拥有的隔离 userData 写入合成 Key。网络已在 Main 全面拦截。
   await call('saveDeepSeekKey', { apiKey: 'synthetic-growth-ui-key' });
   await button('班级名册').click();
-  await button('成长档案').click();
+  await openWorkspacePage(page, '班主任管理', '成长档案');
   await label('档案学生').selectOption(seed.studentId);
+  await page.getByRole('tab', { name: '阶段总结', exact: true }).click();
   await label('阶段开始').fill('2026-10-01');
   await label('阶段结束').fill('2026-10-31');
   await label('确认仅使用合成资料，已核对最小摘要并去除可识别信息').check();
@@ -369,11 +388,13 @@ try {
     'invalid/offline provider retains facts with no retry',
     'visible cancel failure and late response rejected',
   );
+  await page.getByRole('tab', { name: '成长时间线', exact: true }).click();
   await button('更正事件 2026-10-01').click();
   await label('用于阶段总结的最小事实摘要').fill('10月1日核实为两次订正练习。');
   await label('记录 / 更正说明').fill('合成事实后续核实更正');
   await button('保存事件记录').click();
   await status('事件已保存');
+  await page.getByRole('tab', { name: '阶段总结', exact: true }).click();
   const stale = await timeline();
   assert.equal(
     stale.entries.every((e) => e.stale),
@@ -485,8 +506,9 @@ try {
     (await call('readGrowthSummary', { epoch: seed.epoch, id: formal.draftId })).entryId,
     formal.id,
   );
-  await button('成长档案').click();
+  await openWorkspacePage(page, '班主任管理', '成长档案');
   await label('档案学生').selectOption(seed.studentId);
+  await page.getByRole('tab', { name: '阶段总结', exact: true }).click();
   await page.getByText('教师更正合成事实为两次订正练习，仍需跟进。', { exact: true }).waitFor();
   report.gates.push(
     'Schema11 backup/restore counts and old epoch rejection',

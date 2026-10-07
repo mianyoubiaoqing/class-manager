@@ -379,6 +379,23 @@ export function DutyPage({
         </div>
       )}
       {busy && <p role="status">正在处理值日数据…</p>}
+      {!creating && !draft && (
+        <section className="duty-start-panel">
+          <h2>本周值日</h2>
+          <p>先设置分组、岗位和轮换规则，再预览每周安排。</p>
+          <div className="button-row">
+            {['设置分组', '添加岗位', '轮换规则'].map((label) => (
+              <button
+                key={label}
+                disabled={disabled || !classId || !loaded || !students.length}
+                onClick={() => setCreating(true)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
       {creating ? (
         <DutyConfiguration
           students={students}
@@ -548,7 +565,26 @@ export function DutyPage({
               <span>第 {version.record.revision} 版</span>
             </div>
           ) : (
-            loaded && <p>暂无已确认值日计划。</p>
+            loaded && (
+              <section className="duty-week-panel">
+                <h2>每周安排</h2>
+                <p>预览确认后，生成本周值日表。</p>
+                <div className="duty-week-grid">
+                  {['周一', '周二', '周三', '周四', '周五'].map((label) => (
+                    <article className="duty-day-card" key={label}>
+                      <strong>{label}</strong>
+                      <div className="duty-day-empty">尚未安排</div>
+                    </article>
+                  ))}
+                </div>
+                <footer className="flow-next">
+                  <p>更改安排不会自动覆盖已确认的历史值日记录。</p>
+                  <button disabled={disabled || !students.length} onClick={() => setCreating(true)}>
+                    新增值日安排
+                  </button>
+                </footer>
+              </section>
+            )
           )}
           {arrangement && !grouping && (
             <DutySchedule

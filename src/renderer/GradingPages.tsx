@@ -106,6 +106,12 @@ export function GradingPages({
           <button disabled={disabled} onClick={readOriginal}>
             读取原图
           </button>
+          {original && (
+            <figure className="grading-original-preview">
+              <img src={original} alt="当前答卷原图预览" />
+              <figcaption>已读取原图；需要裁剪或遮盖时，展开下方对应选项。</figcaption>
+            </figure>
+          )}
           <label>
             顺时针旋转
             <select

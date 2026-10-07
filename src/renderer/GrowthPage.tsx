@@ -11,6 +11,7 @@ import type {
 } from '../shared/growth';
 import { scoreText } from './score-editor';
 import './growth.css';
+import { WorkspaceTabs } from './WorkspaceTabs';
 
 const localDate = () => {
   const date = new Date();
@@ -45,6 +46,7 @@ export function GrowthPage({
   navigationBusy: boolean;
 }) {
   const api = window.classManager;
+  const [tab, setTab] = useState<'timeline' | 'record' | 'summary'>('timeline');
   const [studentId, setStudentId] = useState(snapshot.students[0]?.id ?? ''),
     [timeline, setTimeline] = useState<GrowthTimeline>();
   const [event, setEvent] = useState(emptyEvent),
@@ -189,6 +191,7 @@ export function GrowthPage({
     acknowledgeSyntheticOnly: true as const,
     acknowledgeRedacted: true as const,
   };
+  const hasSummaryFacts = selection.events.length > 0 || selection.scores.length > 0;
   const blocked = busy || navigationBusy;
   const student = snapshot.students.find((s) => s.id === studentId);
   const readDraft = (id: string) =>
@@ -200,7 +203,7 @@ export function GrowthPage({
     );
   return (
     <div className="growth-page">
-      <p className="notice">
+      <p className="growth-privacy-hint">
         仅合成验证，教师本地私有档案。跟进“已完成”只表示教师记录的状态，不表示通知已送达。模型不作心理诊断或人格定性。
       </p>
       {message && (
@@ -252,8 +255,44 @@ export function GrowthPage({
       )}
       {studentId && (
         <>
-          <section className="growth-section">
-            <h2>{eventId ? '更正事件 / 谈话跟进' : '记录事件 / 谈话跟进'}</h2>
+          <section className="growth-student-overview">
+            <div className="growth-student-avatar">{student?.displayName.slice(0, 1)}</div>
+            <div>
+              <h2>{student?.displayName}</h2>
+              <p>
+                {student?.className} · {student?.studentNumber} ·{' '}
+                {student?.active ? '在籍' : '已停用'}
+              </p>
+            </div>
+            <div className="growth-stats">
+              <span>
+                <strong>{timeline?.events.length ?? 0}</strong>事实记录
+              </span>
+              <span>
+                <strong>
+                  {timeline?.events.filter((e) => e.content.followUp === 'planned').length ?? 0}
+                </strong>
+                待跟进
+              </span>
+              <span>
+                <strong>{timeline?.entries.length ?? 0}</strong>正式总结
+              </span>
+            </div>
+          </section>
+          <WorkspaceTabs
+            id="growth"
+            label="成长档案视图"
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: 'timeline', label: '成长时间线' },
+              { value: 'record', label: '新增记录' },
+              { value: 'summary', label: '阶段总结' },
+            ]}
+          />
+          <section className="growth-section growth-record-form" hidden={tab !== 'record'}>
+            <h2>{eventId ? '更正事件 / 谈话跟进' : '记录一次成长与跟进'}</h2>
+            <p>写下实际发生的事情、采取的行动与后续结果。此处记录保存在本机。</p>
             <fieldset disabled={blocked || !student?.active}>
               <div className="growth-controls">
                 <label>
@@ -334,10 +373,11 @@ export function GrowthPage({
                 />
               </label>
               <label>
-                用于阶段总结的最小事实摘要
+                给阶段总结用的一句话（可选）
                 <textarea
                   maxLength={1000}
                   value={event.summaryFact}
+                  placeholder="例如：完成小组展示，能用自己的话说明解题思路。请勿填写姓名、联系方式等个人标识。"
                   onChange={(e) => setEvent({ ...event, summaryFact: e.target.value })}
                 />
               </label>
@@ -388,9 +428,21 @@ export function GrowthPage({
               </button>
             </fieldset>
           </section>
-          <section className="growth-section">
+          <section className="growth-section growth-timeline" hidden={tab !== 'timeline'}>
             <h2>事实时间线</h2>
-            {!timeline?.events.length && <p>暂无事件。</p>}
+            {!timeline?.events.length && (
+              <div className="workspace-empty-guide">
+                <h3>从一条真实记录开始</h3>
+                <p>记录课堂表现、日常事件或谈话跟进，逐步建立学生的成长时间线。</p>
+                <button
+                  className="primary"
+                  disabled={blocked || !student?.active}
+                  onClick={() => setTab('record')}
+                >
+                  新增成长记录
+                </button>
+              </div>
+            )}
             {timeline?.events.map((e) => (
               <article key={e.id}>
                 <h3>
@@ -417,6 +469,7 @@ export function GrowthPage({
                 <button
                   disabled={blocked || eventDirty || draftDirty || !student?.active}
                   onClick={() => {
+                    setTab('record');
                     setEvent(e.content);
                     setEventBaseline(e.content);
                     setEventId(e.id);
@@ -468,8 +521,14 @@ export function GrowthPage({
               </details>
             )}
           </section>
-          <section className="growth-section">
-            <h2>选择阶段与确切事实</h2>
+          <section className="growth-section" hidden={tab !== 'summary'}>
+            <h2>整理一份阶段总结</h2>
+            <ol className="flow-steps">
+              <li className="active">1 选择时间与依据</li>
+              <li className={prepared || manual ? 'active' : ''}>2 人工撰写或助手起草</li>
+              <li className={draft ? 'active' : ''}>3 教师复核后入档</li>
+            </ol>
+            <p>只使用你选择的记录与成绩。可以先人工撰写，也可以核对发送内容后让助手起草。</p>
             <fieldset disabled={blocked || draftDirty || !student?.active}>
               <div className="growth-controls">
                 <label>
@@ -613,7 +672,7 @@ export function GrowthPage({
               </label>
               {supersedes && <p>拟更正正式条目 {supersedes}；原条目保留。</p>}
               <button
-                disabled={!permission || !manual.trim()}
+                disabled={!permission || !manual.trim() || !hasSummaryFacts}
                 onClick={() =>
                   void run(
                     () =>
@@ -640,7 +699,7 @@ export function GrowthPage({
                 保存人工总结草稿
               </button>
               <button
-                disabled={!permission}
+                disabled={!permission || !hasSummaryFacts}
                 onClick={() =>
                   void run(
                     () => api.prepareGrowthSummary(prepareInput),
@@ -654,6 +713,11 @@ export function GrowthPage({
               >
                 预览在线总结的实际外发事实
               </button>
+              {!hasSummaryFacts && (
+                <p role="status">
+                  请勾选至少一条有摘要的成长记录，或关联考试后添加成绩依据。显示“摘要不足”的记录，请回到成长时间线点击编辑，填写“给阶段总结用的一句话”。
+                </p>
+              )}
               <button
                 onClick={() => {
                   setManual('');
@@ -737,7 +801,7 @@ export function GrowthPage({
               </div>
             )}
           </section>
-          <section className="growth-section">
+          <section className="growth-section" hidden={tab !== 'summary'}>
             <h2>总结草稿（含历史状态）</h2>
             {!timeline?.summaries.length && <p>暂无总结草稿。</p>}
             {timeline?.summaries.map((s) => (
@@ -757,78 +821,80 @@ export function GrowthPage({
             ))}
           </section>
           {draft && (
-            <GrowthDraftEditor
-              key={`${draft.record.id}:${draft.record.revision}`}
-              view={draft}
-              blocked={blocked || !student?.active}
-              onDirtyChange={updateDraftDirty}
-              onSave={(content) =>
-                void run(
-                  () =>
-                    api.editGrowthSummary({
-                      epoch: snapshot.epoch,
-                      id: draft.record.id,
-                      expectedRevision: draft.record.revision,
-                      content,
-                    }),
-                  async () => {
-                    setDraftDirty(false);
-                    await reload();
-                    const latest = await api.readGrowthSummary({
-                      epoch: snapshot.epoch,
-                      id: draft.record.id,
-                    });
-                    if (latest.ok) setDraft(latest.value);
-                  },
-                )
-              }
-              onConfirm={(reason) =>
-                void run(
-                  () =>
-                    api.confirmGrowthSummary({
-                      epoch: snapshot.epoch,
-                      id: draft.record.id,
-                      expectedRevision: draft.record.revision,
-                      reason,
-                      acknowledgeReviewed: true,
-                      acknowledgeSources: true,
-                    }),
-                  async (receipt) => {
-                    setDraftDirty(false);
-                    await reload();
-                    const latest = await api.readGrowthSummary({
-                      epoch: snapshot.epoch,
-                      id: draft.record.id,
-                    });
-                    if (latest.ok) setDraft(latest.value);
-                    setMessage(
-                      `已正式入档 ${receipt.entryId}${receipt.replayed ? '（原确认回执）' : ''}`,
-                    );
-                  },
-                )
-              }
-              onDiscard={() =>
-                void run(
-                  () =>
-                    api.discardGrowthSummary({
-                      epoch: snapshot.epoch,
-                      id: draft.record.id,
-                      expectedRevision: draft.record.revision,
-                    }),
-                  async () => {
-                    setDraftDirty(false);
-                    setDraft(undefined);
-                    await reload();
-                  },
-                )
-              }
-              onClose={() => {
-                setDraftDirty(false);
-                setDraft(undefined);
-              }}
-            />
+            <div hidden={tab !== 'summary'}>
+              <GrowthDraftEditor
+                key={`${draft.record.id}:${draft.record.revision}`}
+                view={draft}
+                blocked={blocked || !student?.active}
+                onDirtyChange={updateDraftDirty}
+                onSave={(content) =>
+                  void run(
+                    () =>
+                      api.editGrowthSummary({
+                        epoch: snapshot.epoch,
+                        id: draft.record.id,
+                        expectedRevision: draft.record.revision,
+                        content,
+                      }),
+                    async () => {
+                      setDraftDirty(false);
+                      await reload();
+                      const latest = await api.readGrowthSummary({
+                        epoch: snapshot.epoch,
+                        id: draft.record.id,
+                      });
+                      if (latest.ok) setDraft(latest.value);
+                    },
+                  )
+                }
+                onConfirm={(reason) =>
+                  void run(
+                    () =>
+                      api.confirmGrowthSummary({
+                        epoch: snapshot.epoch,
+                        id: draft.record.id,
+                        expectedRevision: draft.record.revision,
+                        reason,
+                        acknowledgeReviewed: true,
+                        acknowledgeSources: true,
+                      }),
+                    async (receipt) => {
+                      setDraftDirty(false);
+                      await reload();
+                      const latest = await api.readGrowthSummary({
+                        epoch: snapshot.epoch,
+                        id: draft.record.id,
+                      });
+                      if (latest.ok) setDraft(latest.value);
+                      setMessage(
+                        `已正式入档 ${receipt.entryId}${receipt.replayed ? '（原确认回执）' : ''}`,
+                      );
+                    },
+                  )
+                }
+                onDiscard={() =>
+                  void run(
+                    () =>
+                      api.discardGrowthSummary({
+                        epoch: snapshot.epoch,
+                        id: draft.record.id,
+                        expectedRevision: draft.record.revision,
+                      }),
+                    async () => {
+                      setDraftDirty(false);
+                      setDraft(undefined);
+                      await reload();
+                    },
+                  )
+                }
+                onClose={() => {
+                  setDraftDirty(false);
+                  setDraft(undefined);
+                }}
+              />
+            </div>
           )}
-          <section className="growth-section">
+          <section className="growth-section" hidden={tab !== 'summary'}>
             <h2>正式阶段总结</h2>
             {!timeline?.entries.length && <p>暂无正式总结条目，草稿不会自动入档。</p>}
             {timeline?.entries.map((e) => (
@@ -863,6 +929,7 @@ export function GrowthPage({
                     blocked || draftDirty || Boolean(manual) || !student?.active || !!e.supersededBy
                   }
                   onClick={() => {
+                    setTab('summary');
                     setManual(e.record.content);
                     setSupersedes(e.record.id);
                     setFrom(e.record.source.selection.from);

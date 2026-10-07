@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { MessageSquare, Plus, Search, Pencil, Trash2, X } from 'lucide-react';
+import { MessageSquare, MessagesSquare, Search, Pencil, Trash2, X } from 'lucide-react';
 import type { Snapshot } from '../shared/contracts';
 import type { BusinessView } from '../shared/conversation';
 import type {
@@ -18,8 +18,11 @@ export function ConversationWorkspace({
   active,
   newRequest,
   onOpen,
+  onManage,
   restoreNotice,
   onRestoreNotice,
+  compact = false,
+  executionBlocked = false,
 }: {
   snapshot: Snapshot;
   onSnapshot: (value: Snapshot) => void;
@@ -29,17 +32,23 @@ export function ConversationWorkspace({
   active: boolean;
   newRequest: number;
   onOpen: () => void;
+  onManage: () => void;
   restoreNotice: string;
   onRestoreNotice: (value: string) => void;
+  compact?: boolean;
+  executionBlocked?: boolean;
 }) {
   const api = window.classManager;
   const [record, setRecord] = useState<ConversationHistory>();
   const [catalog, setCatalog] = useState<ConversationHistorySummary[]>([]);
+  const [unreadableCount, setUnreadableCount] = useState(0);
   const [working, setWorking] = useState(false),
     [changing, setChanging] = useState(false);
   const [saving, setSaving] = useState(false),
     [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [category, setCategory] = useState<'all' | 'archived'>('all');
+  const [visibleCount, setVisibleCount] = useState(50);
   const [dialog, setDialog] = useState<{
     kind: 'rename' | 'delete';
     item: ConversationHistorySummary;
@@ -47,6 +56,7 @@ export function ConversationWorkspace({
   const [title, setTitle] = useState('');
   const generation = useRef(0),
     revision = useRef(1);
+  const changingRef = useRef(false);
   const current = useRef<ConversationHistory | undefined>(undefined);
   const wanted = useRef<ConversationHistory | undefined>(undefined);
   const pump = useRef<Promise<boolean> | undefined>(undefined);
@@ -81,8 +91,9 @@ export function ConversationWorkspace({
   async function refresh() {
     const result = await api.listConversationHistory({ epoch: snapshot.epoch });
     if (!result.ok) throw Error(result.error.message);
-    setCatalog(result.value);
-    return result.value;
+    setCatalog(result.value.items);
+    setUnreadableCount(result.value.unreadableCount);
+    return result.value.items;
   }
   async function flush(): Promise<boolean> {
     if (timer.current) clearTimeout(timer.current);
@@ -142,12 +153,16 @@ export function ConversationWorkspace({
     if (timer.current) clearTimeout(timer.current);
     setRecord(undefined);
     setSaving(false);
+    changingRef.current = true;
     setChanging(true);
     void (async () => {
       try {
         const listed = await api.listConversationHistory({ epoch: snapshot.epoch });
         if (!listed.ok) throw Error(listed.error.message);
-        const recent = listed.value.find((item) => !item.archived);
+        if (version !== generation.current) return;
+        setUnreadableCount(listed.value.unreadableCount);
+        setCatalog(listed.value.items);
+        const recent = listed.value.items.find((item) => !item.archived);
         const result = recent
           ? await api.readConversationHistory({ epoch: snapshot.epoch, id: recent.id })
           : await api.createConversationHistory({ epoch: snapshot.epoch });
@@ -155,14 +170,17 @@ export function ConversationWorkspace({
         if (version !== generation.current) return;
         setCatalog([
           summarize(result.value),
-          ...listed.value.filter((item) => item.id !== result.value.id),
+          ...listed.value.items.filter((item) => item.id !== result.value.id),
         ]);
         select(result.value);
       } catch (failure) {
         if (version === generation.current)
           setError(failure instanceof Error ? failure.message : '会话读取失败，请重新打开应用。');
       } finally {
-        if (version === generation.current) setChanging(false);
+        if (version === generation.current) {
+          changingRef.current = false;
+          setChanging(false);
+        }
       }
     })();
     return () => {
@@ -179,7 +197,8 @@ export function ConversationWorkspace({
     return () => onDirtyChange(false);
   }, [working, changing, onDirtyChange]);
   async function open(id: string) {
-    if (working || changing) return;
+    if (working || changingRef.current) return;
+    changingRef.current = true;
     setChanging(true);
     try {
       if (!(await flush())) return;
@@ -190,11 +209,13 @@ export function ConversationWorkspace({
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : '会话读取失败。');
     } finally {
+      changingRef.current = false;
       setChanging(false);
     }
   }
   async function create() {
-    if (working || changing) return;
+    if (working || changingRef.current) return;
+    changingRef.current = true;
     setChanging(true);
     try {
       if (!(await flush())) return;
@@ -206,6 +227,18 @@ export function ConversationWorkspace({
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : '新会话创建失败。');
     } finally {
+      changingRef.current = false;
+      setChanging(false);
+    }
+  }
+  async function manage() {
+    if (working || changingRef.current) return;
+    changingRef.current = true;
+    setChanging(true);
+    try {
+      if (await flush()) onManage();
+    } finally {
+      changingRef.current = false;
       setChanging(false);
     }
   }
@@ -215,7 +248,8 @@ export function ConversationWorkspace({
     void create();
   }, [newRequest]);
   async function confirmDialog() {
-    if (!dialog || working || changing) return;
+    if (!dialog || working || changingRef.current) return;
+    changingRef.current = true;
     setChanging(true);
     try {
       if (!(await flush())) return;
@@ -252,11 +286,24 @@ export function ConversationWorkspace({
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : '会话操作未完成。');
     } finally {
+      changingRef.current = false;
       setChanging(false);
     }
   }
+  const matched = catalog.filter(
+    (item) =>
+      (item.title !== '新会话' || item.messageCount > 0 || item.preview.trim()) &&
+      (category === 'all' || item.archived) &&
+      `${item.title} ${item.preview}`.includes(search.trim()),
+  );
   return (
     <>
+      {unreadableCount > 0 && (
+        <div className="notice" role="status">
+          有 {unreadableCount}{' '}
+          段会话无法读取，原文件已保留。其他会话仍可使用，请在系统设置中导出备份和诊断信息。
+        </div>
+      )}
       {error && (
         <div className="notice error" role="alert">
           <span>{error}</span>
@@ -265,100 +312,229 @@ export function ConversationWorkspace({
           </button>
         </div>
       )}
-      <div hidden={mode !== 'sessions'}>
+      <div className="session-workspace" hidden={mode !== 'sessions'}>
+        <nav className="workspace-tabs" aria-label="历史会话分类">
+          <button
+            className={category === 'all' ? 'selected' : ''}
+            aria-pressed={category === 'all'}
+            onClick={() => {
+              setCategory('all');
+              setVisibleCount(50);
+            }}
+          >
+            全部会话
+          </button>
+          <button
+            className={category === 'archived' ? 'selected' : ''}
+            aria-pressed={category === 'archived'}
+            onClick={() => {
+              setCategory('archived');
+              setVisibleCount(50);
+            }}
+          >
+            已归档
+          </button>
+        </nav>
         <section className="session-manager" aria-label="会话管理">
           <div className="session-toolbar">
-            <p>找回之前的讨论，接着处理教学事务。聊天记录保存在本机。</p>
+            <div>
+              <h2>历史会话</h2>
+              <p>可按标题或任务内容搜索。</p>
+            </div>
+            <button className="history-back" onClick={onOpen}>
+              返回智能对话
+            </button>
             <button
               className="primary"
               disabled={working || changing}
               onClick={() => void create()}
             >
-              <Plus size={16} />
               新建会话
             </button>
           </div>
-          <label className="session-search">
-            <Search size={17} />
-            <input
-              aria-label="搜索会话"
-              placeholder="搜索标题或最近消息"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
+          <label className="session-search-label" htmlFor="session-search">
+            搜索会话
           </label>
-          <div className="session-list">
-            {catalog
-              .filter((item) => `${item.title} ${item.preview}`.includes(search.trim()))
-              .map((item) => (
-                <article
-                  className={`session-item ${item.id === record?.id ? 'current' : ''}`}
-                  key={item.id}
-                  aria-label={item.title}
-                >
-                  <MessageSquare size={20} />
-                  <div className="session-description">
-                    <h3>{item.title}</h3>
-                    <p>{item.preview || '开始一段新的讨论'}</p>
-                    <small>
-                      {new Date(item.updatedAt).toLocaleString('zh-CN')} · {item.messageCount}条消息{' '}
-                      {item.archived
-                        ? ' · 恢复前的记录'
-                        : item.id === record?.id
-                          ? ' · 当前会话'
-                          : ''}
-                    </small>
-                  </div>
-                  <div className="session-item-actions">
-                    <button disabled={working || changing} onClick={() => void open(item.id)}>
-                      {item.archived ? '查看记录' : '继续对话'}
-                    </button>
-                    <button
-                      aria-label={`重命名 ${item.title}`}
-                      disabled={working || changing}
-                      onClick={() => {
-                        setTitle(item.title);
-                        setDialog({ kind: 'rename', item });
-                      }}
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    <button
-                      aria-label={`删除 ${item.title}`}
-                      disabled={working || changing}
-                      onClick={() => setDialog({ kind: 'delete', item })}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </article>
-              ))}
+          <div className="session-search">
+            <input
+              id="session-search"
+              aria-label="搜索会话"
+              placeholder="输入会话标题或关键词"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setVisibleCount(50);
+              }}
+            />
+            <button
+              onClick={() => {
+                setSearch(search.trim());
+                setVisibleCount(50);
+              }}
+            >
+              筛选
+            </button>
           </div>
-          {!catalog.some((item) => `${item.title} ${item.preview}`.includes(search.trim())) && (
-            <p className="empty-state">没有找到会话，换个关键词试试。</p>
+          <div className="session-list">
+            {matched.slice(0, visibleCount).map((item) => (
+              <article
+                className={`session-item ${item.id === record?.id ? 'current' : ''}`}
+                key={item.id}
+                aria-label={item.title}
+              >
+                <MessageSquare size={20} />
+                <div className="session-description">
+                  <h3>{item.title}</h3>
+                  <p>{item.preview || '开始一段新的讨论'}</p>
+                  <small>
+                    {new Date(item.updatedAt).toLocaleString('zh-CN')} · {item.messageCount}条消息{' '}
+                    {item.archived
+                      ? ' · 恢复前的记录'
+                      : item.id === record?.id
+                        ? ' · 当前会话'
+                        : ''}
+                  </small>
+                </div>
+                <div className="session-item-actions">
+                  <button disabled={working || changing} onClick={() => void open(item.id)}>
+                    {item.archived ? '查看记录' : '继续对话'}
+                  </button>
+                  <button
+                    aria-label={`重命名 ${item.title}`}
+                    disabled={working || changing}
+                    onClick={() => {
+                      setTitle(item.title);
+                      setDialog({ kind: 'rename', item });
+                    }}
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <button
+                    aria-label={`删除 ${item.title}`}
+                    disabled={working || changing}
+                    onClick={() => setDialog({ kind: 'delete', item })}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+          {matched.length > visibleCount && (
+            <button className="session-load-more" onClick={() => setVisibleCount((n) => n + 50)}>
+              显示更多会话（还有 {matched.length - visibleCount} 条）
+            </button>
+          )}
+          {!matched.length && (
+            <div className="session-empty">
+              <MessagesSquare size={36} />
+              <h3>
+                {search.trim()
+                  ? '没有找到会话'
+                  : category === 'archived'
+                    ? '还没有归档会话'
+                    : '还没有历史会话'}
+              </h3>
+              <p>
+                {search.trim() ? (
+                  '换个关键词试试。'
+                ) : category === 'archived' ? (
+                  '恢复备份前的会话记录会保留在这里。'
+                ) : (
+                  <>
+                    开启一次智能对话，
+                    <br />
+                    以后可以从这里继续处理。
+                  </>
+                )}
+              </p>
+              <button
+                className="primary"
+                disabled={working || changing}
+                onClick={() => void create()}
+              >
+                开启智能对话
+              </button>
+            </div>
           )}
         </section>
       </div>
-      <div hidden={mode !== 'conversation'}>
-        {record ? (
-          <ConversationPage
-            key={record.id}
-            snapshot={snapshot}
-            onSnapshot={onSnapshot}
-            onNavigate={onNavigate}
-            onDirtyChange={setWorking}
-            active={active && mode === 'conversation'}
-            restoreNotice={restoreNotice}
-            onRestoreNotice={onRestoreNotice}
-            history={record}
-            title={catalog.find((item) => item.id === record.id)?.title ?? record.title}
-            locked={changing}
-            onHistoryChange={updateHistory}
-            onNewConversation={() => void create()}
-          />
-        ) : (
-          <p role="status">正在读取会话…</p>
-        )}
+      <div className="conversation-workspace-panel" hidden={mode !== 'conversation'}>
+        <div className="assistant-compact-tools">
+          <button disabled={working || changing} onClick={() => void create()}>
+            新对话
+          </button>
+          <button disabled={working || changing} onClick={() => void manage()}>
+            查看全部与管理
+          </button>
+        </div>
+        <div className="conversation-with-history">
+          <aside className="conversation-history-rail" aria-label="最近会话" hidden={compact}>
+            <button
+              className="primary"
+              disabled={working || changing}
+              onClick={() => void create()}
+            >
+              开启新对话
+            </button>
+            <label>
+              <Search size={16} />
+              <input
+                aria-label="查找最近会话"
+                placeholder="搜索会话"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
+            <h2>最近会话</h2>
+            <div className="history-scroll">
+              {catalog
+                .filter((item) => `${item.title} ${item.preview}`.includes(search.trim()))
+                .slice(0, 15)
+                .map((item) => (
+                  <button
+                    className={`history-link ${item.id === record?.id ? 'selected' : ''}`}
+                    key={item.id}
+                    disabled={working || changing}
+                    onClick={() => void open(item.id)}
+                  >
+                    <strong>{item.title}</strong>
+                    <small>
+                      {item.archived ? '恢复前记录 · ' : ''}
+                      {item.preview || '还没有消息'}
+                    </small>
+                  </button>
+                ))}
+            </div>
+            <button disabled={working || changing} onClick={() => void manage()}>
+              查看全部与管理
+            </button>
+            <p className="history-help">
+              <strong>会话管理就在这里</strong>
+              <small>搜索、继续、重命名或删除会话</small>
+            </p>
+          </aside>
+          {record ? (
+            <ConversationPage
+              key={record.id}
+              snapshot={snapshot}
+              onSnapshot={onSnapshot}
+              onNavigate={onNavigate}
+              onDirtyChange={setWorking}
+              active={active && mode === 'conversation'}
+              restoreNotice={restoreNotice}
+              onRestoreNotice={onRestoreNotice}
+              history={record}
+              title={catalog.find((item) => item.id === record.id)?.title ?? record.title}
+              locked={changing}
+              executionBlocked={executionBlocked}
+              onHistoryChange={updateHistory}
+              onNewConversation={() => void create()}
+            />
+          ) : (
+            <p role="status">正在读取会话…</p>
+          )}
+        </div>
       </div>
       {dialog && (
         <SessionDialog

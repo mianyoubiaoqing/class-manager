@@ -5,6 +5,10 @@ import { atomicWrite } from '../files';
 import type { DeepSeekCallRecord, DeepSeekLedgerData, DeepSeekTokenUsage } from './types';
 import { growthSourceSchema } from '../../shared/growth';
 import { modelProviderId } from '../../shared/model-providers';
+import {
+  conversationDiagnosticSchema,
+  conversationAttemptSchema,
+} from './conversation-diagnostics';
 
 export interface DeepSeekLedgerSummary {
   totalCalls: number;
@@ -79,6 +83,18 @@ function isValidEntry(entry: unknown): entry is DeepSeekCallRecord {
     return false;
   }
   if (typeof e.promptVersion !== 'string' || !e.promptVersion.trim()) return false;
+  if (
+    e.responseDiagnostic !== undefined &&
+    (e.type !== 'conversation_intent' ||
+      !conversationDiagnosticSchema.safeParse(e.responseDiagnostic).success)
+  )
+    return false;
+  if (
+    e.conversationAttempt !== undefined &&
+    (e.type !== 'conversation_intent' ||
+      !conversationAttemptSchema.safeParse(e.conversationAttempt).success)
+  )
+    return false;
   if (e.growthInput !== undefined) {
     if (e.type !== 'growth_summary' || !e.growthInput || typeof e.growthInput !== 'object')
       return false;

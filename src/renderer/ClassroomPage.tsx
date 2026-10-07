@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { MonitorPlay, X } from 'lucide-react';
+import { ActivityTimer } from './ActivityTimer';
 import type { z } from 'zod';
 import type { Result, Snapshot } from '../shared/contracts';
 import type {
@@ -24,6 +26,49 @@ const prompt = (block: LessonBlock) =>
       : block.kind === 'table'
         ? [block.columns.join(' | '), ...block.rows.map((row) => row.join(' | '))].join('\n')
         : block.caption;
+
+function SlideImage({
+  epoch,
+  block,
+}: {
+  epoch: string;
+  block: Extract<LessonBlock, { kind: 'image' }>;
+}) {
+  const [image, setImage] = useState(''),
+    [error, setError] = useState('');
+  useEffect(() => {
+    let active = true;
+    setImage('');
+    setError('');
+    void window.classManager
+      .readMaterialImage({
+        epoch,
+        id: block.source.sourceVersionId,
+        fragmentId: block.source.fragmentId,
+      })
+      .then((result) => {
+        if (!active) return;
+        if (result.ok) setImage(result.value);
+        else setError(result.error.message);
+      })
+      .catch(() => {
+        if (active) setError('图片读取失败，请重新选择此页。');
+      });
+    return () => {
+      active = false;
+    };
+  }, [epoch, block.source.sourceVersionId, block.source.fragmentId]);
+  return (
+    <figure>
+      {image ? (
+        <img src={image} alt={block.caption} />
+      ) : (
+        <p role="status">{error || '正在读取课件图片…'}</p>
+      )}
+      <figcaption>{block.caption}</figcaption>
+    </figure>
+  );
+}
 export function ClassroomPage({
   snapshot,
   navigationBusy,
@@ -58,12 +103,19 @@ export function ClassroomPage({
   const [initializing, setInitializing] = useState(true);
   const [countdownReady, setCountdownReady] = useState(false);
   const [notice, setNotice] = useState<{ text: string; error: boolean }>();
+  const [choosing, setChoosing] = useState(false),
+    [timerRunning, setTimerRunning] = useState(false);
+  const setupDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (choosing) setupDialog.current?.showModal();
+    else setupDialog.current?.close();
+  }, [choosing]);
   const alive = useRef(true),
     running = useRef(false);
   const locked = busy || navigationBusy || initializing;
   useEffect(() => {
-    onDirtyChange(busy || countdownDirty);
-  }, [busy, countdownDirty, onDirtyChange]);
+    onDirtyChange(busy || countdownDirty || timerRunning);
+  }, [busy, countdownDirty, timerRunning, onDirtyChange]);
   useEffect(
     () => () => {
       alive.current = false;
@@ -168,6 +220,7 @@ export function ClassroomPage({
   }, [session?.record.id]);
   async function acceptSession(value: ClassroomTeacherView) {
     setSession(value);
+    setChoosing(false);
     setClock(undefined);
     const result = await api.readLessonVersion({ epoch, versionId: value.record.versionId });
     if (alive.current) {
@@ -214,7 +267,26 @@ export function ClassroomPage({
           {notice.text}
         </p>
       )}
-      <section aria-label="确认课堂版本与范围">
+      <dialog
+        ref={setupDialog}
+        className="classroom-setup-dialog"
+        aria-label="确认课堂版本与范围"
+        onCancel={(event) => {
+          event.preventDefault();
+          if (!locked) setChoosing(false);
+        }}
+      >
+        <header className="dialog-header">
+          <h2>选择课件与授课班级</h2>
+          <button
+            className="icon-button"
+            aria-label="关闭课件选择"
+            disabled={locked}
+            onClick={() => setChoosing(false)}
+          >
+            <X size={20} />
+          </button>
+        </header>
         <h2>开始一堂课堂</h2>
         <p>
           先确认班级、冻结版本与课件范围。已有课堂不会跟随备课草稿或新冻结版自动变化；展示窗口不接收私有备注、名册、成绩或档案。
@@ -353,51 +425,112 @@ export function ClassroomPage({
           确认此版范围并创建课堂
         </button>
         {!snapshot.classes.length && <p>请先在名册创建授课班级。</p>}
-      </section>
-      <section aria-label="课堂进度与控制">
-        <h2>继续已保存课堂</h2>
-        <label>
-          课堂进度
-          <select
-            aria-label="课堂进度"
-            value={session?.record.id ?? ''}
-            disabled={locked}
-            onChange={(event) => {
-              const id = event.target.value;
-              setSession(undefined);
-              setSessionVersion(undefined);
-              if (id) void run(() => api.readClassroom({ epoch, id }), acceptSession);
-            }}
-          >
-            <option value="">请选择保存的课堂</option>
-            {catalog.items.map((value) => (
-              <option key={value.record.id} value={value.record.id}>
-                {value.className} · {value.title} · 冻结版 {value.versionRevision} ·{' '}
-                {value.record.createdAt}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="classroom-actions">
-          <button
-            disabled={locked || offset === 0}
-            onClick={() => void refreshCatalog(Math.max(0, offset - 50))}
-          >
-            上一批课堂
+      </dialog>
+      <section className="classroom-preview-panel" aria-label="课堂进度与控制">
+        <header className="flow-panel-heading">
+          <div>
+            <h2>课堂展示预览</h2>
+            <p>选择已确认的课件，在大屏上展示。</p>
+          </div>
+          <button disabled={locked} onClick={() => setChoosing(true)}>
+            选择课件
           </button>
-          <span>{catalog.total} 条进度</span>
-          <button
-            disabled={locked || offset + 50 >= catalog.total}
-            onClick={() => void refreshCatalog(offset + 50)}
-          >
-            下一批课堂
-          </button>
-          <button disabled={locked} onClick={() => void refreshCatalog()}>
-            重新读取课堂目录
-          </button>
-        </div>
+        </header>
+        <details className="classroom-catalog">
+          <summary>继续已保存课堂</summary>
+          <label>
+            课堂进度
+            <select
+              aria-label="课堂进度"
+              value={session?.record.id ?? ''}
+              disabled={locked}
+              onChange={(event) => {
+                const id = event.target.value;
+                setSession(undefined);
+                setSessionVersion(undefined);
+                if (id) void run(() => api.readClassroom({ epoch, id }), acceptSession);
+              }}
+            >
+              <option value="">请选择保存的课堂</option>
+              {catalog.items.map((value) => (
+                <option key={value.record.id} value={value.record.id}>
+                  {value.className} · {value.title} · 冻结版 {value.versionRevision} ·{' '}
+                  {value.record.createdAt}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="classroom-actions">
+            <button
+              disabled={locked || offset === 0}
+              onClick={() => void refreshCatalog(Math.max(0, offset - 50))}
+            >
+              上一批课堂
+            </button>
+            <span>{catalog.total} 条进度</span>
+            <button
+              disabled={locked || offset + 50 >= catalog.total}
+              onClick={() => void refreshCatalog(offset + 50)}
+            >
+              下一批课堂
+            </button>
+            <button disabled={locked} onClick={() => void refreshCatalog()}>
+              重新读取课堂目录
+            </button>
+          </div>
+        </details>
+        {!session && (
+          <div className="workspace-empty-guide classroom-empty-preview">
+            <MonitorPlay size={40} />
+            <h3>尚未选择课件</h3>
+            <p>先从本地备课中生成并确认课件。</p>
+            <button className="primary" disabled={locked} onClick={() => setChoosing(true)}>
+              选择课件并开始课堂
+            </button>
+          </div>
+        )}
         {session && (
           <>
+            <div className="classroom-slide-preview">
+              <small>{currentSlide?.sectionTitle}</small>
+              <h3>{currentSlide?.title}</h3>
+              {sessionVersion?.payload.content.slides
+                .find((slide) => slide.id === currentSlide?.id)
+                ?.content.map((block, index) =>
+                  block.kind === 'image' ? (
+                    <SlideImage key={index} epoch={epoch} block={block} />
+                  ) : block.kind === 'list' ? (
+                    <ul key={index}>
+                      {block.items.map((item, i) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : block.kind === 'table' ? (
+                    <div className="table-scroll" key={index}>
+                      <table>
+                        <thead>
+                          <tr>
+                            {block.columns.map((column, i) => (
+                              <th key={i}>{column}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {block.rows.map((row, i) => (
+                            <tr key={i}>
+                              {row.map((cell, j) => (
+                                <td key={j}>{cell}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p key={index}>{block.text}</p>
+                  ),
+                )}
+            </div>
             <p>
               当前：{session.className} · {session.title} · 冻结版 {session.versionRevision} · 第{' '}
               {session.record.payload.index + 1}/{session.slides.length} 页
@@ -536,7 +669,8 @@ export function ClassroomPage({
           </>
         )}
       </section>
-      <section aria-label="高考倒计时设置">
+      <ActivityTimer onRunningChange={setTimerRunning} />
+      <section className="exam-countdown-panel" aria-label="高考倒计时设置">
         <h2>高考倒计时</h2>
         <p>
           名称、目标日期及时区由教师设置，不自动猜测当地考试安排。按目标时区的日历日期计算，首页及课堂显示。
@@ -552,98 +686,101 @@ export function ClassroomPage({
             · {countdown.setting.targetDate} · {countdown.setting.timeZone}
           </p>
         )}
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void run(
-              () =>
-                api.setCountdown({ epoch, expectedRevision: countdown?.revision ?? 0, setting }),
-              (value) => {
-                setCountdown(value);
-                setSetting(value.setting);
-                setCountdownDirty(false);
-              },
-              '倒计时已保存。',
-            );
-          }}
-        >
-          <div className="classroom-form-grid">
-            <label>
-              倒计时名称
-              <input
-                value={setting.name}
-                maxLength={80}
+        <details open={countdownDirty}>
+          <summary>设置考试日期与名称</summary>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void run(
+                () =>
+                  api.setCountdown({ epoch, expectedRevision: countdown?.revision ?? 0, setting }),
+                (value) => {
+                  setCountdown(value);
+                  setSetting(value.setting);
+                  setCountdownDirty(false);
+                },
+                '倒计时已保存。',
+              );
+            }}
+          >
+            <div className="classroom-form-grid">
+              <label>
+                倒计时名称
+                <input
+                  value={setting.name}
+                  maxLength={80}
+                  disabled={locked}
+                  onChange={(event) => {
+                    setSetting({ ...setting, name: event.target.value });
+                    setCountdownDirty(true);
+                  }}
+                  required
+                />
+              </label>
+              <label>
+                目标日期
+                <input
+                  type="date"
+                  value={setting.targetDate}
+                  disabled={locked}
+                  onChange={(event) => {
+                    setSetting({ ...setting, targetDate: event.target.value });
+                    setCountdownDirty(true);
+                  }}
+                  required
+                />
+              </label>
+              <label>
+                目标时区
+                <input
+                  value={setting.timeZone}
+                  maxLength={80}
+                  list="classroom-timezones"
+                  disabled={locked}
+                  onChange={(event) => {
+                    setSetting({ ...setting, timeZone: event.target.value });
+                    setCountdownDirty(true);
+                  }}
+                  required
+                />
+                <datalist id="classroom-timezones">
+                  <option value="Asia/Shanghai" />
+                  <option value="UTC" />
+                  <option value="America/New_York" />
+                  <option value="Europe/London" />
+                </datalist>
+              </label>
+            </div>
+            <div className="classroom-actions">
+              <button className="primary" disabled={locked || !countdownReady}>
+                保存倒计时
+              </button>
+              <button
+                type="button"
                 disabled={locked}
-                onChange={(event) => {
-                  setSetting({ ...setting, name: event.target.value });
-                  setCountdownDirty(true);
-                }}
-                required
-              />
-            </label>
-            <label>
-              目标日期
-              <input
-                type="date"
-                value={setting.targetDate}
-                disabled={locked}
-                onChange={(event) => {
-                  setSetting({ ...setting, targetDate: event.target.value });
-                  setCountdownDirty(true);
-                }}
-                required
-              />
-            </label>
-            <label>
-              目标时区
-              <input
-                value={setting.timeZone}
-                maxLength={80}
-                list="classroom-timezones"
-                disabled={locked}
-                onChange={(event) => {
-                  setSetting({ ...setting, timeZone: event.target.value });
-                  setCountdownDirty(true);
-                }}
-                required
-              />
-              <datalist id="classroom-timezones">
-                <option value="Asia/Shanghai" />
-                <option value="UTC" />
-                <option value="America/New_York" />
-                <option value="Europe/London" />
-              </datalist>
-            </label>
-          </div>
-          <div className="classroom-actions">
-            <button className="primary" disabled={locked || !countdownReady}>
-              保存倒计时
-            </button>
-            <button
-              type="button"
-              disabled={locked}
-              onClick={() =>
-                void run(
-                  () => api.readCountdown({ epoch }),
-                  (value) => {
-                    setCountdown(value);
-                    setCountdownReady(true);
-                    setSetting(
-                      value?.setting ?? {
-                        name: '高考倒计时',
-                        targetDate: '',
-                        timeZone: 'Asia/Shanghai',
-                      },
-                    );
-                    setCountdownDirty(false);
-                  },
-                )
-              }
-            >
-              放弃修改并重新读取倒计时
-            </button>
-          </div>
-        </form>
+                onClick={() =>
+                  void run(
+                    () => api.readCountdown({ epoch }),
+                    (value) => {
+                      setCountdown(value);
+                      setCountdownReady(true);
+                      setSetting(
+                        value?.setting ?? {
+                          name: '高考倒计时',
+                          targetDate: '',
+                          timeZone: 'Asia/Shanghai',
+                        },
+                      );
+                      setCountdownDirty(false);
+                    },
+                  )
+                }
+              >
+                放弃修改并重新读取倒计时
+              </button>
+            </div>
+          </form>
+        </details>
       </section>
     </div>
   );

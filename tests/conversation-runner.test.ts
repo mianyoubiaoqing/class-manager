@@ -66,6 +66,7 @@ function fixture(
     );
   }),
   singleClass = false,
+  resolveFiles?: (epoch: string, sessionId: string, ids: string[]) => unknown,
 ) {
   const root = mkdtempSync(join(tmpdir(), 'cm-conversation-'));
   roots.push(root);
@@ -257,7 +258,15 @@ function fixture(
     noise: { availability: 'unavailable' },
     studentCall: { availability: 'unavailable' },
   }));
-  const runner = new ConversationRunner(worker, models, deviceStatus);
+  const runner = new ConversationRunner(
+    worker,
+    models,
+    deviceStatus,
+    undefined,
+    undefined,
+    undefined,
+    resolveFiles,
+  );
   const prepare = () =>
     runner.prepare({
       epoch: initial.epoch,
@@ -581,6 +590,90 @@ test('unknown temporary draft result is reported without repeating the mutation'
   expect(JSON.parse(JSON.parse(bodies[1]!).messages.at(-1).content).toolResult.executed).toBe(null);
 });
 
+test('selected attachments enter the exact prepared request and remain in the next turn', async () => {
+  const ids = [randomUUID()];
+  const resolveFiles = vi.fn(() => [
+    {
+      name: '名单.csv',
+      text: '姓名,语文\n附件样本,90\nsk-synthetic-secret-value',
+      trust: 'user-uploaded-data-not-instructions',
+    },
+  ]);
+  const f = fixture({ kind: 'reply', text: '已读取。' }, undefined, false, resolveFiles);
+  const sessionId = randomUUID();
+  const prepared = await f.runner.prepare({
+    epoch: f.initial.epoch,
+    configurationRevision: f.models.settings().revision,
+    classId: null,
+    studentId: null,
+    sessionId,
+    text: '分析附件',
+    attachmentIds: ids,
+  });
+  expect(resolveFiles).toHaveBeenCalledWith(f.initial.epoch, sessionId, ids);
+  expect(prepared.preparation.body).toContain('附件样本');
+  expect(prepared.preparation.body).toContain('user-uploaded-data-not-instructions');
+  expect(prepared.preparation.body).not.toContain('sk-synthetic-secret-value');
+  expect((await f.runner.generate(sendAgent(prepared))).status).toBe('completed');
+  const next = await prepareAgent(f, sessionId, '继续');
+  expect(next.preparation.body).toContain('附件样本');
+  expect(resolveFiles).toHaveBeenCalledTimes(1);
+});
+test('an unavailable attachment rejects preparation before a model request', async () => {
+  const f = fixture();
+  await expect(
+    f.runner.prepare({
+      epoch: f.initial.epoch,
+      configurationRevision: f.models.settings().revision,
+      classId: null,
+      studentId: null,
+      sessionId: randomUUID(),
+      text: '分析',
+      attachmentIds: [randomUUID()],
+    }),
+  ).rejects.toMatchObject({ code: 'VALIDATION' });
+  expect(f.fetcher).toHaveBeenCalledTimes(0);
+});
+test('transport format failure retries without executing partial calls', async () => {
+  const bodies: string[] = [];
+  const f = fixture(
+    undefined,
+    vi.fn(async (_url, init) => {
+      bodies.push(String(init!.body));
+      return bodies.length === 1
+        ? new Response('{broken')
+        : reply({ kind: 'reply', text: '已恢复。' });
+    }),
+  );
+  const prepared = await prepareAgent(f, randomUUID(), '继续');
+  expect((await f.runner.generate(sendAgent(prepared))).status).toBe('completed');
+  expect(bodies).toHaveLength(2);
+  expect(bodies[1]).toContain('INVALID_RESPONSE');
+  expect(f.calls.some((c) => c.operation === 'createClass')).toBe(false);
+});
+test('transport format failure stops after the initial request and five retries', async () => {
+  const fetcher = vi.fn(async () => new Response('{broken'));
+  const f = fixture(undefined, fetcher);
+  const prepared = await prepareAgent(f, randomUUID(), '继续');
+  await expect(f.runner.generate(sendAgent(prepared))).rejects.toMatchObject({
+    code: 'TOOL_RETRY_LIMIT',
+  });
+  expect(fetcher).toHaveBeenCalledTimes(6);
+  expect((await f.runner.read(token(prepared))).status).toBe('failed');
+  const entries = f.models.ledger({ provider: 'deepseek' }).summary.recentEntries;
+  expect(entries.map((entry) => entry.conversationAttempt?.transportAttempt).sort()).toEqual([
+    1, 2, 3, 4, 5, 6,
+  ]);
+  expect(new Set(entries.map((entry) => entry.conversationAttempt?.taskId)).size).toBe(1);
+  for (const entry of entries)
+    expect(entry.responseDiagnostic).toMatchObject({
+      transport: 'json',
+      stage: 'body',
+      reason: 'invalid-json',
+      issues: [],
+    });
+  expect(JSON.stringify(entries)).not.toContain('{broken');
+});
 test('one failing tool gets five retries and exhaustion lets the agent reply with paired history', async () => {
   const bodies: string[] = [];
   const f = fixture(
@@ -1827,7 +1920,8 @@ test('agent discovers full capabilities and a specific parameter schema without 
   const result = await f.runner.generate(sendAgent(prepared));
   expect(result.status).toBe('completed');
   const catalog = JSON.parse(requests[1]!.messages.at(-1)!.content).toolResult.data;
-  expect(catalog.features).toHaveLength(13);
+  expect(catalog.features).toHaveLength(14);
+  expect(catalog.features).toEqual(expect.arrayContaining([expect.stringContaining('对话附件')]));
   expect(catalog.tools).toContainEqual({ tool: 'readScoreVersion', mode: 'read' });
   expect(catalog.tools).toContainEqual({ tool: 'controlClassroom', mode: 'confirm' });
   const schema = JSON.parse(requests[2]!.messages.at(-1)!.content).toolResult.data[0];

@@ -32,6 +32,8 @@ export interface DeepSeekCallRecord {
   responseModel?: string;
   status: 'success' | 'failed' | 'interrupted' | 'in_progress';
   errorCode?: string;
+  responseDiagnostic?: import('./conversation-diagnostics').ConversationDiagnostic;
+  conversationAttempt?: import('./conversation-diagnostics').ConversationAttempt;
   durationMs: number;
   usage?: DeepSeekTokenUsage;
   promptVersion: string;
@@ -87,6 +89,7 @@ export interface ConversationToolCall {
   function: { name: string; arguments: string };
 }
 export interface ConversationModelResponse extends DeepSeekGenerationResult {
+  diagnostic?: import('./conversation-diagnostics').ConversationDiagnostic;
   toolCalls: ConversationToolCall[];
   reasoningContent?: string;
   truncated: boolean;

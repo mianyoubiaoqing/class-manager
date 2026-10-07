@@ -1,5 +1,11 @@
 import { GrowthRunner } from './growth-runner';
+import {
+  rosterImportInput,
+  rosterConfirmInput,
+  rosterTemplateInput,
+} from '../shared/roster-import';
 import { ConversationRunner } from './conversation-runner';
+import { conversationPrepareInput } from '../shared/conversation';
 import { ConversationHistoryStore } from '../core/conversation-history';
 import {
   historyEpochInput,
@@ -12,6 +18,7 @@ import { applicationDraftTools } from '../shared/application-tools';
 import { DeviceGateway } from '../core/device-gateway';
 import { DisconnectedNoiseMonitor, DisconnectedStudentCall } from '../core/device-adapters';
 import { ModelRuntime } from '../core/model-runtime';
+import { conversationDiagnosticEntries } from '../core/deepseek/conversation-diagnostics';
 import {
   modelConfigurationInput,
   modelKeyInput,
@@ -35,8 +42,10 @@ import {
   type Snapshot,
 } from '../shared/contracts';
 import { MAX_BACKUP_BYTES } from '../core/backup';
-import { atomicWrite, requireRegularFile } from '../core/files';
+import { atomicCreate, atomicWrite, requireRegularFile } from '../core/files';
 import { DomainError, publicError } from '../core/errors';
+import { MaterialFolders } from './material-folders';
+import { resourceLinkInput } from '../shared/material-folders';
 import {
   DeepSeekClient,
   DeepSeekCredentialStore,
@@ -48,6 +57,8 @@ import {
 import { WorkerClient } from './worker-client';
 import { assertExportDestination, isTrustedSender } from './security';
 import { readScoreFile, type SelectedScoreFile } from './score-files';
+import { ConversationFiles } from './conversation-files';
+import { conversationFilesInput, conversationFileRemoveInput } from '../shared/conversation-files';
 import { ExplanationRunner } from './explanation-runner';
 import { LessonRunner } from './lesson-runner';
 import { GradingRunner } from './grading-runner';
@@ -144,6 +155,8 @@ if (!app.requestSingleInstanceLock()) {
         new DisconnectedNoiseMonitor(),
         new DisconnectedStudentCall(),
       );
+      const materialTask = new MaterialTaskRunner(join(__dirname, 'material-process.cjs'));
+      const conversationFiles = new ConversationFiles(materialTask);
       const conversation = new ConversationRunner(
         worker,
         models,
@@ -161,6 +174,7 @@ if (!app.requestSingleInstanceLock()) {
           }
         },
         (id, epoch) => conversationHistory.resume({ id, epoch }),
+        (epoch, sessionId, ids) => conversationFiles.resolve(epoch, sessionId, ids),
       );
       const growth = new GrowthRunner(worker, models, models, models, (kind) =>
         models.selection(kind),
@@ -168,11 +182,15 @@ if (!app.requestSingleInstanceLock()) {
       const explanations = new ExplanationRunner(worker, models, models, models, (kind) =>
         models.selection(kind),
       );
-      const materialTask = new MaterialTaskRunner(join(__dirname, 'material-process.cjs'));
       const lessons = new LessonRunner(worker, models, models, models, materialTask, (kind) =>
         models.selection(kind),
       );
       const materials = new MaterialImporter(worker, materialTask);
+      const materialFolders = new MaterialFolders(materials, async () => {
+        const result = await worker.call<Snapshot>('snapshot');
+        if (!result.ok) throw new DomainError(result.error.code, result.error.message);
+        return result.value.epoch;
+      });
       const gradings = new GradingRunner(worker, models, models, models, materialTask, (kind) =>
         models.selection(kind),
       );
@@ -210,6 +228,7 @@ if (!app.requestSingleInstanceLock()) {
       let scoreSelectionGeneration = 0;
       let activeScorePreviewEpoch: string | undefined;
       app.on('will-quit', () => {
+        conversationFiles.invalidate();
         conversation.invalidate();
         models.invalidate();
         clearInterval(classroomCheckpoint);
@@ -220,6 +239,7 @@ if (!app.requestSingleInstanceLock()) {
         lessons.invalidate();
         gradings.invalidate();
         materials.invalidate();
+        materialFolders.invalidate();
         office.invalidate();
         void officeTask.close();
         void materialTask.close();
@@ -294,7 +314,13 @@ if (!app.requestSingleInstanceLock()) {
         }
       });
       window.on('close', (event) => {
-        if (operationBusy || devices.busy || models.busy || conversation.busy) {
+        if (
+          operationBusy ||
+          devices.busy ||
+          models.busy ||
+          conversation.busy ||
+          materialFolders.busy
+        ) {
           event.preventDefault();
           void dialog.showMessageBox(window!, {
             type: 'info',
@@ -346,6 +372,7 @@ if (!app.requestSingleInstanceLock()) {
         bytes: Uint8Array,
         name: string,
         extension: string,
+        protectExisting = false,
       ): Promise<Result<Receipt | null>> {
         const selected = await dialog.showSaveDialog(window!, {
           defaultPath: join(app.getPath('documents'), name),
@@ -364,7 +391,8 @@ if (!app.requestSingleInstanceLock()) {
         });
         if (selected.canceled || !selected.filePath) return { ok: true, value: null };
         assertExportDestination(selected.filePath, root);
-        atomicWrite(selected.filePath, bytes);
+        if (protectExisting) atomicCreate(selected.filePath, bytes);
+        else atomicWrite(selected.filePath, bytes);
         return {
           ok: true,
           value: { path: selected.filePath, createdAt: new Date().toISOString() },
@@ -385,7 +413,7 @@ if (!app.requestSingleInstanceLock()) {
             if (requested.epoch !== current.value.epoch)
               throw new DomainError('STALE_WORKSPACE', '工作区已变化，请重新打开会话管理。');
             if (channel === 'listConversationHistory')
-              return { ok: true, value: conversationHistory.list(input) };
+              return { ok: true, value: conversationHistory.catalog(input) };
             if (channel === 'createConversationHistory')
               return { ok: true, value: conversationHistory.create(input) };
             if (channel === 'readConversationHistory')
@@ -402,11 +430,46 @@ if (!app.requestSingleInstanceLock()) {
             if (existing.revision !== remove.expectedRevision)
               throw new DomainError('CONFLICT', '会话记录已更新，请重新选择。');
             await conversation.clearSession({ epoch: remove.epoch, sessionId: remove.id });
+            conversationFiles.clearSession(remove.id);
             conversationHistory.delete(remove);
             return { ok: true, value: undefined };
           }
-          case 'prepareConversation':
-            return { ok: true, value: await conversation.prepare(input) };
+          case 'selectConversationFiles': {
+            const parsed = conversationFilesInput.parse(input);
+            conversationHistory.read({ epoch: parsed.epoch, id: parsed.sessionId });
+            const files = await conversationFiles.select(
+              parsed,
+              async () => {
+                const selected = await dialog.showOpenDialog(window!, {
+                  title: '上传对话附件',
+                  properties: ['openFile', 'multiSelections'],
+                  filters: [
+                    { name: '表格与文档', extensions: ['xlsx', 'csv', 'txt', 'md', 'pdf', 'docx'] },
+                  ],
+                });
+                return selected.canceled ? [] : selected.filePaths;
+              },
+              async () => {
+                const snapshot = await worker.call<Snapshot>('snapshot');
+                if (!snapshot.ok)
+                  throw new DomainError(snapshot.error.code, snapshot.error.message);
+                return snapshot.value.epoch;
+              },
+            );
+            return { ok: true, value: files };
+          }
+          case 'removeConversationFiles': {
+            const parsed = conversationFileRemoveInput.parse(input);
+            conversationFiles.remove(parsed.epoch, parsed.sessionId, parsed.ids);
+            return { ok: true, value: undefined };
+          }
+          case 'prepareConversation': {
+            const task = await conversation.prepare(input);
+            const parsed = conversationPrepareInput.parse(input);
+            if (parsed.sessionId && parsed.attachmentIds?.length)
+              conversationFiles.remove(parsed.epoch, parsed.sessionId, parsed.attachmentIds);
+            return { ok: true, value: task };
+          }
           case 'generateConversation':
             if (
               currentCheckController ||
@@ -424,8 +487,12 @@ if (!app.requestSingleInstanceLock()) {
             return { ok: true, value: await conversation.read(input) };
           case 'cancelConversation':
             return { ok: true, value: conversation.cancel(input) };
-          case 'clearConversationSession':
-            return { ok: true, value: await conversation.clearSession(input) };
+          case 'clearConversationSession': {
+            const parsed = conversationFilesInput.parse(input);
+            await conversation.clearSession(parsed);
+            conversationFiles.clearSession(parsed.sessionId);
+            return { ok: true, value: undefined };
+          }
           case 'readModelSettings':
             return { ok: true, value: models.settings() };
           case 'configureModelProvider':
@@ -555,6 +622,7 @@ if (!app.requestSingleInstanceLock()) {
             });
             return { ok: true, value: undefined };
           case 'previewMaterial':
+            if (materialFolders.busy) throw new DomainError('BUSY', '文件夹资料读取尚未结束。');
             return {
               ok: true,
               value: await materials.preview(input, async () => {
@@ -562,7 +630,7 @@ if (!app.requestSingleInstanceLock()) {
                   properties: ['openFile'],
                   filters: [
                     {
-                      name: '教学资料（合成样本）',
+                      name: '教学资料',
                       extensions: ['txt', 'docx', 'pdf', 'jpg', 'jpeg', 'png'],
                     },
                   ],
@@ -571,7 +639,27 @@ if (!app.requestSingleInstanceLock()) {
               }),
             };
           case 'confirmMaterial':
+            if (materialFolders.busy) throw new DomainError('BUSY', '文件夹资料读取尚未结束。');
             return materials.confirm(input);
+          case 'scanMaterialFolder':
+            return {
+              ok: true,
+              value: await materialFolders.scan(input, async () => {
+                const selected = await dialog.showOpenDialog(window!, {
+                  title: '选择备课资料文件夹',
+                  properties: ['openDirectory'],
+                });
+                return selected.canceled ? null : (selected.filePaths[0] ?? null);
+              }),
+            };
+          case 'readMaterialFolder':
+            return { ok: true, value: await materialFolders.read(input) };
+          case 'cancelMaterialFolder':
+            materialFolders.cancel(input);
+            return { ok: true, value: undefined };
+          case 'openResourceLink':
+            await shell.openExternal(resourceLinkInput.parse(input).url);
+            return { ok: true, value: undefined };
           case 'cancelMaterial':
             materials.cancel(input);
             return { ok: true, value: undefined };
@@ -720,6 +808,38 @@ if (!app.requestSingleInstanceLock()) {
               activeScorePreviewEpoch = undefined;
             }
           }
+          case 'previewRosterImport': {
+            const parsed = rosterImportInput.parse(input);
+            const snapshot = await worker.call<Snapshot>('snapshot');
+            if (!snapshot.ok) return snapshot;
+            if (
+              snapshot.value.epoch !== parsed.epoch ||
+              !snapshot.value.classes.some((c) => c.id === parsed.classId)
+            )
+              throw new DomainError('CONFLICT', '班级或数据空间已变化，请刷新。');
+            const cancelled = await worker.call('cancelRosterPreview', { epoch: parsed.epoch });
+            if (!cancelled.ok) return cancelled;
+            const selected = await dialog.showOpenDialog(window!, {
+              properties: ['openFile'],
+              filters: [{ name: '班级名册', extensions: ['xlsx', 'csv'] }],
+            });
+            if (selected.canceled || !selected.filePaths[0]) return { ok: true, value: null };
+            const file = await readScoreFile(selected.filePaths[0], parsed.epoch);
+            return worker.call('previewRosterBytes', {
+              bytes: file.bytes,
+              format: file.format,
+              fileName: file.name,
+              configuration: parsed,
+            });
+          }
+          case 'confirmRosterImport':
+            return worker.call('confirmRosterImport', rosterConfirmInput.parse(input));
+          case 'exportRosterTemplate': {
+            const parsed = rosterTemplateInput.parse(input);
+            const template = await worker.call<Uint8Array>('exportRosterTemplate', parsed);
+            if (!template.ok) return template;
+            return save(template.value, `班级名册空白模板.${parsed.format}`, parsed.format, true);
+          }
           case 'cancelScorePreview': {
             const parsed = scoreCancelInput.parse(input);
             const ownedEpoch = activeScorePreviewEpoch ?? selectedScoreFile?.epoch;
@@ -738,7 +858,7 @@ if (!app.requestSingleInstanceLock()) {
             const parsed = scoreTemplateInput.parse(input);
             const template = await worker.call<Uint8Array>('exportScoreTemplate', parsed);
             if (!template.ok) return template;
-            return save(template.value, `score-template.${parsed.format}`, parsed.format);
+            return save(template.value, `score-template.${parsed.format}`, parsed.format, true);
           }
           case 'commitRestore': {
             conversation.invalidate();
@@ -746,12 +866,14 @@ if (!app.requestSingleInstanceLock()) {
             const result = await worker.call('commitRestore', input);
             if (result.ok) {
               devices.invalidate();
+              conversationFiles.invalidate();
               models.invalidate();
               explanations.invalidate();
               growth.invalidate();
               lessons.invalidate();
               gradings.invalidate();
               materials.invalidate();
+              materialFolders.invalidate();
               office.invalidate();
               scoreSelectionGeneration++;
               selectedScoreFile = undefined;
@@ -779,10 +901,24 @@ if (!app.requestSingleInstanceLock()) {
           }
           case 'exportDiagnostics': {
             const snapshot = await worker.call<Snapshot>('snapshot');
+            const modelResponses = (['deepseek', 'kimi', 'doubao'] as const).map((provider) => {
+              try {
+                return {
+                  provider,
+                  status: 'ready',
+                  calls: conversationDiagnosticEntries(
+                    models.ledger({ provider }).summary.recentEntries,
+                  ),
+                };
+              } catch {
+                // Keep database/system diagnostics available when a provider ledger is unreadable.
+                return { provider, status: 'unavailable', calls: [] };
+              }
+            });
             const report = {
               format: 'class-manager-diagnostics',
               version: app.getVersion(),
-              mode: 'synthetic',
+              mode: 'local',
               createdAt: new Date().toISOString(),
               platform: process.platform,
               arch: process.arch,
@@ -798,6 +934,7 @@ if (!app.requestSingleInstanceLock()) {
                   }
                 : null,
               errors: recentErrors,
+              modelResponses,
               printPreviewResidues: countPrintPreviewResidues(printCacheRoot),
             };
             return save(
@@ -914,6 +1051,9 @@ if (!app.requestSingleInstanceLock()) {
       }
 
       const EXCLUSIVE_WORKSPACE_CHANNELS = new Set<Channel>([
+        'scanMaterialFolder',
+        'readMaterialFolder',
+        'selectConversationFiles',
         'executeConversation',
         'configureModelProvider',
         'selectModelProvider',
@@ -963,6 +1103,9 @@ if (!app.requestSingleInstanceLock()) {
         'createClass',
         'renameClass',
         'saveStudent',
+        'previewRosterImport',
+        'confirmRosterImport',
+        'exportRosterTemplate',
         'saveStudentProfile',
         'saveAttendance',
         'setStudentActive',
@@ -1036,6 +1179,8 @@ if (!app.requestSingleInstanceLock()) {
               throw new DomainError('BUSY', '配置或数据操作尚未结束，模型准备与外发暂不可用。');
             const isExclusive = EXCLUSIVE_WORKSPACE_CHANNELS.has(channel);
             if (isExclusive) {
+              if (materialFolders.busy && channel !== 'readMaterialFolder')
+                throw new DomainError('BUSY', '请先完成或取消文件夹读取。');
               if (operationBusy) throw new DomainError('BUSY', '另一项操作正在进行，请稍后重试。');
               operationBusy = true;
             }

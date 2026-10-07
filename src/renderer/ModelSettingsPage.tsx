@@ -14,9 +14,11 @@ import { WorkspaceTabs } from './WorkspaceTabs';
 export function ModelSettingsPage({
   onDirtyChange,
   onLegacy,
+  onDiagnostics,
 }: {
   onDirtyChange: (dirty: boolean) => void;
   onLegacy: () => void;
+  onDiagnostics?: () => void;
 }) {
   const api = window.classManager;
   const [settings, setSettings] = useState<ModelSettingsView>(),
@@ -26,6 +28,7 @@ export function ModelSettingsPage({
     [key, setKey] = useState('');
   const [contextWindow, setContextWindow] = useState('');
   const [tab, setTab] = useState<'configuration' | 'connection' | 'usage'>('configuration');
+  const [overview, setOverview] = useState(true);
   const [prepared, setPrepared] = useState<ModelCheckPreparation>(),
     [confirmed, setConfirmed] = useState(false);
   const [receipt, setReceipt] = useState<ModelCheckReceipt>(),
@@ -90,8 +93,101 @@ export function ModelSettingsPage({
     };
     // 本页首次读取后，选择/保存通过具名操作更新状态。
   }, []);
+  const selected = settings?.providers.find((p) => p.provider === settings.selectedProvider);
+  if (overview)
+    return (
+      <div className="model-overview">
+        {message && (
+          <p className="notice" role="status">
+            {message}
+          </p>
+        )}
+        <section className="design-panel model-current">
+          <header>
+            <div>
+              <h2>当前连接</h2>
+              <p>
+                {selected?.credentials.configured
+                  ? `${selected.label} · ${selected.textModel || '尚未设置型号'}`
+                  : '未连接模型服务'}
+              </p>
+            </div>
+            <span className="connection-status">
+              {selected?.credentials.configured ? '已配置，待检查' : '等待连接'}
+            </span>
+          </header>
+          <p>连接后，可使用智能对话、备课生成与答卷建议。</p>
+          <div className="button-row">
+            <button
+              disabled={busy}
+              onClick={() => {
+                if (settings) accept(settings, settings.selectedProvider);
+                setTab('connection');
+                setOverview(false);
+              }}
+            >
+              检查连接
+            </button>
+            <button
+              className="primary"
+              disabled={busy}
+              onClick={() => {
+                setTab('configuration');
+                setOverview(false);
+              }}
+            >
+              交付人员设置
+            </button>
+          </div>
+        </section>
+        <section className="design-panel model-usage">
+          <h2>使用状态</h2>
+          <p>显示本机配置状态，连接检查由你确认后执行。</p>
+          <dl>
+            <div>
+              <dt>服务提供方</dt>
+              <dd>{selected?.label ?? '—'}</dd>
+            </div>
+            <div>
+              <dt>模型名称</dt>
+              <dd>{selected?.textModel || '—'}</dd>
+            </div>
+            <div>
+              <dt>账号状态</dt>
+              <dd>{selected?.credentials.configured ? '密钥已加密保存在本机' : '尚未配置'}</dd>
+            </div>
+          </dl>
+          <button
+            disabled={busy}
+            onClick={() => {
+              if (settings) accept(settings, settings.selectedProvider);
+              setTab('usage');
+              setOverview(false);
+            }}
+          >
+            查看本机用量记录
+          </button>
+          <p className="model-overview-footnote">连接失败时，业务资料仍保存在本机。</p>
+        </section>
+        <aside className="design-panel model-help">
+          <h2>遇到问题？</h2>
+          <p>按提示完成检查。</p>
+          <ol>
+            <li>确认电脑可以联网</li>
+            <li>点击检查连接</li>
+            <li>导出诊断交给交付人员</li>
+          </ol>
+          <button disabled={busy} onClick={onDiagnostics}>
+            查看诊断入口
+          </button>
+        </aside>
+      </div>
+    );
   return (
-    <div className="device-page">
+    <div className="device-page model-settings-detail">
+      <button disabled={dirty} onClick={() => setOverview(true)}>
+        返回连接概览
+      </button>
       <p
         className="notice"
         style={{

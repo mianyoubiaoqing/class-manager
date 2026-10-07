@@ -131,6 +131,21 @@ test('encryption unavailable and oversized histories preserve last saved content
   );
   expect(f.store.read({ epoch: f.epoch, id: f.item.id })).toEqual(f.item);
 });
+test('catalog isolates a damaged archive without overwriting it or hiding healthy histories', () => {
+  const f = fixture();
+  const healthy = f.store.create({ epoch: f.epoch });
+  const file = join(f.root, 'conversation-history', f.item.id + '.chat');
+  const bytes = Buffer.from('damaged encrypted record');
+  writeFileSync(file, bytes);
+  expect(f.store.catalog({ epoch: f.epoch })).toMatchObject({
+    items: [{ id: healthy.id }],
+    unreadableCount: 1,
+  });
+  expect(f.store.create({ epoch: f.epoch }).id).not.toBe(f.item.id);
+  expect(readFileSync(file)).toEqual(bytes);
+  const unavailable = new ConversationHistoryStore(f.root, { ...crypto, isAvailable: () => false });
+  expect(() => unavailable.catalog({ epoch: f.epoch })).toThrow('加密');
+});
 test('history count limit never overwrites older chats', () => {
   const f = fixture();
   for (let i = 1; i < 100; i++) f.store.create({ epoch: f.epoch });

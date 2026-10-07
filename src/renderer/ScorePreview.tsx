@@ -142,124 +142,128 @@ export function ScorePreview({
           ))}
         </div>
       </details>
-      <h3>显式列映射</h3>
-      <div className="score-actions">
-        <select
-          aria-label="原始成绩列"
-          value={header}
-          onChange={(event) => setHeader(event.target.value)}
-        >
-          <option value="">选择原表列名</option>
-          {preview.headers.map((value, index) => (
-            <option key={index} value={value}>
-              {value}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="映射目标科目"
-          value={subjectId}
-          onChange={(event) => setSubjectId(event.target.value)}
-        >
-          {config.subjects.map((subject) => (
-            <option key={subject.id} value={subject.id}>
-              {subject.name}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          disabled={!header || !subjectId}
-          onClick={() =>
-            change({
-              ...config,
-              columnMappings: [
-                ...(config.columnMappings ?? []).filter((mapping) => mapping.header !== header),
-                { header, subjectId },
-              ],
-            })
-          }
-        >
-          应用列映射
-        </button>
-      </div>
-      {(config.columnMappings ?? []).map((mapping) => (
-        <div className="score-actions" key={mapping.header}>
-          <span>
-            {mapping.header} → {subjectName(mapping.subjectId)}
-          </span>
+      <details className="score-advanced" open={!preview.canConfirm}>
+        <summary>高级修正：对应科目列与排除文件行</summary>
+        <p>文件全部通过校验时，无需调整。修改后请点击“重新预览”。</p>
+        <h3>显式列映射</h3>
+        <div className="score-actions">
+          <select
+            aria-label="原始成绩列"
+            value={header}
+            onChange={(event) => setHeader(event.target.value)}
+          >
+            <option value="">选择原表列名</option>
+            {preview.headers.map((value, index) => (
+              <option key={index} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="映射目标科目"
+            value={subjectId}
+            onChange={(event) => setSubjectId(event.target.value)}
+          >
+            {config.subjects.map((subject) => (
+              <option key={subject.id} value={subject.id}>
+                {subject.name}
+              </option>
+            ))}
+          </select>
           <button
             type="button"
-            className="icon-button"
-            title={`删除映射 ${mapping.header}`}
-            aria-label={`删除映射 ${mapping.header}`}
+            disabled={!header || !subjectId}
             onClick={() =>
               change({
                 ...config,
-                columnMappings: config.columnMappings?.filter(
-                  (item) => item.header !== mapping.header,
-                ),
+                columnMappings: [
+                  ...(config.columnMappings ?? []).filter((mapping) => mapping.header !== header),
+                  { header, subjectId },
+                ],
               })
             }
           >
-            <Trash2 size={16} />
+            应用列映射
           </button>
         </div>
-      ))}
-      <h3>排除文件行</h3>
-      <div className="score-actions">
-        <input
-          aria-label="排除行号"
-          type="number"
-          min="2"
-          max="10001"
-          value={row}
-          onChange={(event) => setRow(event.target.value)}
-        />
-        <input
-          aria-label="排除原因"
-          placeholder="排除原因"
-          maxLength={300}
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-        />
-        <button
-          type="button"
-          disabled={!reason.trim() || !preview.rows.some((item) => item.row === Number(row))}
-          onClick={() =>
-            change({
-              ...config,
-              exclusions: [
-                ...(config.exclusions ?? []).filter((item) => item.row !== Number(row)),
-                { row: Number(row), reason: reason.trim() },
-              ],
-            })
-          }
-        >
-          排除此行
-        </button>
-      </div>
-      {(config.exclusions ?? []).map((item) => (
-        <div className="score-actions" key={item.row}>
-          <span>
-            第 {item.row} 行：{item.reason}
-          </span>
+        {(config.columnMappings ?? []).map((mapping) => (
+          <div className="score-actions" key={mapping.header}>
+            <span>
+              {mapping.header} → {subjectName(mapping.subjectId)}
+            </span>
+            <button
+              type="button"
+              className="icon-button"
+              title={`删除映射 ${mapping.header}`}
+              aria-label={`删除映射 ${mapping.header}`}
+              onClick={() =>
+                change({
+                  ...config,
+                  columnMappings: config.columnMappings?.filter(
+                    (item) => item.header !== mapping.header,
+                  ),
+                })
+              }
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        ))}
+        <h3>排除文件行</h3>
+        <div className="score-actions">
+          <input
+            aria-label="排除行号"
+            type="number"
+            min="2"
+            max="10001"
+            value={row}
+            onChange={(event) => setRow(event.target.value)}
+          />
+          <input
+            aria-label="排除原因"
+            placeholder="排除原因"
+            maxLength={300}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+          />
           <button
             type="button"
-            className="icon-button"
-            title={`取消排除第 ${item.row} 行`}
-            aria-label={`取消排除第 ${item.row} 行`}
+            disabled={!reason.trim() || !preview.rows.some((item) => item.row === Number(row))}
             onClick={() =>
               change({
                 ...config,
-                exclusions: config.exclusions?.filter((value) => value.row !== item.row),
+                exclusions: [
+                  ...(config.exclusions ?? []).filter((item) => item.row !== Number(row)),
+                  { row: Number(row), reason: reason.trim() },
+                ],
               })
             }
           >
-            <Trash2 size={16} />
+            排除此行
           </button>
         </div>
-      ))}
+        {(config.exclusions ?? []).map((item) => (
+          <div className="score-actions" key={item.row}>
+            <span>
+              第 {item.row} 行：{item.reason}
+            </span>
+            <button
+              type="button"
+              className="icon-button"
+              title={`取消排除第 ${item.row} 行`}
+              aria-label={`取消排除第 ${item.row} 行`}
+              onClick={() =>
+                change({
+                  ...config,
+                  exclusions: config.exclusions?.filter((value) => value.row !== item.row),
+                })
+              }
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        ))}
+      </details>
       {preview.differences && (
         <section className="score-section" aria-label="版本差异">
           <h3>版本差异 · {preview.differences.scores.length} 项分数变化</h3>

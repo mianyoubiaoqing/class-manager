@@ -11,6 +11,7 @@ export function ScorePublicationPanel({
   onBusyChange,
   onDirtyChange,
   onPublished,
+  labels,
 }: {
   epoch: string;
   reviewId: string;
@@ -18,6 +19,11 @@ export function ScorePublicationPanel({
   onBusyChange: (busy: boolean) => void;
   onDirtyChange: (dirty: boolean) => void;
   onPublished: () => Promise<void>;
+  labels: {
+    students: Record<string, string>;
+    subjects: Record<string, string>;
+    exams: Record<string, string>;
+  };
 }) {
   const [preview, setPreview] = useState<ScorePublicationPreview>();
   const [receipt, setReceipt] = useState<ScorePublicationReceipt | null>(null);
@@ -128,23 +134,35 @@ export function ScorePublicationPanel({
       )}
       {message && <p role="status">{message}</p>}
       {receipt ? (
-        <p className="notice success">
-          已正式入分 · 成绩修订 {receipt.revision} · 复核 {receipt.reviewId} · 新成绩版本{' '}
-          {receipt.versionId}。可到“成绩管理”读取新统计；来源和历史保持可追溯。
-        </p>
+        <>
+          <p className="notice success">
+            已正式入分 · 成绩修订 {receipt.revision}
+            。可到“成绩管理”读取新统计；来源和历史保持可追溯。
+          </p>
+          <details>
+            <summary>查看入分记录编号</summary>
+            <p>
+              复核 {receipt.reviewId} · 新成绩版本 {receipt.versionId}
+            </p>
+          </details>
+        </>
       ) : (
         preview && (
           <>
             <p>
-              学生 {preview.studentId} · 科目 {preview.subjectId} · 考试 {preview.examId} · 原成绩：
+              学生 {labels.students[preview.studentId] ?? '未找到学生，请重新核对'} · 科目{' '}
+              {labels.subjects[preview.subjectId] ?? '未找到科目，请重新核对'} · 考试{' '}
+              {labels.exams[preview.examId] ?? '未找到考试，请重新核对'} · 原成绩：
               {scoreText(preview.before)} → 新成绩：{scoreText(preview.after)}
               。只更新本学生、本科目。
             </p>
             <details>
               <summary>核对入分依据</summary>
               <p>
-                复核 {preview.reviewId} · 答卷 {preview.draftId} / 修订 {preview.draftRevision} ·
-                细则 {preview.rubricVersionId} · 原成绩版本 {preview.expectedVersionId}
+                学生编号 {preview.studentId} · 科目编号 {preview.subjectId} · 考试编号{' '}
+                {preview.examId} · 复核 {preview.reviewId} · 答卷 {preview.draftId} / 修订{' '}
+                {preview.draftRevision} · 细则 {preview.rubricVersionId} · 原成绩版本{' '}
+                {preview.expectedVersionId}
               </p>
             </details>
             <label>

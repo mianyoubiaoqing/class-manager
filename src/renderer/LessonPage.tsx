@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { RevealStep } from './RevealStep';
+import { FileText } from 'lucide-react';
 import type { Result, Snapshot } from '../shared/contracts';
 import type { MaterialPreview, MaterialSummary, StoredMaterial } from '../shared/material-records';
 import type {
@@ -13,6 +15,7 @@ import type {
 import type { LessonContent, LessonRequest, MaterialFragment } from '../shared/lessons';
 import type { OfficeExportReceipt } from '../shared/office-export';
 import { LessonContentEditor } from './LessonContentEditor';
+import { MaterialFolderPanel } from './MaterialFolderPanel';
 import './lessons.css';
 const key = (id: string, fragmentId: number) => `${id}:${fragmentId}`;
 const locator = (fragment: MaterialFragment) =>
@@ -34,6 +37,7 @@ export function LessonPage({
   const api = window.classManager;
   const epoch = snapshot.epoch;
   const [materials, setMaterials] = useState<MaterialSummary[]>([]);
+  const [stage, setStage] = useState<'materials' | 'prepare'>('materials');
   const [preview, setPreview] = useState<MaterialPreview>();
   const [material, setMaterial] = useState<StoredMaterial>();
   const [fragmentId, setFragmentId] = useState(1);
@@ -59,6 +63,7 @@ export function LessonPage({
   const [reason, setReason] = useState('');
   const [confirming, setConfirming] = useState<'freeze' | 'discard'>();
   const [busy, setBusy] = useState(false);
+  const [folderBusy, setFolderBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportAnswers, setExportAnswers] = useState(false);
   const [exportNotes, setExportNotes] = useState(false);
@@ -72,15 +77,15 @@ export function LessonPage({
     content &&
     JSON.stringify(content) !== JSON.stringify(draft.payload.content),
   );
-  const locked = busy || navigationBusy;
+  const locked = busy || navigationBusy || folderBusy;
   useEffect(() => {
     setExportAnswers(false);
     setExportNotes(false);
     setExportReceipt(undefined);
   }, [version?.record.id]);
   useEffect(() => {
-    onDirtyChange(Boolean(preview || prepared || modified || busy || confirming));
-  }, [preview, prepared, modified, busy, confirming, onDirtyChange]);
+    onDirtyChange(Boolean(preview || prepared || modified || busy || folderBusy || confirming));
+  }, [preview, prepared, modified, busy, folderBusy, confirming, onDirtyChange]);
   useEffect(
     () => () => {
       alive.current = false;
@@ -208,6 +213,7 @@ export function LessonPage({
     void run(
       () => api.readLessonDraft({ epoch, id }),
       async (value) => {
+        setStage('prepare');
         setDraft(value);
         setVersion(undefined);
         setContent(value.payload.content);
@@ -215,6 +221,9 @@ export function LessonPage({
         setConfirming(undefined);
         const result = await api.lessonHistory({ epoch, id });
         setHistory(result.ok ? result.value : []);
+        requestAnimationFrame(() =>
+          document.querySelector('.lesson-history')?.scrollIntoView({ block: 'start' }),
+        );
       },
     );
   const clearPreparation = () =>
@@ -229,7 +238,7 @@ export function LessonPage({
   const selectedCount = selection.length;
   async function generate() {
     if (!prepared) return;
-    await run(
+    const generated = await run(
       () => api.generateLesson({ epoch, token: prepared.token }),
       async (value) => {
         await refreshLists();
@@ -239,6 +248,10 @@ export function LessonPage({
     );
     setPrepared(undefined);
     setApproved(false);
+    if (generated)
+      requestAnimationFrame(() =>
+        document.querySelector('.lesson-history')?.scrollIntoView({ block: 'start' }),
+      );
   }
   async function exportOffice(format: 'docx' | 'pptx') {
     if (!version || running.current) return;
@@ -268,10 +281,12 @@ export function LessonPage({
     }
   }
   return (
-    <div className="lesson-page">
-      <p className="lesson-intro">
-        导入合成教材，核对可读内容并选择范围，再生成同版教案与课件。草案由教师复核；冻结后通过新草案修订。
-      </p>
+    <div className="lesson-page" data-stage={stage}>
+      {stage === 'prepare' && (
+        <button className="lesson-back" onClick={() => setStage('materials')}>
+          返回备课资料
+        </button>
+      )}
       {message && (
         <div
           className={`notice ${message.error ? 'error' : 'success'}`}
@@ -280,24 +295,30 @@ export function LessonPage({
           {message.text}
         </div>
       )}
-      <section className="lesson-card">
+      <MaterialFolderPanel
+        epoch={epoch}
+        disabled={busy || navigationBusy || Boolean(preview || prepared) || modified}
+        onBusy={setFolderBusy}
+        onRead={refreshLists}
+        onUpload={() =>
+          void run(
+            () => api.previewMaterial({ epoch }),
+            (value) => {
+              setPreview(value ?? undefined);
+              setFragmentId(value?.version.fragments[0]?.id ?? 1);
+            },
+          )
+        }
+      />
+      <section className="lesson-card lesson-library">
         <header>
-          <h2>教学资料</h2>
+          <h2>我的备课资料</h2>
           <div className="lesson-actions">
-            <button
-              disabled={locked || Boolean(prepared) || modified}
-              onClick={() =>
-                void run(
-                  () => api.previewMaterial({ epoch }),
-                  (value) => {
-                    setPreview(value ?? undefined);
-                    setFragmentId(value?.version.fragments[0]?.id ?? 1);
-                  },
-                )
-              }
-            >
-              选择资料文件
-            </button>
+            {stage === 'prepare' && (
+              <button disabled={locked} onClick={() => setStage('materials')}>
+                导入参考资料
+              </button>
+            )}
             <button disabled={locked} onClick={() => void refreshLists()}>
               刷新目录
             </button>
@@ -307,7 +328,20 @@ export function LessonPage({
           TXT、DOCX、PDF、PNG、JPG；每份最多 10 MiB，PDF 最多 20
           页。扫描页保留为图像，文字识别结果不冒充教材原文。
         </p>
-        <label>
+        {!materials.length && !preview && !material && (
+          <div className="lesson-library-empty">
+            <FileText size={36} />
+            <h3>还没有资料</h3>
+            <p>
+              {stage === 'prepare'
+                ? '点击“导入参考资料”选择文件或文件夹，'
+                : '从上方选择文件或文件夹，'}
+              <br />
+              把这一节课需要的资料加进来。
+            </p>
+          </div>
+        )}
+        <label hidden={!materials.length}>
           已保存资料
           <select
             aria-label="已保存资料"
@@ -518,14 +552,46 @@ export function LessonPage({
           </div>
         )}
       </section>
-      <section className="lesson-card">
-        <h2>备课范围与要求</h2>
+      {stage === 'materials' && (
+        <aside className="lesson-card lesson-start">
+          <h2>开始备课</h2>
+          <p>资料准备好后，按三步生成初稿。</p>
+          <ol>
+            <li>填写课题与教学目标</li>
+            <li>选择本次使用的资料</li>
+            <li>生成初稿并核对</li>
+          </ol>
+          <button
+            className="primary"
+            disabled={locked || Boolean(preview)}
+            onClick={() => setStage('prepare')}
+          >
+            新建备课任务
+          </button>
+          <small>教案和课件可导出后继续编辑。</small>
+        </aside>
+      )}
+      <section className="lesson-card lesson-preparation" hidden={stage !== 'prepare'}>
+        <header className="flow-panel-heading">
+          <div>
+            <span className="flow-eyebrow">新建备课任务</span>
+            <h2>这节课准备怎么上？</h2>
+            <p>填写课题，选好参考资料，再核对发送内容。生成后仍可编辑教案。</p>
+          </div>
+        </header>
+        <ol className="flow-steps">
+          <li className="active">1 填写课程信息</li>
+          <li className={selectedCount ? 'active' : ''}>2 选择参考资料</li>
+          <li className={prepared ? 'active' : ''}>3 核对并生成</li>
+        </ol>
         <fieldset disabled={locked || Boolean(prepared)}>
+          <legend>1 · 这节课教什么</legend>
           <div className="lesson-fields">
             <label>
               课题
               <input
                 aria-label="课题"
+                placeholder="例如：高中数学 · 函数的单调性"
                 value={request.topic}
                 maxLength={200}
                 onChange={(event) => setRequest({ ...request, topic: event.target.value })}
@@ -564,10 +630,19 @@ export function LessonPage({
             教学要求
             <textarea
               value={request.instructions}
+              placeholder="例如：学生刚接触这个知识点。请安排一个生活导入、两道练习，重点讲清概念。没有特别要求也可以留空。"
               maxLength={4000}
               onChange={(event) => setRequest({ ...request, instructions: event.target.value })}
             />
           </label>
+          <p className="field-hint">
+            教学要求写给备课助手：说明学生基础、教学重点或想安排的活动，不需要编写提示词。
+          </p>
+          <h3>2 · 用哪些资料作为参考</h3>
+          <p>
+            在左侧打开已保存资料，勾选要使用的文字或页面。已选 {selectedCount}{' '}
+            个片段；没有选择的内容不会发送。
+          </p>
           <label className="lesson-checkbox">
             <input
               type="checkbox"
@@ -576,7 +651,7 @@ export function LessonPage({
                 setRequest({ ...request, acknowledgePartial: event.target.checked })
               }
             />
-            我已核对所选内容，确认选用已解析的文字或图像片段。
+            我已查看并核对所选资料，允许本次备课使用。
           </label>
         </fieldset>
         <div className="lesson-selected" aria-label="允许发送的资料片段">
@@ -584,7 +659,7 @@ export function LessonPage({
             <span key={key(ref.sourceVersionId, ref.fragmentId)}>
               {materials.find((value) => value.record.id === ref.sourceVersionId)?.record.name ??
                 '资料'}{' '}
-              #{ref.fragmentId}
+              · 第 {ref.fragmentId} 个资料片段
               <button
                 aria-label={`移除片段 ${ref.fragmentId}`}
                 disabled={locked || Boolean(prepared)}
@@ -604,28 +679,35 @@ export function LessonPage({
           ))}
         </div>
         {!prepared && (
-          <button
-            className="primary"
-            disabled={
-              locked ||
-              Boolean(preview) ||
-              Boolean(confirming) ||
-              modified ||
-              !selectedCount ||
-              !request.topic.trim()
-            }
-            onClick={() =>
-              void run(
-                () => api.prepareLesson({ epoch, request: { ...request, selection } }),
-                (value) => {
-                  setPrepared(value);
-                  setApproved(false);
-                },
-              )
-            }
-          >
-            准备并核对外发范围
-          </button>
+          <div className="flow-next">
+            <h3>3 · 先核对，再生成</h3>
+            <p>下一步会展示发送内容和模型调用确认，不会立即扣费生成。</p>
+            <button
+              className="primary"
+              disabled={
+                locked ||
+                Boolean(preview) ||
+                Boolean(confirming) ||
+                modified ||
+                !selectedCount ||
+                !request.topic.trim()
+              }
+              onClick={() =>
+                void run(
+                  () => api.prepareLesson({ epoch, request: { ...request, selection } }),
+                  (value) => {
+                    setPrepared(value);
+                    setApproved(false);
+                  },
+                )
+              }
+            >
+              <span aria-hidden="true">下一步：</span>准备并核对外发范围
+            </button>
+            {!selectedCount && (
+              <p className="field-hint">还没有选择参考资料，请先在左侧资料中勾选内容。</p>
+            )}
+          </div>
         )}
         {prepared && (
           <div className="lesson-model-confirm">
@@ -661,7 +743,10 @@ export function LessonPage({
           </div>
         )}
       </section>
-      <section className="lesson-card">
+      <section
+        className="lesson-card lesson-history"
+        hidden={stage === 'materials' && !drafts.length && !history.length}
+      >
         <h2>备课草案与冻结历史</h2>
         <label>
           已保存草案
@@ -869,7 +954,7 @@ export function LessonPage({
               </button>
             )}
             {confirming && (
-              <div
+              <RevealStep
                 className="lesson-local-confirm"
                 role="group"
                 aria-label={confirming === 'freeze' ? '确认冻结版本' : '确认丢弃草案'}
@@ -924,7 +1009,7 @@ export function LessonPage({
                 <button disabled={locked} onClick={() => setConfirming(undefined)}>
                   返回核对
                 </button>
-              </div>
+              </RevealStep>
             )}
           </>
         )}

@@ -40,6 +40,7 @@ export async function exerciseDutyUi(application, page, output) {
         .check();
     await area.getByRole('button', { name: '生成值日草案', exact: true }).click();
     await area.getByText('未保存值日草案', { exact: true }).waitFor();
+    await area.getByText('查看与调整当天岗位', { exact: true }).click();
   }
   async function save(reason, revision) {
     await area.getByLabel('值日保存原因').fill(reason);
@@ -59,6 +60,7 @@ export async function exerciseDutyUi(application, page, output) {
   async function latest() {
     await area.getByRole('button', { name: '调整本期最新版本', exact: true }).click();
     await area.getByText('未保存值日草案', { exact: true }).waitFor();
+    await area.getByText('查看与调整当天岗位', { exact: true }).click();
   }
   await begin('合成缺口计划', 3);
   await area.getByText('缺口 3', { exact: true }).waitFor();
@@ -66,10 +68,10 @@ export async function exerciseDutyUi(application, page, output) {
     await area.getByRole('button', { name: '确认保存值日', exact: true }).isDisabled(),
     true,
   );
-  assert.equal(
-    await page.getByRole('button', { name: '班级名册', exact: true }).isDisabled(),
-    true,
-  );
+  await page.getByRole('button', { name: '班级名册', exact: true }).click();
+  await page.getByText('先完成值日轮换中的当前操作', { exact: true }).waitFor();
+  await page.getByRole('heading', { name: '值日轮换', exact: true, level: 1 }).waitFor();
+  await area.getByText('未保存值日草案', { exact: true }).waitFor();
   await area.getByRole('button', { name: '取消值日草案', exact: true }).click();
   await area.getByRole('status').filter({ hasText: '已核对确认历史' }).waitFor();
   await begin('合成页面值日计划', 1, true);
@@ -154,7 +156,7 @@ export async function exerciseDutyUi(application, page, output) {
   await latest();
   await area.getByRole('button', { name: '标记当天完成', exact: true }).click();
   await page.getByRole('button', { name: '应用调整', exact: true }).click();
-  await area.getByText('已完成 · 已冻结', { exact: true }).waitFor();
+  await area.locator('.duty-day-detail').getByText('已完成 · 已冻结', { exact: true }).waitFor();
   assert.equal(await firstSlot.isDisabled(), true);
   await save('合成完成记录', 2);
   await latest();
@@ -171,6 +173,7 @@ export async function exerciseDutyUi(application, page, output) {
   await page.getByRole('dialog', { name: '确认调整值日草案' }).waitFor();
   await page.getByRole('button', { name: '应用调整', exact: true }).click();
   await area.getByText('草案已调整，尚未保存。', { exact: true }).waitFor();
+  await area.getByText('查看与调整当天岗位', { exact: true }).click();
   assert.equal(
     await firstSlot.isDisabled(),
     true,

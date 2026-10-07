@@ -1,0 +1,531 @@
+.flow-eyebrow {
+  color: #187454;
+  font-size: 12px;
+  font-weight: 600;
+}
+.flow-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.flow-panel-heading h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+.flow-panel-heading p,
+.field-hint {
+  color: #5d7167;
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 6px 0 16px;
+}
+.flow-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.flow-steps li {
+  background: #f0f4f1;
+  color: #788b80;
+  padding: 12px 16px;
+  border-radius: 10px;
+  flex: 1;
+  min-width: 130px;
+  font-size: 13px;
+}
+.flow-steps li.active {
+  background: #e7f3ec;
+  color: #187454;
+  font-weight: 600;
+}
+.flow-next {
+  border-top: 1px solid #dee8e1;
+  padding-top: 20px;
+  margin-top: 20px;
+}
+.app-shell dialog.roster-import-dialog,
+.app-shell dialog.classroom-setup-dialog {
+  width: min(900px, calc(100vw - 40px));
+  max-width: none;
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #dee8e1;
+  border-radius: 16px;
+  color: #18352b;
+  padding: 28px;
+}
+.roster-import-dialog .dialog-header {
+  margin-bottom: 24px;
+}
+.roster-import-dialog h2 {
+  font-size: 24px;
+  margin: 6px 0 0;
+}
+.roster-import-dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.roster-import-dialog select {
+  width: 100%;
+}
+.import-file-guide {
+  border: 1px dashed #afc9ba;
+  background: #f5f8f6;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  gap: 16px;
+  margin: 20px 0;
+}
+.import-file-guide h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.import-file-guide p {
+  color: #5d7167;
+  line-height: 1.8;
+}
+.roster-import-dialog .table-scroll {
+  max-height: 340px;
+}
+.roster-import-dialog .import-error {
+  color: #a4372c;
+}
+.classroom-control > section.classroom-preview-panel {
+  grid-column: auto;
+  min-height: 640px;
+  display: flex;
+  flex-direction: column;
+}
+.classroom-preview-panel .workspace-empty-guide {
+  background: #f0f4f1;
+  border-radius: 16px;
+  min-height: 400px;
+  flex: 1;
+  padding: 32px;
+}
+.classroom-catalog {
+  margin: 0 0 16px;
+}
+.classroom-preview-panel .classroom-slide-preview {
+  padding: 32px;
+  min-height: 320px;
+  background: #f5f8f6;
+  border-radius: 16px;
+  max-height: 500px;
+  overflow: auto;
+}
+.classroom-slide-preview h3 {
+  font-size: 26px;
+}
+.classroom-slide-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 340px;
+  object-fit: contain;
+  margin: 0 auto;
+}
+.classroom-slide-preview figure {
+  margin: 20px 0;
+}
+.classroom-slide-preview figcaption {
+  color: #788b80;
+  font-size: 12px;
+  margin-top: 8px;
+}
+.classroom-control > .activity-timer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.activity-timer .timer-digits {
+  display: block;
+  font-size: clamp(48px, 5vw, 76px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #18352b;
+  text-align: center;
+  margin: 56px 0 16px;
+}
+.activity-timer > .primary {
+  margin-top: 40px;
+  width: 100%;
+}
+.activity-timer small {
+  font-size: 12px;
+  color: #788b80;
+  margin-top: auto;
+  padding-top: 24px;
+  line-height: 1.7;
+}
+.activity-timer .button-row button {
+  flex: 1;
+}
+.classroom-control > .exam-countdown-panel {
+  grid-column: 1/-1;
+}
+.classroom-setup-dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+.classroom-setup-dialog .classroom-check {
+  flex-direction: row;
+  align-items: flex-start;
+}
+.classroom-setup-dialog .classroom-check input {
+  width: auto;
+}
+.classroom-setup-dialog fieldset {
+  max-height: 240px;
+  overflow: auto;
+  margin: 20px 0;
+}
+.lesson-preparation fieldset {
+  border: 0;
+  padding: 0;
+  margin: 20px 0;
+}
+.lesson-page[data-stage='prepare'] {
+  grid-template-columns: minmax(300px, 0.95fr) minmax(0, 1.8fr);
+  align-items: start;
+}
+.lesson-page[data-stage='prepare'] > .material-folder-panel {
+  display: none;
+}
+.lesson-page[data-stage='prepare'] .lesson-library {
+  min-width: 0;
+}
+.lesson-page[data-stage='prepare'] .lesson-library > header {
+  flex-wrap: wrap;
+}
+.lesson-page[data-stage='prepare'] .lesson-library-empty {
+  min-height: 300px;
+}
+@media (max-width: 900px) {
+  .lesson-page[data-stage='prepare'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.lesson-preparation legend {
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+.lesson-preparation textarea {
+  min-height: 120px;
+}
+.lesson-preparation .lesson-selected {
+  min-height: 48px;
+  background: #f5f8f6;
+  padding: 12px;
+  border-radius: 10px;
+}
+.score-editor {
+  border: 0;
+  padding: 0;
+}
+.score-editor > legend {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+.score-editor > .score-fields,
+.score-subject-setup,
+.score-file-setup,
+.score-group-setup {
+  background: #fff;
+  border: 1px solid #dee8e1;
+  border-radius: 16px;
+  padding: 24px;
+  margin: 0 0 20px;
+}
+.score-editor > h2 {
+  font-size: 18px;
+}
+.score-group-setup summary {
+  cursor: pointer;
+  color: #187454;
+  font-weight: 600;
+}
+.score-group-setup > .score-actions {
+  margin-top: 20px;
+}
+.score-file-setup h2 {
+  margin-top: 0;
+  font-size: 18px;
+}
+.score-file-setup p {
+  color: #5d7167;
+  line-height: 1.8;
+}
+.attendance-page {
+  display: grid;
+  gap: 20px;
+  max-width: none;
+  margin: 0;
+}
+.attendance-page > .pupil-panel {
+  display: block;
+}
+.attendance-page > .pupil-panel > h2 {
+  margin: 0 0 8px;
+}
+.attendance-setup .pupil-toolbar {
+  align-items: end;
+  border: 0;
+  padding: 0;
+  margin-top: 16px;
+}
+.attendance-setup > p,
+.attendance-roster > p {
+  color: #5d7167;
+  margin: 8px 0 20px;
+  font-size: 14px;
+}
+.attendance-session-fields .pupil-toolbar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.attendance-session-fields input {
+  min-height: 44px;
+}
+.attendance-roster {
+  min-height: 430px;
+}
+.attendance-roster .workspace-empty-guide {
+  min-height: 250px;
+}
+.attendance-panel-body {
+  display: grid;
+  gap: 18px;
+}
+.attendance-page .status-present {
+  color: #187454;
+}
+.attendance-page .status-late {
+  color: #996319;
+}
+.attendance-page .status-absent {
+  color: #a4372c;
+}
+.attendance-page .status-excused {
+  color: #426ca3;
+}
+.duty-page {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+.duty-start-panel,
+.duty-week-panel {
+  border: 1px solid #dee8e1;
+  border-radius: 16px;
+  background: #fff;
+  padding: 24px;
+  margin: 20px 0;
+}
+.duty-start-panel h2,
+.duty-week-panel h2 {
+  font-size: 18px;
+  margin: 0 0 8px;
+}
+.duty-start-panel p,
+.duty-week-panel p {
+  color: #5d7167;
+  font-size: 14px;
+}
+.duty-start-panel .button-row {
+  margin-top: 24px;
+}
+.duty-start-panel .button-row button {
+  width: 168px;
+}
+.duty-week-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  margin: 24px 0;
+}
+.duty-week-grid .duty-day-card {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  white-space: normal;
+  padding: 20px;
+  border: 1px solid #dee8e1;
+  border-radius: 12px;
+  background: #f5f8f6;
+  min-height: 238px;
+  gap: 8px;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.duty-week-grid .duty-day-card.selected {
+  border-color: #187454;
+  box-shadow: 0 0 0 1px #187454;
+}
+.duty-day-card h3 {
+  font-size: 16px;
+  margin: 16px 0 0;
+}
+.duty-day-card p {
+  margin: 4px 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+}
+.duty-day-card small {
+  color: #788b80;
+  font-size: 12px;
+}
+.duty-day-card .duty-day-empty {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  color: #788b80;
+  font-size: 14px;
+}
+.duty-day-detail {
+  background: #fff;
+  padding: 20px;
+  border: 1px solid #dee8e1;
+  border-radius: 12px;
+}
+.duty-day-detail > summary {
+  font-weight: 600;
+  cursor: pointer;
+  color: #187454;
+}
+.growth-page {
+  display: block;
+}
+.growth-privacy-hint {
+  color: #788b80;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.growth-student-overview {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: #fff;
+  border: 1px solid #dee8e1;
+  border-radius: 16px;
+  padding: 24px;
+  margin: 20px 0;
+}
+.growth-student-avatar {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  font-size: 28px;
+  background: #e7f3ec;
+  color: #187454;
+  flex-shrink: 0;
+}
+.growth-student-overview h2 {
+  font-size: 22px;
+  margin: 0 0 8px;
+}
+.growth-student-overview p {
+  color: #5d7167;
+  margin: 0;
+  font-size: 13px;
+}
+.growth-stats {
+  display: flex;
+  margin-left: auto;
+  gap: 36px;
+}
+.growth-stats span {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+  color: #788b80;
+  font-size: 12px;
+}
+.growth-stats strong {
+  font-size: 26px;
+  color: #18352b;
+}
+.growth-section {
+  margin: 20px 0;
+  padding: 24px;
+  border: 1px solid #dee8e1;
+  border-radius: 16px;
+  background: #fff;
+}
+.growth-section h2 {
+  font-size: 18px;
+}
+.growth-timeline article {
+  border-left: 2px solid #cfe1d6;
+  border-radius: 0;
+  padding: 16px 20px;
+  margin: 16px 0;
+}
+.growth-timeline .workspace-empty-guide {
+  min-height: 320px;
+}
+.growth-record-form label {
+  margin-bottom: 16px;
+}
+.growth-record-form textarea {
+  min-height: 100px;
+}
+[hidden] {
+  display: none !important;
+}
+@media (max-width: 1000px) {
+  .classroom-control {
+    grid-template-columns: minmax(0, 1.5fr) minmax(250px, 1fr);
+  }
+  .duty-week-grid {
+    overflow-x: auto;
+    grid-template-columns: none !important;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(150px, 1fr);
+  }
+  .growth-stats {
+    gap: 20px;
+  }
+}
+@media (max-width: 760px) {
+  .classroom-control {
+    grid-template-columns: 1fr;
+  }
+  .flow-panel-heading,
+  .growth-student-overview {
+    flex-wrap: wrap;
+  }
+  .growth-stats {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-around;
+  }
+  .import-file-guide {
+    padding: 16px;
+  }
+  .attendance-session-fields .pupil-toolbar {
+    grid-template-columns: 1fr;
+  }
+  .app-shell dialog.roster-import-dialog,
+  .app-shell dialog.classroom-setup-dialog {
+    padding: 20px;
+    width: calc(100vw - 24px);
+  }
+  .activity-timer .timer-digits {
+    margin-top: 24px;
+  }
+}

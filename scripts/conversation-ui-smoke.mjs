@@ -1,7 +1,7 @@
 import { _electron as electron } from 'playwright';
-import electronPath from 'electron';
+import { isolatedElectronRuntime } from './isolated-electron-runtime.mjs';
 import { strict as assert } from 'node:assert';
-import { cpSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { closeAuditApplication, writeAuditReport } from './live-audit-guards.ts';
 import { openWorkspacePage } from './workspace-ui-navigation.mjs';
@@ -10,16 +10,9 @@ const parent = resolve('output/playwright/conversation18');
 mkdirSync(parent, { recursive: true });
 const root = mkdtempSync(join(parent, 'run-'));
 const executable = process.env.CLASS_MANAGER_CONVERSATION_EXECUTABLE;
-const localBase = join(process.env.USERPROFILE, 'ClassManagerSetupChecks');
-mkdirSync(localBase, { recursive: true });
-const local = mkdtempSync(join(localBase, 'conversation-ui-'));
-const runtime = executable ?? join(local, 'runtime', 'electron.exe');
-if (!executable) cpSync(pathFromElectron(), join(local, 'runtime'), { recursive: true });
-function pathFromElectron() {
-  return resolve(electronPath, '..');
-}
+const { local, executablePath } = isolatedElectronRuntime('conversation-ui-');
+const runtime = executable ?? executablePath;
 const temp = join(local, 'temp');
-mkdirSync(temp);
 const env = {
   ...process.env,
   CLASS_MANAGER_DATA_DIR: join(local, 'user-data'),
@@ -47,7 +40,11 @@ const unwrap = (result) => {
 const raw = (name, input) =>
   page.evaluate(({ name, input }) => window.classManager[name](input), { name, input });
 const call = async (name, input) => unwrap(await raw(name, input));
-const button = (name) => page.getByRole('button', { name, exact: true });
+const button = (name) =>
+  page.getByRole('button', {
+    name: name === '业务对话' ? '打开智能对话小窗' : name,
+    exact: true,
+  });
 const heading = (name) => page.getByRole('heading', { name, exact: true });
 const field = () => page.getByLabel('发送消息', { exact: true });
 const calls = () => app.evaluate(() => globalThis.__conversationAudit.calls);
@@ -186,25 +183,33 @@ async function launch() {
   page = await app.firstWindow();
   page.on('pageerror', (error) => report.errors.push(error.message));
   await page.getByText('本地就绪', { exact: true }).waitFor();
-  await heading('业务对话').waitFor();
+  await button('业务对话').click();
+  await field().waitFor();
   assert.equal(
     await page.getByRole('navigation', { name: '主导航' }).getByRole('button').first().innerText(),
-    '业务对话',
+    '教师备课',
   );
-  assert.equal(await page.locator('nav .selected').innerText(), '业务对话');
+  assert.equal(
+    await page
+      .getByRole('button', { name: '收起智能对话小窗', exact: true })
+      .getAttribute('aria-expanded'),
+    'true',
+  );
 }
 try {
   await launch();
   assert.equal(
     await page.evaluate(
       () =>
-        document.querySelector('.conversation-empty').getBoundingClientRect().bottom <=
+        document.querySelector('.conversation-thread').getBoundingClientRect().bottom <=
         document.querySelector('.conversation-composer').getBoundingClientRect().top,
     ),
     true,
   );
   await page.screenshot({ path: join(root, 'homepage.png'), fullPage: true });
-  report.gates.push('default homepage and first selected sidebar entry are business conversation');
+  report.gates.push(
+    'capsule opens the persistent floating conversation; sidebar starts with teaching and has no chat entry',
+  );
   await openWorkspacePage(page, '班主任管理', '班级名册');
   await button('载入合成样例').click();
   await button('确认载入').click();
@@ -220,7 +225,7 @@ try {
     frozen: Object.isFrozen(window.classManager),
     node: typeof window.require,
   }));
-  assert.equal(surface.keys.length, 148);
+  assert.equal(surface.keys.length, 157);
   assert.equal(surface.frozen, true);
   assert.equal(surface.node, 'undefined');
   for (const provider of ['deepseek', 'kimi', 'doubao']) {
@@ -241,9 +246,7 @@ try {
     await button('业务对话').click();
     await page.waitForFunction(
       (provider) =>
-        document
-          .querySelector('.conversation-context > div > span')
-          ?.textContent?.includes(provider),
+        document.querySelector('.conversation-model-name')?.textContent?.includes(provider),
       provider === 'deepseek' ? 'DeepSeek' : provider === 'kimi' ? 'Kimi' : '豆包',
     );
     await page.getByLabel('对话当前班级', { exact: true }).selectOption(classroom.id);
@@ -279,7 +282,7 @@ try {
     await button('业务对话').click();
     assert.equal(await page.getByRole('log').innerText(), conversation);
     await button('新对话').click();
-    await heading('今天想处理什么？').waitFor();
+    await heading('告诉助手，你想完成什么？').waitFor();
     await send('你好');
     assert.equal(JSON.parse((await calls()).at(-1).body).messages.length, 2);
     await fixture({ kind: 'createClass', name: `恢复流程演示-${provider}` }, 'recovery');
@@ -318,7 +321,7 @@ try {
   let feedback = JSON.parse(
     JSON.parse((await calls()).at(-1).body).messages.at(-1).content,
   ).toolResult;
-  assert.equal(feedback.data.features.length, 13);
+  assert.equal(feedback.data.features.length, 14);
   for (const tool of [
     'readStudentProfile',
     'readAttendanceRoster',
@@ -345,7 +348,10 @@ try {
     result: { path: ['students'], offset: 90, limit: 10 },
   });
   await send('读取名册后续页');
-  feedback = JSON.parse(JSON.parse((await calls()).at(-1).body).messages.at(-1).content).toolResult;
+  const parsed = JSON.parse(
+    JSON.parse((await calls()).at(-1).body).messages.at(-1).content,
+  ).toolResult;
+  feedback = parsed.cachedResult?.toolResult ?? parsed;
   assert.equal(feedback.data.total, 100);
   assert.equal(feedback.data.items.length, 10);
   assert.equal(feedback.data.nextOffset, null);
@@ -508,14 +514,22 @@ try {
   for (const mode of ['server', 'invalid']) {
     await fixture({ kind: 'query', query: 'roster' }, mode);
     const count = (await calls()).length;
-    await field().fill('合成错误场景');
-    await button('发送').click();
-    await heading('本轮暂停 · 查看原因').waitFor();
-    assert.equal((await calls()).length, count + 1);
+    await send('合成错误场景', '本轮暂停 · 查看原因');
+    assert.equal((await calls()).length, count + (mode === 'invalid' ? 6 : 1));
   }
-  report.gates.push('cancelled writes and network, error handling and no automatic retries');
+  report.gates.push(
+    'Cancelled writes do not execute; HTTP errors stop after one request; invalid model responses stop after the initial request and five retries',
+  );
   await fixture({ kind: 'reply', text: '最终合成对话截图。' });
   await send('请继续正常对话');
+  const layout = await page.evaluate(() => ({
+    composerBottom: document.querySelector('.conversation-composer').getBoundingClientRect().bottom,
+    viewport: innerHeight,
+  }));
+  assert.ok(
+    layout.composerBottom <= layout.viewport + 1,
+    'Global notices must not push the composer outside the viewport',
+  );
   await page.screenshot({ path: join(root, 'final-desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 360, height: 780 });
   await page.screenshot({ path: join(root, 'final-360.png'), fullPage: true });

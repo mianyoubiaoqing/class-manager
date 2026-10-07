@@ -27,6 +27,12 @@ import { ScoreBook, type ScoreCheckpoint } from './score-book';
 import type { PublicationCheckpoint } from './score-publication';
 import { GrowthBook, type GrowthCheckpoint } from './growth-book';
 import { PupilBook } from './pupil-book';
+import { parseRosterImport } from './roster-import';
+import {
+  rosterImportInput,
+  rosterConfirmInput,
+  type RosterImportPreview,
+} from '../shared/roster-import';
 import { ExplanationBook, type ExplanationCheckpoint } from './explanation-book';
 import { SeatingBook, type SeatingCheckpoint } from './seating-book';
 import { DutyBook, type DutyCheckpoint } from './duty-book';
@@ -64,6 +70,14 @@ export class Workspace {
   private gradingBook?: GradingBook;
   private growthBook?: GrowthBook;
   private pupilBook?: PupilBook;
+  private rosterImport?: {
+    epoch: string;
+    classId: string;
+    fingerprint: string;
+    expires: number;
+    preview: RosterImportPreview;
+  };
+  private rosterReceipts = new Map<string, { epoch: string; added: number; skipped: number }>();
   readonly root: string;
 
   constructor(
@@ -334,6 +348,94 @@ export class Workspace {
       }
     });
     return this.snapshot();
+  }
+
+  cancelRosterPreview(raw: unknown): void {
+    const input = epochInput.parse(raw);
+    this.guard(input.epoch);
+    this.rosterImport = undefined;
+  }
+
+  private rosterFingerprint(): string {
+    const snapshot = this.snapshot();
+    return createHash('sha256')
+      .update(JSON.stringify([snapshot.classes, snapshot.students]))
+      .digest('hex');
+  }
+
+  async previewRoster(
+    bytes: Uint8Array,
+    format: 'csv' | 'xlsx',
+    fileName: string,
+    raw: unknown,
+  ): Promise<RosterImportPreview> {
+    const input = rosterImportInput.parse(raw);
+    this.guard(input.epoch);
+    this.rosterImport = undefined;
+    const snapshot = this.snapshot();
+    const classroom = snapshot.classes.find((c) => c.id === input.classId);
+    if (!classroom) throw new DomainError('NOT_FOUND', '请先创建并选择班级。');
+    const fingerprint = this.rosterFingerprint();
+    const parsed = await parseRosterImport(bytes, format, snapshot, input.classId);
+    this.guard(input.epoch);
+    if (fingerprint !== this.rosterFingerprint())
+      throw new DomainError('CONFLICT', '名册已变化，请重新预览。');
+    const preview = { ...parsed, token: randomUUID(), fileName, className: classroom.name };
+    this.rosterImport = {
+      epoch: input.epoch,
+      classId: input.classId,
+      fingerprint,
+      expires: Date.now() + 15 * 60 * 1000,
+      preview,
+    };
+    return preview;
+  }
+
+  confirmRoster(raw: unknown): {
+    snapshot: Snapshot;
+    added: number;
+    skipped: number;
+    replayed: boolean;
+  } {
+    const input = rosterConfirmInput.parse(raw);
+    this.guard(input.epoch);
+    const receipt = this.rosterReceipts.get(input.token);
+    if (receipt?.epoch === input.epoch)
+      return { ...receipt, snapshot: this.snapshot(), replayed: true };
+    const pending = this.rosterImport;
+    if (
+      !pending ||
+      pending.epoch !== input.epoch ||
+      pending.preview.token !== input.token ||
+      pending.expires <= Date.now()
+    )
+      throw new DomainError('CONFLICT', '导入预览已失效，请重新选择文件。');
+    if (!pending.preview.canConfirm)
+      throw new DomainError('VALIDATION', '请先修正导入文件中的错误。');
+    if (pending.fingerprint !== this.rosterFingerprint())
+      throw new DomainError('CONFLICT', '名册已变化，请重新预览后确认。');
+    const now = this.membershipTimestamp();
+    transaction(this.db, () => {
+      for (const row of pending.preview.rows.filter((r) => r.status === 'new')) {
+        const id = randomUUID();
+        this.db
+          .prepare('INSERT INTO students VALUES (?, ?, ?, 1, 1, ?)')
+          .run(id, row.studentNumber, row.displayName, now);
+        this.db
+          .prepare('INSERT INTO enrollments VALUES (?, ?, ?, ?, NULL)')
+          .run(randomUUID(), id, pending.classId, now);
+      }
+    });
+    const saved = {
+      epoch: input.epoch,
+      added: pending.preview.added,
+      skipped: pending.preview.skipped,
+    };
+    this.rosterReceipts.set(input.token, saved);
+    if (this.rosterReceipts.size > 20)
+      this.rosterReceipts.delete(this.rosterReceipts.keys().next().value!);
+    this.rosterImport = undefined;
+    return { ...saved, snapshot: this.snapshot(), replayed: false };
   }
 
   setStudentActive(raw: unknown): Snapshot {

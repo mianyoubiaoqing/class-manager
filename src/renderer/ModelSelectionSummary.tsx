@@ -24,7 +24,7 @@ export function ModelSelectionSummary() {
   }, []);
   const selected = settings?.providers.find((p) => p.provider === settings.selectedProvider);
   return (
-    <p className="notice">
+    <p className="model-selection-note">
       {error
         ? '模型选择读取失败，请在模型设置刷新后核对。'
         : selected

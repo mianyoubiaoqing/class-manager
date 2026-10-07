@@ -2,6 +2,9 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { DesktopApi } from '../shared/contracts';
 
 const api: DesktopApi = {
+  previewRosterImport: (input) => ipcRenderer.invoke('cm:previewRosterImport', input),
+  confirmRosterImport: (input) => ipcRenderer.invoke('cm:confirmRosterImport', input),
+  exportRosterTemplate: (input) => ipcRenderer.invoke('cm:exportRosterTemplate', input),
   readStudentProfile: (input) => ipcRenderer.invoke('cm:readStudentProfile', input),
   saveStudentProfile: (input) => ipcRenderer.invoke('cm:saveStudentProfile', input),
   studentProfileHistory: (input) => ipcRenderer.invoke('cm:studentProfileHistory', input),
@@ -38,6 +41,8 @@ const api: DesktopApi = {
   renameConversationHistory: (input) => ipcRenderer.invoke('cm:renameConversationHistory', input),
   deleteConversationHistory: (input) => ipcRenderer.invoke('cm:deleteConversationHistory', input),
   prepareConversation: (input) => ipcRenderer.invoke('cm:prepareConversation', input),
+  selectConversationFiles: (input) => ipcRenderer.invoke('cm:selectConversationFiles', input),
+  removeConversationFiles: (input) => ipcRenderer.invoke('cm:removeConversationFiles', input),
   generateConversation: (input) => ipcRenderer.invoke('cm:generateConversation', input),
   executeConversation: (input) => ipcRenderer.invoke('cm:executeConversation', input),
   readConversation: (input) => ipcRenderer.invoke('cm:readConversation', input),
@@ -101,6 +106,10 @@ const api: DesktopApi = {
   cancelLessonOffice: (input) => ipcRenderer.invoke('cm:cancelLessonOffice', input),
   openLessonOffice: (input) => ipcRenderer.invoke('cm:openLessonOffice', input),
   previewMaterial: (input) => ipcRenderer.invoke('cm:previewMaterial', input),
+  scanMaterialFolder: (input) => ipcRenderer.invoke('cm:scanMaterialFolder', input),
+  readMaterialFolder: (input) => ipcRenderer.invoke('cm:readMaterialFolder', input),
+  cancelMaterialFolder: (input) => ipcRenderer.invoke('cm:cancelMaterialFolder', input),
+  openResourceLink: (input) => ipcRenderer.invoke('cm:openResourceLink', input),
   confirmMaterial: (input) => ipcRenderer.invoke('cm:confirmMaterial', input),
   cancelMaterial: (input) => ipcRenderer.invoke('cm:cancelMaterial', input),
   readMaterialPreviewImage: (input) => ipcRenderer.invoke('cm:readMaterialPreviewImage', input),

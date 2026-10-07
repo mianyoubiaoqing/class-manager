@@ -52,6 +52,10 @@ export function ScoreConfiguration({
   }
   return (
     <>
+      <h2>1 · 考试信息</h2>
+      <p className="field-hint">
+        填写考试名称与日期，并确认成绩表使用原始分。学年、学期与年级也可修改。
+      </p>
       <div className="score-fields">
         {(
           [
@@ -93,8 +97,11 @@ export function ScoreConfiguration({
           </select>
         </label>
       </div>
-      <section className="score-section">
-        <h2>考试科目</h2>
+      <section className="score-section score-subject-setup">
+        <h2>2 · 选择科目与满分</h2>
+        <p className="field-hint">
+          只保留这次考试的科目。目标分可不填；小数位选择成绩表实际使用的位数。
+        </p>
         <div className="score-actions">
           <select
             aria-label="添加标准科目"
@@ -235,7 +242,14 @@ export function ScoreConfiguration({
           </table>
         </div>
       </section>
-      <section className="score-section">
+      <details
+        className="score-section score-group-setup"
+        open={config.groups.length > 1 || undefined}
+      >
+        <summary>不同学生考不同科目？设置计分组与名单</summary>
+        <p className="field-hint">
+          全班考相同科目时，保留默认“全科组”即可。选科不同的学生，可分配到只包含其应考科目的组。
+        </p>
         <div className="score-actions">
           <h2>计分组</h2>
           <button
@@ -409,7 +423,7 @@ export function ScoreConfiguration({
             下一页
           </button>
         </div>
-      </section>
+      </details>
       <label className="score-check">
         <input
           type="checkbox"

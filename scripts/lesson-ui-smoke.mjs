@@ -1,5 +1,6 @@
 import { _electron as electron } from 'playwright';
-import electronPath from 'electron';
+import { isolatedElectronRuntime } from './isolated-electron-runtime.mjs';
+import { openWorkspacePage } from './workspace-ui-navigation.mjs';
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
@@ -13,7 +14,13 @@ import { recordAuditIpcResults } from './ipc-receipt-probe.mjs';
 const output = resolve('output/playwright/lessons');
 mkdirSync(output, { recursive: true });
 const root = mkdtempSync(join(output, 'run-'));
-const env = { ...process.env, CLASS_MANAGER_DATA_DIR: join(root, 'user-data') };
+const { local, executablePath } = isolatedElectronRuntime('lesson-ui-');
+const env = {
+  ...process.env,
+  CLASS_MANAGER_DATA_DIR: join(root, 'user-data'),
+  TEMP: join(local, 'temp'),
+  TMP: join(local, 'temp'),
+};
 delete env.ELECTRON_RUN_AS_NODE;
 const errors = [];
 let application;
@@ -22,7 +29,7 @@ let calls = 0;
 let epoch;
 let versionId;
 const options = {
-  executablePath: process.env.CLASS_MANAGER_LESSON_EXECUTABLE ?? electronPath,
+  executablePath: process.env.CLASS_MANAGER_LESSON_EXECUTABLE ?? executablePath,
   args: process.env.CLASS_MANAGER_LESSON_EXECUTABLE ? [] : ['.'],
   cwd: process.cwd(),
   env,
@@ -104,7 +111,7 @@ const launch = async () => {
   page = await application.firstWindow();
   page.on('pageerror', (error) => errors.push(error.message));
   await page.getByText('本地就绪', { exact: true }).waitFor();
-  await page.getByRole('button', { name: '资料备课', exact: true }).click();
+  await openWorkspacePage(page, '教师备课', '资料备课');
 };
 const button = (name) => page.getByRole('button', { name, exact: true });
 const status = (text) => page.getByRole('status').filter({ hasText: text }).waitFor();
@@ -114,14 +121,14 @@ const importFile = async (name, bytes) => {
   await application.evaluate(({ dialog }, path) => {
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path] });
   }, path);
-  await button('选择资料文件').click();
+  await page.getByRole('button', { name: '选择资料文件', exact: true }).click();
   try {
     await button('确认保存资料').waitFor();
   } catch (error) {
     console.log('Import failed:', name, await page.locator('.lesson-page').innerText());
     throw error;
   }
-  if (name.endsWith('.pdf')) await page.getByText(/PDF/).first().waitFor();
+  if (name.endsWith('.pdf')) await page.locator('.lesson-page').getByText(/PDF/).first().waitFor();
   assert.equal(await application.evaluate(() => globalThis.__lessonSmoke.calls), 0);
   await button('确认保存资料').click();
   await status('资料版本已保存');
@@ -177,6 +184,7 @@ try {
   await importFile('synthetic.jpg', await sharp(png).jpeg().toBuffer());
   await page.getByLabel('已保存资料', { exact: true }).selectOption(txtId);
   await page.locator('.lesson-fragment-list input').first().check();
+  await button('新建备课任务').click();
   await page.getByLabel('课题', { exact: true }).fill('力的三要素');
   assert.equal(
     (
@@ -192,6 +200,13 @@ try {
   await generate();
   await status('备课草案已保存');
   assert.equal(await page.getByLabel('教案标题', { exact: true }).inputValue(), '力的三要素');
+  assert.equal(
+    await page
+      .locator('section.lesson-history')
+      .evaluate((el) => getComputedStyle(el).display === 'flex'),
+    false,
+    'Lesson history must stack its editor and exports, not wrap whole sections into a toolbar',
+  );
   const wires = await application.evaluate(() => globalThis.__lessonSmoke.wires);
   assert.doesNotMatch(
     JSON.stringify(wires),
@@ -203,7 +218,12 @@ try {
   await button('取消范围准备').click();
   await page.getByLabel('教案标题', { exact: true }).fill('教师修订标题');
   assert.equal(await button('冻结备课版本').isDisabled(), true);
-  assert.equal(await button('班级名册').isDisabled(), true);
+  await page
+    .getByRole('navigation', { name: '主导航' })
+    .getByRole('button', { name: '班主任管理', exact: true })
+    .click();
+  await page.locator('.navigation-feedback').waitFor();
+  assert.equal(await page.getByLabel('教案标题', { exact: true }).inputValue(), '教师修订标题');
   // Hold the actual Main readback after a successful save, then verify the editor stays locked.
   await application.evaluate(({ ipcMain }) => {
     const original = ipcMain._invokeHandlers.get('cm:readLessonDraft');
@@ -356,7 +376,7 @@ try {
   const revisionDraft = reopened.value.find((value) => value.record.status === 'draft');
   await page.getByLabel('已保存备课草案').selectOption(revisionDraft.record.id);
   await page.waitForFunction(
-    () => document.querySelector('[aria-label="教案标题"]').value === '第二版教师修订',
+    () => document.querySelector('[aria-label="教案标题"]')?.value === '第二版教师修订',
   );
   assert.equal(await application.evaluate(() => globalThis.__lessonSmoke.calls), 0);
   assert.deepEqual(errors, []);

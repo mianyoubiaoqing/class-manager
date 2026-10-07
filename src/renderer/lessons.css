@@ -134,11 +134,14 @@
   overflow-wrap: anywhere;
 }
 .lesson-selected,
-.lesson-history {
+div.lesson-history {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   margin: 12px 0;
+}
+section.lesson-history {
+  scroll-margin-top: 120px;
 }
 .lesson-selected > span {
   background: var(--surface-3, #26211e);

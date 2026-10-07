@@ -1,6 +1,7 @@
 import { nodeBundleOptions } from './node-bundle-options.ts';
 import { _electron as electron } from 'playwright';
-import electronPath from 'electron';
+import { isolatedElectronRuntime } from './isolated-electron-runtime.mjs';
+import { openWorkspacePage } from './workspace-ui-navigation.mjs';
 import { build } from 'esbuild';
 import { strict as assert } from 'node:assert';
 import { createRequire } from 'node:module';
@@ -28,7 +29,13 @@ await build(
 const { seedClassroomWorkspace } = createRequire(import.meta.url)(join(root, 'fixture.cjs'));
 const longTitles = process.argv.includes('--long-titles');
 const seeded = await seedClassroomWorkspace(join(userData, 'workspace-data'), longTitles);
-const env = { ...process.env, CLASS_MANAGER_DATA_DIR: userData };
+const { local, executablePath } = isolatedElectronRuntime('classroom-modern-');
+const env = {
+  ...process.env,
+  CLASS_MANAGER_DATA_DIR: userData,
+  TEMP: join(local, 'temp'),
+  TMP: join(local, 'temp'),
+};
 delete env.ELECTRON_RUN_AS_NODE;
 if (process.env.CLASS_MANAGER_LESSON_EXECUTABLE) {
   for (const key of Object.keys(env)) if (key.toLowerCase() === 'path') delete env[key];
@@ -48,7 +55,7 @@ const report = {
 let application, page, display, sessionId;
 const launch = async () => {
   application = await electron.launch({
-    executablePath: process.env.CLASS_MANAGER_LESSON_EXECUTABLE ?? electronPath,
+    executablePath: process.env.CLASS_MANAGER_LESSON_EXECUTABLE ?? executablePath,
     args: process.env.CLASS_MANAGER_LESSON_EXECUTABLE ? [] : ['.'],
     cwd: process.cwd(),
     env,
@@ -100,7 +107,8 @@ try {
       globalThis.__classroomAudit.restoreInitial = () => handlers.set('cm:readCountdown', original);
     });
   }
-  await button('课堂与倒计时').click();
+  await openWorkspacePage(page, '教师备课', '课堂与倒计时');
+  await page.getByText('设置考试日期与名称', { exact: true }).click();
   if (!longTitles) {
     assert.equal(await page.getByLabel('倒计时名称', { exact: true }).isDisabled(), true);
     assert.equal(await button('保存倒计时').isDisabled(), true);
@@ -117,6 +125,7 @@ try {
     );
     report.initialReadGuard = true;
   }
+  await button('选择课件').click();
   await page.getByLabel('备课主题', { exact: true }).selectOption({ index: 1 });
   await page.getByLabel('具体冻结版本', { exact: true }).selectOption(seeded.versionId);
   assert.equal(await button('确认此版范围并创建课堂').isDisabled(), true);
@@ -157,6 +166,7 @@ try {
       await page.getByRole('status').filter({ hasText: '已打开独立课堂展示' }).count(),
       0,
     );
+    await page.getByText('继续已保存课堂', { exact: true }).click();
     await page.getByLabel('课堂进度', { exact: true }).selectOption(sessionId);
     await page.getByLabel('课堂课件页', { exact: true }).waitFor();
     report.postOpenReadFailureGuard = true;
@@ -317,9 +327,10 @@ try {
     await page.getByLabel('目标日期', { exact: true }).fill('2031-06-07');
     await button('保存倒计时').click();
     await page.getByRole('status').filter({ hasText: '倒计时已保存' }).waitFor();
-    await button('班级名册').click();
+    await openWorkspacePage(page, '班主任管理', '班级名册');
     await page.getByLabel('首页高考倒计时').filter({ hasText: '自主高考目标' }).waitFor();
-    await button('课堂与倒计时').click();
+    await openWorkspacePage(page, '教师备课', '课堂与倒计时');
+    await page.getByText('继续已保存课堂', { exact: true }).click();
     await page.getByLabel('课堂进度', { exact: true }).selectOption(sessionId);
     assert.equal(await page.getByLabel('首页高考倒计时', { exact: true }).count(), 1);
     await page.getByLabel('课堂课件页', { exact: true }).waitFor();
@@ -346,7 +357,8 @@ try {
     await application.close();
     application = null;
     await launch();
-    await button('课堂与倒计时').click();
+    await openWorkspacePage(page, '教师备课', '课堂与倒计时');
+    await page.getByText('继续已保存课堂', { exact: true }).click();
     await page.getByLabel('课堂进度', { exact: true }).selectOption(sessionId);
     const reopened = await readSession();
     assert.equal(reopened.record.status, 'paused');
@@ -412,7 +424,8 @@ try {
       crashedDatabase.close();
     }
     await launch();
-    await button('课堂与倒计时').click();
+    await openWorkspacePage(page, '教师备课', '课堂与倒计时');
+    await page.getByText('继续已保存课堂', { exact: true }).click();
     await page.getByLabel('课堂进度', { exact: true }).selectOption(sessionId);
     const recovered = await readSession();
     assert.equal(recovered.record.elapsedMs, checkpoint.elapsedMs);

@@ -180,6 +180,75 @@ function scoreConfiguration() {
   };
 }
 
+test('diagnostic export includes persisted response metadata without ledger values or model credentials', async () => {
+  const main = await startMain();
+  const output = mkdtempSync(join(tmpdir(), 'cm-diagnostic-export-'));
+  roots.push(output);
+  const file = join(output, 'diagnostic.json'),
+    id = randomUUID(),
+    at = new Date().toISOString();
+  main.workerCall.mockResolvedValue({
+    ok: true,
+    value: { classes: [], students: [], assets: [], schemaVersion: 12 },
+  });
+  main.dialog.showSaveDialog.mockResolvedValue({ canceled: false, filePath: file });
+  const responseDiagnostic = {
+    version: 1,
+    transport: 'sse',
+    stage: 'completion',
+    reason: 'missing-completion',
+    bytes: 100,
+    frames: 1,
+    done: false,
+    hasId: true,
+    hasModel: true,
+    hasFinish: false,
+    toolCalls: 0,
+    issues: [],
+  };
+  writeFileSync(
+    join(main.root, 'deepseek-ledger.json'),
+    JSON.stringify({
+      version: 1,
+      totals: {
+        totalCalls: 1,
+        successCalls: 0,
+        totalTokens: 0,
+        promptTokens: 0,
+        completionTokens: 0,
+      },
+      entries: [
+        {
+          id,
+          timestamp: at,
+          type: 'conversation_intent',
+          requestModel: 'synthetic-model',
+          responseId: 'sk-synthetic-secret-not-for-export',
+          responseModel: '学生真实姓名',
+          status: 'failed',
+          errorCode: 'INVALID_RESPONSE',
+          durationMs: 10,
+          promptVersion: 'test',
+          responseDiagnostic,
+          conversationAttempt: { taskId: randomUUID(), transportAttempt: 6 },
+        },
+      ],
+    }),
+  );
+  // A broken second provider must not prevent exporting the first provider's useful evidence.
+  writeFileSync(join(main.root, 'kimi-ledger.json'), '{broken');
+  expect(await main.call('exportDiagnostics')).toMatchObject({ ok: true });
+  const text = readFileSync(file, 'utf8'),
+    report = JSON.parse(text);
+  expect(report.modelResponses[0]).toMatchObject({
+    provider: 'deepseek',
+    status: 'ready',
+    calls: [{ callId: id, at, response: responseDiagnostic, attempt: { transportAttempt: 6 } }],
+  });
+  expect(report.modelResponses[1]).toEqual({ provider: 'kimi', status: 'unavailable', calls: [] });
+  expect(text).not.toMatch(/sk-synthetic-secret|学生真实姓名|synthetic-model/);
+});
+
 test('history IPC rejects foreign senders and malformed inputs before reading the workspace', async () => {
   const main = await startMain();
   for (const channel of [
@@ -275,6 +344,61 @@ test('conversation Main authorizes all six methods, bounds payloads and rejects 
   expect(main.workerCall).not.toHaveBeenCalled();
 });
 
+test('native conversation attachment selection is session-scoped and binds locally parsed content to preparation', async () => {
+  const main = await startMain();
+  const epoch = randomUUID();
+  main.workerCall.mockResolvedValue({ ok: true, value: { epoch, classes: [], students: [] } });
+  const history = value<{ id: string }>(await main.call('createConversationHistory', { epoch }));
+  const path = join(main.root, '合成附件.csv');
+  writeFileSync(path, '姓名,分数\n合成附件学生,0');
+  main.dialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: [path] });
+  const files = value<Array<{ id: string; name: string }>>(
+    await main.call('selectConversationFiles', { epoch, sessionId: history.id }),
+  );
+  expect(files).toEqual([expect.objectContaining({ name: '合成附件.csv' })]);
+  expect(JSON.stringify(files)).not.toContain('合成附件学生');
+  expect(main.dialog.showOpenDialog).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ properties: ['openFile', 'multiSelections'] }),
+  );
+  expect(
+    await main.call('saveModelProviderKey', {
+      provider: 'deepseek',
+      apiKey: 'sk-synthetic-chat-files',
+    }),
+  ).toMatchObject({ ok: true });
+  const settings = value<{ revision: string }>(await main.call('readModelSettings'));
+  const other = value<{ id: string }>(await main.call('createConversationHistory', { epoch }));
+  const input = {
+    epoch,
+    configurationRevision: settings.revision,
+    classId: null,
+    studentId: null,
+    text: '核对附件',
+    attachmentIds: [files[0]!.id],
+  };
+  expect(await main.call('prepareConversation', { ...input, sessionId: other.id })).toMatchObject({
+    ok: false,
+    error: { code: 'CONVERSATION_FILE_EXPIRED' },
+  });
+  const prepared = value<import('../src/shared/conversation').ConversationTask>(
+    await main.call('prepareConversation', { ...input, sessionId: history.id }),
+  );
+  expect(prepared.preparation.body).toContain('合成附件学生');
+  expect(prepared.preparation.body).not.toContain(path);
+  expect(prepared.preparation.body).toContain('user-uploaded-data-not-instructions');
+  await main.call('cancelConversation', { epoch, token: prepared.preparation.token });
+  expect(await main.call('prepareConversation', { ...input, sessionId: history.id })).toMatchObject(
+    { ok: false, error: { code: 'CONVERSATION_FILE_EXPIRED' } },
+  );
+  expect(
+    await main.call('removeConversationFiles', {
+      epoch,
+      sessionId: history.id,
+      ids: input.attachmentIds,
+    }),
+  ).toMatchObject({ ok: true });
+});
 test('actual Main conversation owns the write slot, keeps source CAS and cancels on configuration switch', async () => {
   const main = await startMain(),
     workspace = new Workspace(join(main.root, 'conversation-business'));

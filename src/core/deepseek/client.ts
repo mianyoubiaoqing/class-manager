@@ -12,6 +12,7 @@ import {
 import { awaitModelResponse, readBoundedResponse } from './bounded-response';
 import type { ModelKind, ModelProviderId } from '../../shared/model-providers';
 import { readConversationCompletion } from './conversation-stream';
+import type { ConversationDiagnostic } from './conversation-diagnostics';
 import type {
   DeepSeekTextMessage,
   ConversationModelResponse,
@@ -28,6 +29,7 @@ export class DeepSeekGenerationError extends DomainError {
   constructor(
     message: string,
     readonly response: Omit<DeepSeekGenerationResult, 'content'>,
+    readonly diagnostic?: ConversationDiagnostic,
   ) {
     super('INVALID_RESPONSE', message);
   }
@@ -518,7 +520,9 @@ export class DeepSeekClient {
                   : 'HTTP_ERROR';
         throw new DomainError(
           code,
-          `${this.label} 请求失败 (HTTP ${response.status})，没有自动重试。请核对型号和账号能力。`,
+          response.status === 401
+            ? `${this.label} 身份验证失败 (HTTP 401)，没有自动重试。请让交付人员在“系统设置 → 模型连接”检查 API Key 是否有效、是否属于当前供应商。`
+            : `${this.label} 请求失败 (HTTP ${response.status})，没有自动重试。请核对型号和账号能力。`,
         );
       }
       const parsed = await readConversationCompletion(response, signal, (value) =>
@@ -531,9 +535,13 @@ export class DeepSeekClient {
         usage: this.parseUsage(parsed.usage),
       };
       if (!['stop', 'tool_calls', 'length'].includes(parsed.finishReason))
-        throw new DeepSeekGenerationError('模型输出未正常结束，未采用工具提议。', metadata);
+        throw new DeepSeekGenerationError('模型输出未正常结束，未采用工具提议。', metadata, {
+          ...parsed.diagnostic,
+          reason: 'unsupported-finish',
+        });
       return {
         ...metadata,
+        diagnostic: parsed.diagnostic,
         content: this.sanitizeMessage(parsed.content, apiKey),
         reasoningContent: this.sanitizeMessage(parsed.reasoningContent, apiKey),
         toolCalls: parsed.toolCalls,

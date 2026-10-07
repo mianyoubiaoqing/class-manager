@@ -106,7 +106,7 @@ export async function exerciseScoreUi(application, page, root, output) {
   await page.getByText('正在查看历史版本，已有更新。', { exact: false }).waitFor();
   await page
     .getByRole('region', { name: '成绩统计', exact: true })
-    .getByText(/目标 ≥ 95(?:\.00)? 分；1\/49/)
+    .getByText(new RegExp(`目标 ≥ 95(?:\\.00)? 分；1/${roster.length - 2}`))
     .waitFor();
   assert.equal(
     await page.getByRole('button', { name: '更正本次考试', exact: true }).isDisabled(),
@@ -148,7 +148,9 @@ export async function exerciseScoreUi(application, page, root, output) {
   const currentSnapshot = await page.evaluate(() => window.classManager.snapshot());
   assert.equal(currentSnapshot.ok, true);
   await application.evaluate(({ ipcMain, dialog }, snapshot) => {
-    globalThis.__cmScoreRefreshFixture = {};
+    globalThis.__cmScoreRefreshFixture = {
+      originalSnapshot: ipcMain._invokeHandlers.get('cm:snapshot'),
+    };
     ipcMain.removeHandler('cm:snapshot');
     ipcMain.handle(
       'cm:snapshot',
@@ -192,5 +194,9 @@ export async function exerciseScoreUi(application, page, root, output) {
     (epoch) => window.classManager.listExams({ epoch }),
     currentSnapshot.value.epoch,
   );
+  await application.evaluate(({ ipcMain }) => {
+    ipcMain.removeHandler('cm:snapshot');
+    ipcMain.handle('cm:snapshot', globalThis.__cmScoreRefreshFixture.originalSnapshot);
+  });
   return currentSnapshot.value;
 }

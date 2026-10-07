@@ -43,6 +43,18 @@ import {
   type GrowthSource,
 } from './growth';
 import { z } from 'zod';
+import type {
+  folderScanInput,
+  folderReadInput,
+  resourceLinkInput,
+  FolderInventory,
+  FolderReadReceipt,
+} from './material-folders';
+import {
+  conversationFilesInput,
+  conversationFileRemoveInput,
+  type ConversationFile,
+} from './conversation-files';
 import {
   type StudentProfile,
   type AttendanceRecord,
@@ -61,7 +73,7 @@ import type {
   historyRenameInput,
   historyWriteInput,
   ConversationHistory,
-  ConversationHistorySummary,
+  ConversationHistoryCatalog,
 } from './conversation-history';
 import type {
   conversationPrepareInput,
@@ -412,7 +424,7 @@ export interface DesktopApi {
   /** Teacher-visible transcripts encrypted locally; never includes pending tokens or raw model/tool history. */
   listConversationHistory(
     input: z.input<typeof historyEpochInput>,
-  ): Promise<Result<ConversationHistorySummary[]>>;
+  ): Promise<Result<ConversationHistoryCatalog>>;
   createConversationHistory(
     input: z.input<typeof historyEpochInput>,
   ): Promise<Result<ConversationHistory>>;
@@ -431,8 +443,15 @@ export interface DesktopApi {
   prepareConversation(
     input: z.input<typeof conversationPrepareInput>,
   ): Promise<Result<ConversationTask>>;
+  /** 原生对话框选择并本地提取附件；只回传描述，不返回路径或正文。发送时才外发。 */
+  selectConversationFiles(
+    input: z.input<typeof conversationFilesInput>,
+  ): Promise<Result<ConversationFile[]>>;
+  removeConversationFiles(
+    input: z.input<typeof conversationFileRemoveInput>,
+  ): Promise<Result<void>>;
   /** 原token/hash确认发送；session模式每轮最多16次模型往返，自动调用只读工具并回传脱敏结果。
-   * 写入停在待确认；旧单提议模式仍一次调用。失败/取消不重发，成功重复回放，可能计费，无自动重试/回退。 */
+   * 写入停在待确认；旧单提议模式仍一次调用。参数及尚未执行工具的传输格式错误最多纠正5次，可能计费；取消不重发，成功重复回放。 */
   generateConversation(
     input: z.input<typeof conversationGenerateInput>,
   ): Promise<Result<ConversationTask>>;
@@ -657,6 +676,12 @@ export interface DesktopApi {
   previewMaterial(
     input: z.input<typeof materialPreviewInput>,
   ): Promise<Result<MaterialPreview | null>>;
+  scanMaterialFolder(
+    input: z.input<typeof folderScanInput>,
+  ): Promise<Result<FolderInventory | null>>;
+  readMaterialFolder(input: z.input<typeof folderReadInput>): Promise<Result<FolderReadReceipt>>;
+  cancelMaterialFolder(input: z.input<typeof materialPreviewInput>): Promise<Result<void>>;
+  openResourceLink(input: z.input<typeof resourceLinkInput>): Promise<Result<void>>;
   confirmMaterial(
     input: z.input<typeof materialConfirmInput>,
   ): Promise<Result<{ id: string; replayed: boolean }>>;
@@ -728,6 +753,18 @@ export interface DesktopApi {
   createClass(input: z.infer<typeof createClassInput>): Promise<Result<Snapshot>>;
   renameClass(input: z.infer<typeof renameClassInput>): Promise<Result<Snapshot>>;
   saveStudent(input: StudentInput): Promise<Result<Snapshot>>;
+  previewRosterImport(input: {
+    epoch: string;
+    classId: string;
+  }): Promise<Result<import('./roster-import').RosterImportPreview | null>>;
+  confirmRosterImport(input: {
+    epoch: string;
+    token: string;
+  }): Promise<Result<{ snapshot: Snapshot; added: number; skipped: number; replayed: boolean }>>;
+  exportRosterTemplate(input: {
+    epoch: string;
+    format: 'xlsx' | 'csv';
+  }): Promise<Result<Receipt | null>>;
   setStudentActive(input: z.infer<typeof activationInput>): Promise<Result<Snapshot>>;
   seedDemo(input: z.infer<typeof epochInput>): Promise<Result<Snapshot>>;
   addSyntheticAsset(input: z.infer<typeof epochInput>): Promise<Result<Snapshot>>;
@@ -760,6 +797,9 @@ export interface DesktopApi {
 
 // The preload exposes only these named operations, never an arbitrary IPC caller.
 export const CHANNELS = [
+  'previewRosterImport',
+  'confirmRosterImport',
+  'exportRosterTemplate',
   'readStudentProfile',
   'saveStudentProfile',
   'studentProfileHistory',
@@ -775,6 +815,8 @@ export const CHANNELS = [
   'renameConversationHistory',
   'deleteConversationHistory',
   'prepareConversation',
+  'selectConversationFiles',
+  'removeConversationFiles',
   'generateConversation',
   'executeConversation',
   'readConversation',
@@ -838,6 +880,10 @@ export const CHANNELS = [
   'cancelLessonOffice',
   'openLessonOffice',
   'previewMaterial',
+  'scanMaterialFolder',
+  'readMaterialFolder',
+  'cancelMaterialFolder',
+  'openResourceLink',
   'confirmMaterial',
   'cancelMaterial',
   'readMaterialPreviewImage',

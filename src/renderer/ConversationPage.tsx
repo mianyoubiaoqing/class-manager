@@ -1,16 +1,21 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import {
   ArrowUp,
-  Bot,
   CircleAlert,
   LoaderCircle,
-  MessageSquare,
+  Paperclip,
   Sparkles,
+  BarChart3,
+  CalendarDays,
+  BookOpen,
+  Heart,
+  ShieldCheck,
   UsersRound,
   X,
 } from 'lucide-react';
 import type { Result, Snapshot } from '../shared/contracts';
 import type { ConversationTask, BusinessView } from '../shared/conversation';
+import { CONVERSATION_FILE_LIMITS } from '../shared/conversation-files';
 import type { ModelSettingsView } from '../shared/model-providers';
 import { ConversationMarkdown, DocumentCard, LessonCard } from './ConversationArtifacts';
 import type { ConversationHistory, ConversationHistoryState } from '../shared/conversation-history';
@@ -18,28 +23,28 @@ import { ChangeValue, teacherReceipt, teacherToolLabel } from './ConversationPre
 
 const promptSuggestions = [
   {
-    icon: '📋',
-    label: '查班级学生名册',
-    desc: '核对学号、视力健康与在籍情况',
-    prompt: '查看当前班级在籍名册',
+    icon: <CalendarDays size={22} />,
+    label: '安排本周值日',
+    desc: '“帮我按岗位和小组排一个值日表”',
+    prompt: '帮我按岗位和小组安排本周值日，先核对班级和已有值日计划',
   },
   {
-    icon: '🪑',
-    label: '教室智能调座',
-    desc: '近视关注往前调、同桌互助平衡',
-    prompt: '查看当前班级座位编排',
+    icon: <BookOpen size={22} />,
+    label: '准备一节新课',
+    desc: '“把这份资料整理成一份教案”',
+    prompt: '帮我把上传的资料整理成一份教案，先核对课题和教学目标',
   },
   {
-    icon: '📈',
-    label: '考生成绩分析',
-    desc: '平均分、及格率与薄弱名单',
+    icon: <BarChart3 size={21} />,
+    label: '看看考试情况',
+    desc: '“帮我核对并解释这次成绩”',
     prompt: '查询近期考试情况',
   },
   {
-    icon: '🧹',
-    label: '今日值日生查询',
-    desc: '轮换组员名单与卫生包干区',
-    prompt: '查看当前班级值日轮换',
+    icon: <Heart size={22} />,
+    label: '整理学生成长记录',
+    desc: '“帮我整理阶段跟进记录”',
+    prompt: '帮我整理当前学生的阶段成长记录，先核对已有记录和时间范围',
   },
 ];
 
@@ -69,6 +74,7 @@ export function ConversationPage({
   locked,
   onHistoryChange,
   onNewConversation,
+  executionBlocked = false,
 }: {
   snapshot: Snapshot;
   onSnapshot: (value: Snapshot) => void;
@@ -82,10 +88,12 @@ export function ConversationPage({
   locked: boolean;
   onHistoryChange: (update: (state: ConversationHistoryState) => ConversationHistoryState) => void;
   onNewConversation: () => void;
+  executionBlocked?: boolean;
 }) {
   const api = window.classManager;
   const [settings, setSettings] = useState<ModelSettingsView>();
   const { messages, draft: text } = history.state;
+  const attachments = history.state.attachments ?? [];
   const classId = history.state.classId ?? '',
     studentId = history.state.studentId ?? '';
   const setClassId = (value: string) =>
@@ -109,6 +117,14 @@ export function ConversationPage({
   const [task, setTask] = useState<ConversationTask>();
   const sessionId = history.id;
   const [localResult, setLocalResult] = useState('');
+  const thread = useRef<HTMLDivElement>(null);
+  const followMessages = useRef(true);
+  useLayoutEffect(() => {
+    if (thread.current) {
+      if (!messages.length && !task && !localResult) thread.current.scrollTop = 0;
+      else if (followMessages.current) thread.current.scrollTop = thread.current.scrollHeight;
+    }
+  }, [messages, task?.status, task?.stream?.text, localResult, active]);
   const mounted = useRef(true);
   const settingsRevision = useRef<string | undefined>(undefined);
   const pending = useRef(0);
@@ -147,22 +163,6 @@ export function ConversationPage({
   }, [api, task?.status, task?.preparation.token]);
   useEffect(() => {
     mounted.current = true;
-    void api
-      .readModelSettings()
-      .then((result) => {
-        if (!mounted.current) return;
-        if (result.ok) {
-          if (settingsRevision.current && settingsRevision.current !== result.value.revision) {
-            setTask(undefined);
-            setLocalResult('');
-          }
-          settingsRevision.current = result.value.revision;
-          setSettings(result.value);
-        } else setError(result.error.message);
-      })
-      .catch(() => {
-        if (mounted.current) setError('模型设置读取失败，请重新打开本页。');
-      });
     return () => {
       mounted.current = false;
       const current = taskRef.current;
@@ -173,6 +173,28 @@ export function ConversationPage({
             token: current.preparation.token,
           })
           .catch(() => {});
+    };
+  }, [api, snapshot.epoch]);
+  useEffect(() => {
+    let disposed = false;
+    void api
+      .readModelSettings()
+      .then((result) => {
+        if (disposed || !mounted.current) return;
+        if (result.ok) {
+          if (settingsRevision.current && settingsRevision.current !== result.value.revision) {
+            setTask(undefined);
+            setLocalResult('');
+          }
+          settingsRevision.current = result.value.revision;
+          setSettings(result.value);
+        } else setError(result.error.message);
+      })
+      .catch(() => {
+        if (!disposed && mounted.current) setError('模型设置读取失败，请重新打开本页。');
+      });
+    return () => {
+      disposed = true;
     };
   }, [api, snapshot.epoch, active]);
   useEffect(() => {
@@ -254,22 +276,37 @@ export function ConversationPage({
   }
   async function sendMessage(message: string) {
     if (!settings || unsettled(task) || busy) return;
+    const request =
+      message.trim() || (attachments.length ? '请读取附件，并帮助我完成后续操作。' : '');
+    if (!request) return;
     onRestoreNotice?.('');
     setLocalResult('');
     await run(async () => {
       const prepared = await api.prepareConversation({
         epoch: snapshot.epoch,
         configurationRevision: settings.revision,
-        text: message,
+        text: request,
         classId: classId || null,
         studentId: studentId || null,
         sessionId,
+        attachmentIds: attachments.map((file) => file.id),
       });
       if (!prepared.ok) return prepared;
       taskRef.current = prepared.value;
       setTask({ ...prepared.value, status: 'planning' });
-      setMessages((old) => [...old, { speaker: 'user' as const, text: message }].slice(-60));
-      setText('');
+      onHistoryChange((old) => ({
+        ...old,
+        messages: [
+          ...old.messages,
+          {
+            speaker: 'user' as const,
+            text: request,
+            ...(attachments.length ? { attachments } : {}),
+          },
+        ].slice(-60),
+        draft: '',
+        attachments: [],
+      }));
       return api.generateConversation({
         epoch: snapshot.epoch,
         token: prepared.value.preparation.token,
@@ -278,7 +315,55 @@ export function ConversationPage({
       });
     }, acceptTask);
   }
+  async function uploadFiles() {
+    if (busy || unsettled(task)) return;
+    await run(
+      () => api.selectConversationFiles({ epoch: snapshot.epoch, sessionId }),
+      (files) => {
+        if (!files.length) return;
+        if (attachments.length + files.length > CONVERSATION_FILE_LIMITS.files) {
+          void api
+            .removeConversationFiles({
+              epoch: snapshot.epoch,
+              sessionId,
+              ids: files.map((file) => file.id),
+            })
+            .catch(() => {});
+          setError('一条消息最多附加6个文件，请移除部分附件。');
+          return;
+        }
+        if (
+          [...attachments, ...files].reduce((n, file) => n + file.characters, 0) >
+          CONVERSATION_FILE_LIMITS.characters
+        ) {
+          setError('附件文字合计超过96000字符，请分次发送。');
+          void api
+            .removeConversationFiles({
+              epoch: snapshot.epoch,
+              sessionId,
+              ids: files.map((file) => file.id),
+            })
+            .catch(() => {});
+          return;
+        }
+        onHistoryChange((old) => ({ ...old, attachments: [...(old.attachments ?? []), ...files] }));
+      },
+    );
+  }
+  async function removeFile(id: string) {
+    await run(
+      () => api.removeConversationFiles({ epoch: snapshot.epoch, sessionId, ids: [id] }),
+      () => {
+        onHistoryChange((old) => ({
+          ...old,
+          attachments: (old.attachments ?? []).filter((file) => file.id !== id),
+        }));
+      },
+    );
+  }
   async function execute() {
+    if (executionBlocked)
+      throw new Error('当前页面有未保存的内容或正在进行的操作，请先保存或取消，再执行助手提议。');
     if (!task?.proposal) throw new Error('没有可执行提议');
     const value = await api.executeConversation({
       ...token(),
@@ -332,18 +417,15 @@ export function ConversationPage({
     );
   }
   return (
-    <section className="conversation-page" aria-label="统一业务对话">
-      <div className="conversation-context">
-        <div className="conversation-context-heading">
-          <Bot size={20} />
-          <strong>{title === '新会话' ? '业务助手' : title}</strong>
-          <Sparkles size={14} style={{ color: 'var(--primary)' }} />
-          <span style={{ fontSize: '12px' }}>
-            {selected
-              ? `${selected.label} · ${selected.textModel || '未配置型号'}`
-              : '读取模型设置中'}
-          </span>
-        </div>
+    <section
+      className="conversation-page"
+      aria-label="统一业务对话"
+      data-empty={!messages.length && !task}
+    >
+      <div className="conversation-scope" aria-label="对话范围">
+        <span className="sr-only" data-conversation-title>
+          {title}
+        </span>
         {archived && (
           <p role="status">
             这是恢复前工作区的聊天记录，仅供查看。可以开启新会话继续处理当前资料。
@@ -383,7 +465,11 @@ export function ConversationPage({
                 setLocalResult('');
               }}
             >
-              <option value="">未选择</option>
+              <option value="">
+                {classId && !snapshot.students.some((s) => s.classId === classId)
+                  ? '该班级还没有学生'
+                  : '未选择'}
+              </option>
               {snapshot.students
                 .filter((s) => s.classId === classId)
                 .map((s) => (
@@ -395,59 +481,89 @@ export function ConversationPage({
             </select>
           </label>
         </div>
-        <div className="conversation-shortcuts" aria-label="离线快捷操作">
-          <details className="conversation-quick-menu">
-            <summary>本地快捷查询</summary>
-            <div className="conversation-quick-menu-content">
-              {(['roster', 'exams', 'devices', 'countdown'] as const).map((kind, i) => (
-                <button
-                  key={kind}
-                  disabled={busy || unsettled(task)}
-                  onClick={() => void localQuery(kind)}
-                >
-                  {['名册', '考试', '设备状态', '倒计时'][i]}
-                </button>
-              ))}
-            </div>
-          </details>
-          <button disabled={busy || unsettled(task)} onClick={() => onNavigate('providerSettings')}>
-            模型设置
-          </button>
-          <button disabled={localBusy || locked || unsettled(task)} onClick={onNewConversation}>
-            新对话
-          </button>
-        </div>
-        {selected && (!selected.credentials.configured || !selected.textModel) && (
-          <p className="conversation-warning">
-            当前模型尚未配置 API Key，可点击上方“模型设置”配置，或使用离线快捷查询。
+        {classId && !snapshot.students.some((s) => s.classId === classId) && (
+          <p className="conversation-roster-hint">
+            先添加或导入学生名单，即可选择学生。
+            <button disabled={busy || unsettled(task)} onClick={() => onNavigate('roster')}>
+              打开班级名册
+            </button>
           </p>
         )}
+        <details className="conversation-options">
+          <summary aria-label="对话工具与模型设置">···</summary>
+          <div className="conversation-shortcuts" aria-label="离线快捷操作">
+            <p className="conversation-model-name">
+              {selected
+                ? `${selected.label} · ${selected.textModel || '未配置型号'}`
+                : '读取模型设置中'}
+            </p>
+            <details className="conversation-quick-menu">
+              <summary>本地快捷查询</summary>
+              <div className="conversation-quick-menu-content">
+                {(['roster', 'exams', 'devices', 'countdown'] as const).map((kind, i) => (
+                  <button
+                    key={kind}
+                    disabled={busy || unsettled(task)}
+                    onClick={() => void localQuery(kind)}
+                  >
+                    {['名册', '考试', '设备状态', '倒计时'][i]}
+                  </button>
+                ))}
+              </div>
+            </details>
+            <button
+              disabled={busy || unsettled(task)}
+              onClick={() => onNavigate('providerSettings')}
+            >
+              模型设置
+            </button>
+            <button disabled={localBusy || locked || unsettled(task)} onClick={onNewConversation}>
+              新对话
+            </button>
+          </div>
+          {selected && (!selected.credentials.configured || !selected.textModel) && (
+            <p className="conversation-warning">
+              尚未连接模型，可在“模型设置”中配置，也可使用本地快捷查询。
+            </p>
+          )}
+        </details>
       </div>
-      <div className="conversation-thread" role="log" aria-label="本次对话记录" aria-live="polite">
+      <div
+        className="conversation-thread"
+        ref={thread}
+        onScroll={() => {
+          const element = thread.current;
+          if (element)
+            followMessages.current =
+              element.scrollHeight - element.scrollTop - element.clientHeight < 80;
+        }}
+        role="log"
+        aria-label="本次对话记录"
+        aria-live="polite"
+      >
         {restoreNotice && <p role="status">{restoreNotice}</p>}
         {!messages.length && !task && (
           <div className="conversation-empty">
-            <MessageSquare size={36} style={{ color: 'var(--primary)', opacity: 0.85 }} />
-            <h2>今天想处理什么？</h2>
-            <p>说说您的备课或班级管理需求，也可以从下面的常用操作开始。</p>
+            <span className="conversation-welcome-mark">
+              <Sparkles size={28} />
+            </span>
+            <h2>告诉助手，你想完成什么？</h2>
+            <p>可以直接说，也可以先上传一份文件。</p>
             <div className="prompt-capsules-container">
               {promptSuggestions.map((item, idx) => (
-                <div
+                <button
+                  type="button"
                   key={idx}
                   className="prompt-capsule"
-                  role="button"
-                  tabIndex={0}
+                  disabled={busy || localBusy || locked}
                   onClick={() => setText(item.prompt)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') setText(item.prompt);
-                  }}
                 >
                   <span className="prompt-capsule-icon">{item.icon}</span>
                   <div className="prompt-capsule-body">
                     <div className="prompt-capsule-title">{item.label}</div>
                     <div className="prompt-capsule-desc">{item.desc}</div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -455,6 +571,16 @@ export function ConversationPage({
         {messages.map((m, i) => (
           <div key={i} className={`conversation-message ${m.speaker}`}>
             <span>{m.speaker === 'user' ? '你' : '业务助手'}</span>
+            {!!m.attachments?.length && (
+              <div className="conversation-attachments">
+                {m.attachments.map((file) => (
+                  <span key={file.id} className="conversation-file">
+                    <Paperclip size={14} />
+                    {file.name}
+                  </span>
+                ))}
+              </div>
+            )}
             {m.documents?.length ? (
               <>
                 {m.documents.map((document, index) => (
@@ -644,9 +770,14 @@ export function ConversationPage({
                     <p className="conversation-confirm-note">
                       核对上方内容后，点击按钮即可确认本次操作。
                     </p>
+                    {executionBlocked && (
+                      <p role="status">
+                        当前页面还有未保存的内容或正在进行的操作。请先保存或取消，再执行助手提议。
+                      </p>
+                    )}
                     <button
                       className="primary"
-                      disabled={busy}
+                      disabled={busy || executionBlocked}
                       onClick={() => {
                         setTask({ ...task, status: 'executing' });
                         void run(execute, acceptExecution);
@@ -717,7 +848,7 @@ export function ConversationPage({
         <label htmlFor="conversation-input">发送消息</label>
         <textarea
           id="conversation-input"
-          rows={3}
+          rows={2}
           maxLength={2000}
           value={text}
           disabled={busy || unsettled(task)}
@@ -729,43 +860,60 @@ export function ConversationPage({
                 e.currentTarget.form?.requestSubmit();
             }
           }}
-          placeholder="给助教下达指令，例如：“帮我调座位”、“看期中成绩”、“查值日生” (按回车发送)..."
+          placeholder="例如：根据这份名单，帮我安排本周值日…"
         />
         <div className="composer-bottom-bar">
           <div className="composer-chips-row">
-            <span className="chips-label">常用直达:</span>
             <button
               type="button"
-              className="chip-btn"
-              disabled={busy || unsettled(task)}
-              onClick={() => setText('查看当前班级在籍名册')}
+              className="chip-btn composer-upload"
+              disabled={
+                busy || unsettled(task) || attachments.length >= CONVERSATION_FILE_LIMITS.files
+              }
+              onClick={() => void uploadFiles()}
+              title="上传表格或文档，发送消息时提供给 Agent"
             >
-              📋 名册
+              <Paperclip size={16} />
+              上传文件
             </button>
-            <button
-              type="button"
-              className="chip-btn"
-              disabled={busy || unsettled(task)}
-              onClick={() => setText('查询近期考试情况')}
-            >
-              📊 考分
-            </button>
-            <button
-              type="button"
-              className="chip-btn"
-              disabled={busy || unsettled(task)}
-              onClick={() => setText('查看当前班级座位编排')}
-            >
-              🪑 换座
-            </button>
-            <button
-              type="button"
-              className="chip-btn"
-              disabled={busy || unsettled(task)}
-              onClick={() => setText('查看当前班级值日轮换')}
-            >
-              🧹 值日
-            </button>
+            <span className="chips-label">表格、PDF、Word 等</span>
+            <details className="composer-quick-links">
+              <summary>常用操作</summary>
+              <div>
+                <button
+                  type="button"
+                  className="chip-btn"
+                  disabled={busy || unsettled(task)}
+                  onClick={() => setText('查看当前班级在籍名册')}
+                >
+                  📋 名册
+                </button>
+                <button
+                  type="button"
+                  className="chip-btn"
+                  disabled={busy || unsettled(task)}
+                  onClick={() => setText('查询近期考试情况')}
+                >
+                  📊 考分
+                </button>
+                <button
+                  type="button"
+                  className="chip-btn"
+                  disabled={busy || unsettled(task)}
+                  onClick={() => setText('查看当前班级座位编排')}
+                >
+                  🪑 换座
+                </button>
+                <button
+                  type="button"
+                  className="chip-btn"
+                  disabled={busy || unsettled(task)}
+                  onClick={() => setText('查看当前班级值日轮换')}
+                >
+                  🧹 值日
+                </button>
+              </div>
+            </details>
           </div>
           <div className="composer-action-group">
             <span className="composer-counter-tip">
@@ -783,14 +931,52 @@ export function ConversationPage({
             )}
             <button
               className="primary"
-              disabled={busy || unsettled(task) || !text.trim() || !settings}
+              disabled={
+                busy || unsettled(task) || (!text.trim() && !attachments.length) || !settings
+              }
               type="submit"
             >
               {busy ? <LoaderCircle size={18} /> : <ArrowUp size={18} />}发送
             </button>
           </div>
         </div>
+        {!!attachments.length && (
+          <div className="conversation-attachments" aria-label="待发送附件">
+            {attachments.map((file) => (
+              <div key={file.id} className="conversation-file">
+                <Paperclip size={16} />
+                <span>
+                  {file.name}
+                  <small>
+                    {Math.ceil(file.bytes / 1024)} KB · {file.characters} 字符
+                  </small>
+                </span>
+                <button
+                  type="button"
+                  aria-label={`移除附件 ${file.name}`}
+                  disabled={busy || unsettled(task)}
+                  onClick={() => void removeFile(file.id)}
+                >
+                  <X size={14} />
+                </button>
+                {file.warnings.map((warning, i) => (
+                  <small key={i} className="attachment-warning">
+                    {warning}
+                  </small>
+                ))}
+              </div>
+            ))}
+            <p className="attachment-hint">
+              支持 XLSX、CSV、TXT、MD、PDF、DOCX，每个文件最多5
+              MiB。发送时将附件文字提供给所选模型；重启应用后需重新上传。
+            </p>
+          </div>
+        )}
       </form>
+      <p className="conversation-safety-note">
+        <ShieldCheck size={18} />
+        需要修改资料时，助手会先请你确认。
+      </p>
     </section>
   );
 }

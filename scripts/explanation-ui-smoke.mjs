@@ -1,6 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { openWorkspacePage } from './workspace-ui-navigation.mjs';
 
 /** All teacher actions are real UI clicks; only provider transport and native file choice are doubles. */
 export async function exerciseExplanationUi(application, page, root, output, examName) {
@@ -90,7 +91,7 @@ export async function exerciseExplanationUi(application, page, root, output, exa
       ).ok,
       true,
     );
-    await page.getByRole('button', { name: '成绩管理', exact: true }).click();
+    await openWorkspacePage(page, '班主任管理', '成绩管理');
     await page.getByRole('button', { name: `查看 ${examName}`, exact: true }).click();
     await section.waitFor();
     await prepare();
@@ -110,6 +111,19 @@ export async function exerciseExplanationUi(application, page, root, output, exa
     assert.equal(
       await page.getByRole('button', { name: '班级名册', exact: true }).isDisabled(),
       true,
+    );
+    await page
+      .getByRole('navigation', { name: '主导航', exact: true })
+      .getByRole('button', { name: '教师备课', exact: true })
+      .click();
+    await page.getByText('先完成成绩管理中的当前操作', { exact: true }).waitFor();
+    assert.equal(
+      await page.getByRole('heading', { name: '成绩管理', exact: true, level: 1 }).count(),
+      1,
+    );
+    assert.equal(
+      await detail.getByLabel('教师复核记录', { exact: true }).inputValue(),
+      '教师合成修订：等待核对原卷',
     );
     assert.equal(
       await page.getByRole('button', { name: '重新读取数据', exact: true }).isDisabled(),

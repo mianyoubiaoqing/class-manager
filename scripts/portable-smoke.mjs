@@ -134,10 +134,11 @@ export async function runPortableSmoke(executable, output) {
     await launch();
     assert.equal((await call('snapshot')).classes.length, 0);
     assert.equal((await call('snapshot')).students.length, 0);
+    await page.getByRole('button', { name: '打开智能对话小窗', exact: true }).click();
     assert.ok(await page.getByRole('textbox', { name: '发送消息', exact: true }).isVisible());
     await page.screenshot({ path: path.join(output, 'portable-first-launch.png'), fullPage: true });
     gate(
-      'Fresh extracted ZIP starts in a Chinese/space path with a production conversation page and isolated empty data.',
+      'Fresh extracted ZIP starts in a Chinese/space path and opens the production floating conversation over an isolated empty workspace.',
     );
 
     const second = spawnSync(alternateExe, [], {

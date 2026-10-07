@@ -1,12 +1,13 @@
 import { _electron as electron } from 'playwright';
-import electronPath from 'electron';
+import { isolatedElectronRuntime } from './isolated-electron-runtime.mjs';
 import { strict as assert } from 'node:assert';
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { cpSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { installDesktopCheckFixture } from '../tests/fixtures/desktop-check.ts';
+import { openWorkspacePage } from './workspace-ui-navigation.mjs';
 import { exerciseScoreUi } from './score-ui-smoke.mjs';
 import { exerciseExplanationIpc } from './explanation-ipc-smoke.mjs';
 import { exerciseExplanationUi } from './explanation-ui-smoke.mjs';
@@ -23,15 +24,12 @@ const output = resolve(
     join('output/playwright', packaged ? 'packaged' : 'development'),
 );
 mkdirSync(output, { recursive: true });
-const localBase = join(process.env.USERPROFILE, 'ClassManagerSetupChecks');
-mkdirSync(localBase, { recursive: true });
-const local = mkdtempSync(join(localBase, 'desktop-ui-'));
+const { local, executablePath } = isolatedElectronRuntime('desktop-ui-');
 const runtime = packaged
   ? resolve(
       process.env.CLASS_MANAGER_PACKAGED_EXECUTABLE ?? 'release/win-unpacked/Class Manager.exe',
     )
-  : join(local, 'runtime', 'electron.exe');
-if (!packaged) cpSync(resolve(electronPath, '..'), join(local, 'runtime'), { recursive: true });
+  : executablePath;
 const temp = join(local, 'temp');
 mkdirSync(temp, { recursive: true });
 const env = { ...process.env, CLASS_MANAGER_DATA_DIR: dataDirectory, TEMP: temp, TMP: temp };
@@ -58,7 +56,7 @@ const launch = async () => {
   const page = await application.firstWindow();
   page.on('pageerror', (error) => errors.push(error.message));
   await page.getByText('本地就绪', { exact: true }).waitFor();
-  await page.getByRole('button', { name: '班级名册', exact: true }).click();
+  await openWorkspacePage(page, '班主任管理', '班级名册');
   return page;
 };
 const installCheckFixture = async () => {
@@ -137,6 +135,9 @@ try {
     frozen: Object.isFrozen(window.classManager),
   }));
   const expectedApis = [
+    'previewRosterImport',
+    'confirmRosterImport',
+    'exportRosterTemplate',
     'onConversationHistoryClose',
     'listConversationHistory',
     'createConversationHistory',
@@ -145,6 +146,8 @@ try {
     'renameConversationHistory',
     'deleteConversationHistory',
     'prepareConversation',
+    'selectConversationFiles',
+    'removeConversationFiles',
     'generateConversation',
     'executeConversation',
     'readConversation',
@@ -208,6 +211,10 @@ try {
     'cancelLessonOffice',
     'openLessonOffice',
     'previewMaterial',
+    'scanMaterialFolder',
+    'readMaterialFolder',
+    'cancelMaterialFolder',
+    'openResourceLink',
     'confirmMaterial',
     'cancelMaterial',
     'readMaterialPreviewImage',
@@ -308,10 +315,7 @@ try {
   await application.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].setBounds({ width: 1240, height: 820 }),
   );
-  await page
-    .getByRole('navigation', { name: '主导航' })
-    .getByRole('button', { name: '模型设置', exact: true })
-    .click();
+  await openWorkspacePage(page, '系统设置', '模型设置');
   await page.getByText('兼容与维护', { exact: true }).click();
   await page.getByRole('button', { name: '打开DeepSeek兼容设置', exact: true }).click();
   await page.screenshot({ path: join(output, 'deepseek-settings.png'), fullPage: true });
@@ -382,7 +386,7 @@ try {
   await page.getByRole('button', { name: '确认清除', exact: true }).click();
   await waitForSaved(page, '已清除保存的 API Key');
   assert.match(await page.locator('.settings-section').first().innerText(), /未配置密钥/);
-  await page.getByRole('button', { name: '数据与维护' }).click();
+  await page.getByRole('button', { name: '数据与备份' }).click();
   await page.getByRole('button', { name: '添加合成验证附件', exact: true }).click();
   await waitForSaved(page, '合成验证附件已保存');
   // 成绩页面接入前，先通过真实的冻结 Preload 验证完整文件/worker/事务调用链。

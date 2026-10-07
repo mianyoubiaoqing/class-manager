@@ -1,6 +1,6 @@
 import { nodeBundleOptions } from './node-bundle-options.ts';
 import { _electron as electron } from 'playwright';
-import electronPath from 'electron';
+import { isolatedElectronRuntime } from './isolated-electron-runtime.mjs';
 import { build } from 'esbuild';
 import { createRequire } from 'node:module';
 import { strict as assert } from 'node:assert';
@@ -26,6 +26,7 @@ await build(
 const { seedPublicationWorkspace } = createRequire(import.meta.url)(join(root, 'fixture.cjs'));
 const seed = await seedPublicationWorkspace(join(userData, 'workspace-data'));
 const executable = process.env.CLASS_MANAGER_PUBLICATION_EXECUTABLE;
+const { executablePath: auditExecutable } = isolatedElectronRuntime('publication-audit-');
 const env = { ...process.env, CLASS_MANAGER_DATA_DIR: userData };
 delete env.ELECTRON_RUN_AS_NODE;
 if (executable) {
@@ -51,7 +52,7 @@ const call = (name, input) =>
 const button = (name) => page.getByRole('button', { name, exact: true });
 async function launch() {
   app = await electron.launch({
-    executablePath: executable ?? electronPath,
+    executablePath: executable ?? auditExecutable,
     args: executable ? [] : ['.'],
     cwd: process.cwd(),
     env,
@@ -87,6 +88,17 @@ try {
   await page.getByText('未查到已提交记录；可重新准备入分差异。', { exact: true }).waitFor();
   await button('准备正式入分差异').click();
   await page.getByText(/原成绩：0.*新成绩：10/).waitFor();
+  const visiblePreview = await page
+    .locator('.grading-freeze')
+    .filter({
+      has: page.getByRole('heading', { name: '复核结果正式入分', exact: true }),
+    })
+    .innerText();
+  assert.match(visiblePreview, /学生 .*合成甲 · 科目 合成学科 · 考试 合成阅卷测验/);
+  assert.equal(visiblePreview.includes(seed.studentId), false);
+  assert.equal(visiblePreview.includes(seed.subjectId), false);
+  assert.equal(visiblePreview.includes(seed.examId), false);
+  report.gates.push('teacher-readable student, subject and exam instead of internal IDs');
   assert.equal(await button('确认正式入分').isDisabled(), true);
   await page
     .getByRole('textbox', { name: '入分说明', exact: true })
@@ -145,6 +157,7 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await publicationPanel.screenshot({ path: join(root, 'published-narrow.png') });
   await page.setViewportSize({ width: 1280, height: 900 });
+  await button('班主任管理').click();
   await button('成绩管理').click();
   await page.getByRole('button', { name: /^查看 / }).click();
   await page.getByRole('heading', { name: /第 2 版/ }).waitFor();

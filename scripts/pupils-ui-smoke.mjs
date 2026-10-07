@@ -4,6 +4,7 @@ import { strict as assert } from 'node:assert';
 import { cpSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { closeAuditApplication, writeAuditReport } from './live-audit-guards.ts';
+import { openWorkspacePage } from './workspace-ui-navigation.mjs';
 
 const localBase = join(process.env.USERPROFILE, 'ClassManagerSetupChecks');
 mkdirSync(localBase, { recursive: true });
@@ -129,7 +130,7 @@ try {
   await page.reload();
   await page.getByText('本地就绪', { exact: true }).waitFor();
   assert.equal(snapshot.schemaVersion, 12);
-  await button('学生资料').click();
+  await openWorkspacePage(page, '班主任管理', '学生资料');
   await page.getByLabel('兴趣与特长', { exact: true }).waitFor();
   assert.equal(await page.getByLabel('监护人姓名', { exact: true }).isVisible(), false);
   await page.getByLabel('兴趣与特长', { exact: true }).fill('绘画');
@@ -194,7 +195,7 @@ try {
     provider: 'deepseek',
     apiKey: 'sk-synthetic-pupil-smoke-only',
   });
-  await button('业务对话').click();
+  await button('打开智能对话小窗').click();
   await agentMode('profile');
   await send('为学生补充兴趣为绘画、阅读，请先展示确认。');
   const pendingProfile = await call('readStudentProfile', {

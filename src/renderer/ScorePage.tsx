@@ -21,10 +21,12 @@ export function ScorePage({
   snapshot,
   onDirtyChange,
   navigationBusy,
+  onRoster,
 }: {
   snapshot: Snapshot;
   onDirtyChange: (dirty: boolean) => void;
   navigationBusy: boolean;
+  onRoster?: () => void;
 }) {
   const api = window.classManager;
   const [exams, setExams] = useState<ExamSummary[]>([]);
@@ -376,6 +378,11 @@ export function ScorePage({
               ? `更正考试 · 当前第 ${draft.configuration.expectedRevision} 版`
               : '新考试'}
           </legend>
+          <ol className="flow-steps">
+            <li className="active">1 考试与科目</li>
+            <li className={preview ? 'active' : ''}>2 选择文件与核对</li>
+            <li className={preview?.canConfirm ? 'active' : ''}>3 确认入库</li>
+          </ol>
           {!draft.configuration.examId && (
             <label>
               应考班级
@@ -397,38 +404,60 @@ export function ScorePage({
             change={change}
             reportError={(text) => setMessage({ text, error: true })}
           />
-          <div className="score-actions">
-            {(['csv', 'xlsx'] as const).map((format) => (
+          <section className="score-file-setup">
+            <h2>3 · 导入成绩文件</h2>
+            <p>
+              先下载本次考试的模板，填写学生成绩后上传。已有文件也可直接选择；问题会在预览中逐行标出。
+            </p>
+            <div className="score-actions">
+              {(['csv', 'xlsx'] as const).map((format) => (
+                <button
+                  type="button"
+                  key={format}
+                  disabled={!draft.roster.length}
+                  onClick={() =>
+                    void run(
+                      '导出模板',
+                      () => api.exportScoreTemplate({ ...draft.configuration, format }),
+                      (receipt) =>
+                        setMessage({
+                          text: receipt ? `模板已保存：${receipt.path}` : '已取消导出。',
+                          error: false,
+                        }),
+                    )
+                  }
+                >
+                  <Download size={16} />
+                  {format.toUpperCase()} 模板
+                </button>
+              ))}
               <button
                 type="button"
-                key={format}
                 disabled={!draft.roster.length}
-                onClick={() =>
-                  void run(
-                    '导出模板',
-                    () => api.exportScoreTemplate({ ...draft.configuration, format }),
-                    (receipt) =>
-                      setMessage({
-                        text: receipt ? `模板已保存：${receipt.path}` : '已取消导出。',
-                        error: false,
-                      }),
-                  )
-                }
+                onClick={() => chooseFile(false)}
               >
-                <Download size={16} />
-                {format.toUpperCase()} 模板
+                <FileUp size={16} />
+                选择成绩文件
               </button>
-            ))}
-            <button type="button" disabled={!draft.roster.length} onClick={() => chooseFile(false)}>
-              <FileUp size={16} />
-              选择成绩文件
-            </button>
-            <button type="button" disabled={!fileToken} onClick={() => chooseFile(true)}>
-              <RefreshCw size={16} />
-              重新预览
-            </button>
-          </div>
-          {!draft.roster.length && <p role="alert">该班级没有在籍学生。</p>}
+              <button type="button" disabled={!fileToken} onClick={() => chooseFile(true)}>
+                <RefreshCw size={16} />
+                重新预览
+              </button>
+            </div>
+            {!draft.roster.length && (
+              <div className="empty-roster-guide">
+                <p role="alert">该班级没有在籍学生。</p>
+                <p>
+                  成绩需要与学生名单对应。先在班级名册导入学生，再回来新建考试；当前考试尚未保存。
+                </p>
+                {onRoster && (
+                  <button type="button" className="primary" onClick={onRoster}>
+                    先导入学生名单
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
           {preview && (
             <>
               {!previewCurrent && <p className="score-warning">配置已修改，预览已失效。</p>}
@@ -439,13 +468,16 @@ export function ScorePage({
                 change={change}
               />
               {previewCurrent && preview.statistics && (
-                <ScoreResults
-                  statistics={preview.statistics}
-                  subjects={draft.configuration.subjects}
-                  groups={draft.configuration.groups}
-                  roster={draft.roster}
-                  entries={preview.entries}
-                />
+                <details className="score-section">
+                  <summary>查看入库前的成绩统计</summary>
+                  <ScoreResults
+                    statistics={preview.statistics}
+                    subjects={draft.configuration.subjects}
+                    groups={draft.configuration.groups}
+                    roster={draft.roster}
+                    entries={preview.entries}
+                  />
+                </details>
               )}
               <div className="score-confirm">
                 <label>

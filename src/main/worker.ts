@@ -10,6 +10,8 @@ import { officeExportInput } from '../shared/office-export';
 import { createOfficeSnapshot } from '../core/office-snapshot';
 import { classroomProjectionInput } from '../shared/classroom';
 import { createClassroomProjection } from '../core/classroom-projection';
+import { createRosterTemplate } from '../core/roster-import';
+import { rosterTemplateInput } from '../shared/roster-import';
 
 const port = parentPort;
 if (!port) throw new Error('Workspace worker requires a parent port');
@@ -17,6 +19,10 @@ const requestSchema = z
   .object({
     id: z.number().int(),
     operation: z.enum([
+      'previewRosterBytes',
+      'cancelRosterPreview',
+      'confirmRosterImport',
+      'exportRosterTemplate',
       'saveGrowthEvent',
       'growthEventHistory',
       'growthTimeline',
@@ -543,6 +549,38 @@ try {
         case 'snapshot':
           value = workspace.snapshot();
           break;
+        case 'previewRosterBytes': {
+          const request = z
+            .object({
+              bytes: z.instanceof(Uint8Array),
+              format: z.enum(['csv', 'xlsx']),
+              fileName: z.string().max(300),
+              configuration: z.unknown(),
+            })
+            .strict()
+            .parse(input);
+          value = await workspace.previewRoster(
+            request.bytes,
+            request.format,
+            request.fileName,
+            request.configuration,
+          );
+          break;
+        }
+        case 'confirmRosterImport':
+          value = workspace.confirmRoster(input);
+          break;
+        case 'cancelRosterPreview':
+          workspace.cancelRosterPreview(input);
+          value = null;
+          break;
+        case 'exportRosterTemplate': {
+          const request = rosterTemplateInput.parse(input);
+          if (workspace.snapshot().epoch !== request.epoch)
+            throw new DomainError('CONFLICT', '数据空间已变化，请刷新。');
+          value = await createRosterTemplate(request.format);
+          break;
+        }
         case 'createClass':
           value = workspace.createClass(input);
           break;

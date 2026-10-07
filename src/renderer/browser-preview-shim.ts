@@ -209,9 +209,12 @@ if (import.meta.env.DEV && typeof window !== 'undefined' && !window.classManager
   const handlers: Record<string, (...args: unknown[]) => Promise<unknown>> = {
     listConversationHistory: async () => ({
       ok: true,
-      value: [...histories.values()]
-        .map(summary)
-        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+      value: {
+        items: [...histories.values()]
+          .map(summary)
+          .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+        unreadableCount: 0,
+      },
     }),
     createConversationHistory: async () => {
       const at = new Date().toISOString();
@@ -294,6 +297,11 @@ if (import.meta.env.DEV && typeof window !== 'undefined' && !window.classManager
       value: { totalTokens: 12500, promptTokens: 4500, completionTokens: 8000 },
     }),
     clearConversationSession: async () => ({ ok: true, value: true }),
+    removeConversationFiles: async () => ({ ok: true, value: undefined }),
+    selectConversationFiles: async () => ({
+      ok: false,
+      error: { code: 'UNSUPPORTED', message: '上传文件请使用桌面应用。' },
+    }),
     prepareConversation: async (input: unknown) => {
       const inp = input as {
         classId?: string;
@@ -376,6 +384,29 @@ if (import.meta.env.DEV && typeof window !== 'undefined' && !window.classManager
 
   window.classManager = new Proxy(handlers as unknown as DesktopApi, {
     get(target, prop: string) {
+      if (prop === 'scanMaterialFolder' || prop === 'readMaterialFolder')
+        return async () => ({
+          ok: false,
+          error: {
+            code: 'DESKTOP_REQUIRED',
+            message: '请在桌面版中读取本地文件夹。',
+            operationId: 'browser-preview',
+          },
+        });
+      if (prop === 'openResourceLink')
+        return async ({ url }: { url: string }) => {
+          if (!url.startsWith('https://'))
+            return {
+              ok: false,
+              error: {
+                code: 'VALIDATION',
+                message: '请输入 HTTPS 地址。',
+                operationId: 'browser-preview',
+              },
+            };
+          window.open(url, '_blank', 'noopener,noreferrer');
+          return { ok: true, value: undefined };
+        };
       if (prop === 'onConversationHistoryClose') return () => () => {};
       if (prop in target) {
         return (target as unknown as Record<string, unknown>)[prop];

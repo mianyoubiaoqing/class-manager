@@ -1,6 +1,6 @@
 import { nodeBundleOptions } from './node-bundle-options.ts';
 import { _electron as electron } from 'playwright';
-import electronPath from 'electron';
+import { isolatedElectronRuntime } from './isolated-electron-runtime.mjs';
 import { build } from 'esbuild';
 import { strict as assert } from 'node:assert';
 import { createRequire } from 'node:module';
@@ -27,7 +27,13 @@ await build(
 );
 const { seedGradingWorkspace } = createRequire(import.meta.url)(join(root, 'fixture.cjs'));
 const seed = await seedGradingWorkspace(join(userData, 'workspace-data'), root);
-const env = { ...process.env, CLASS_MANAGER_DATA_DIR: userData };
+const { local, executablePath } = isolatedElectronRuntime('grading-audit-');
+const env = {
+  ...process.env,
+  CLASS_MANAGER_DATA_DIR: userData,
+  TEMP: join(local, 'temp'),
+  TMP: join(local, 'temp'),
+};
 delete env.ELECTRON_RUN_AS_NODE;
 const executable = process.env.CLASS_MANAGER_GRADING_EXECUTABLE;
 if (executable) {
@@ -58,7 +64,7 @@ const screenshot = async (name) =>
   page.screenshot({ path: join(root, `${name}.png`), fullPage: true });
 const launch = async () => {
   application = await electron.launch({
-    executablePath: executable ?? electronPath,
+    executablePath: executable ?? executablePath,
     args: executable ? [] : ['.'],
     cwd: process.cwd(),
     env,
@@ -149,6 +155,7 @@ const importPage = async (file) => {
   await button('加入答卷').click();
   await snapshot(`page-${file.endsWith('1.png') ? 1 : 2}-added`);
   await button('读取原图').click();
+  await page.getByRole('img', { name: '当前答卷原图预览', exact: true }).waitFor();
   await page
     .getByRole('img', { name: '原图遮盖', exact: true })
     .waitFor({ state: 'attached' })

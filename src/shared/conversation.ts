@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { conversationFileIds } from './conversation-files';
 import { countdownSettingSchema } from './classroom';
 import { growthEventContentSchema } from './growth';
 import type { ModelSelection } from './model-providers';
@@ -7,7 +8,7 @@ import { applicationToolNames } from './application-tools';
 import type { LessonContent } from './lessons';
 
 export const CONVERSATION_PROMPT_VERSION = 'business-intent-v1';
-export const AGENT_CONVERSATION_PROMPT_VERSION = 'business-agent-v10';
+export const AGENT_CONVERSATION_PROMPT_VERSION = 'business-agent-v11';
 export const businessView = z.enum([
   'roster',
   'attendance',
@@ -116,6 +117,7 @@ export const conversationPrepareInput = z
     classId: z.uuid().nullable(),
     studentId: z.uuid().nullable(),
     sessionId: z.uuid().optional(),
+    attachmentIds: conversationFileIds.optional(),
   })
   .strict();
 export const conversationTokenInput = z.object({ epoch: z.uuid(), token: z.uuid() }).strict();

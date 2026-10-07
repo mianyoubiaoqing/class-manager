@@ -7,7 +7,6 @@ import {
   ClipboardCheck,
   Clock,
   Database,
-  GraduationCap,
   Grid2X2,
   KeyRound,
   Settings,
@@ -18,6 +17,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { BusinessView } from '../shared/conversation';
+import { ResourceHub } from './ResourceHub';
 
 export type WorkspaceAreaId = 'teaching' | 'classManagement' | 'settings';
 export type AppView =
@@ -39,12 +39,12 @@ export const workspaceAreas: WorkspaceArea[] = [
   {
     id: 'teaching',
     label: '教师备课',
-    icon: GraduationCap,
+    icon: BookOpen,
     description: '整理教学资料、制作教案课件，安排课堂与答卷复核。',
     entries: [
       {
         view: 'lessons',
-        label: '资料备课',
+        label: '本地备课',
         description: '导入资料，编写教案与课件，导出 Word 和 PPT。',
         icon: BookOpen,
       },
@@ -120,13 +120,13 @@ export const workspaceAreas: WorkspaceArea[] = [
     entries: [
       {
         view: 'providerSettings',
-        label: '模型设置',
+        label: '模型连接',
         description: '配置供应商、模型和账号，查看连接与用量。',
         icon: KeyRound,
       },
       {
         view: 'maintenance',
-        label: '数据与维护',
+        label: '数据与备份',
         description: '备份、预览恢复业务资料，导出诊断。',
         icon: Database,
       },
@@ -149,8 +149,8 @@ export function areaForView(view: AppView): WorkspaceArea | undefined {
   );
 }
 export function viewLabel(view: AppView): string {
-  if (view === 'conversation') return '业务对话';
-  if (view === 'sessions') return '会话管理';
+  if (view === 'conversation') return '智能对话';
+  if (view === 'sessions') return '历史会话';
   if (view === 'modelSettings') return 'DeepSeek 兼容设置';
   const area = areaForView(view);
   return area?.entries.find((entry) => entry.view === view)?.label ?? area?.label ?? view;
@@ -163,8 +163,30 @@ export function WorkspaceHome({
   area: WorkspaceArea;
   onNavigate: (view: AppView) => void;
 }) {
+  if (area.id === 'teaching') return <ResourceHub />;
   return (
     <section className="workspace-home" aria-label={`${area.label}入口`}>
+      <section className="design-panel getting-started">
+        <h2>三步准备好工作台</h2>
+        <p>首次使用时，请按顺序准备账号与班级资料。</p>
+        <div className="getting-started-steps">
+          <div>
+            <strong>1 连接智能助手</strong>
+            <p>由交付方设置模型账号，再检查连接。</p>
+            <button onClick={() => onNavigate('providerSettings')}>查看模型连接</button>
+          </div>
+          <div>
+            <strong>2 准备班级资料</strong>
+            <p>创建班级并添加学生，开始管理班务。</p>
+            <button onClick={() => onNavigate('roster')}>打开班级名册</button>
+          </div>
+          <div>
+            <strong>3 定期备份</strong>
+            <p>将备份保存到可靠位置，便于恢复或迁移。</p>
+            <button onClick={() => onNavigate('maintenance')}>管理数据与备份</button>
+          </div>
+        </div>
+      </section>
       <p className="workspace-introduction">{area.description}</p>
       <div className="workspace-entry-grid">
         {area.entries.map((entry) => (
@@ -193,22 +215,34 @@ export function WorkspaceHome({
 export function WorkspaceLinks({
   view,
   onNavigate,
+  disabled = false,
 }: {
   view: AppView;
   onNavigate: (view: AppView) => void;
+  disabled?: boolean;
 }) {
   const area = areaForView(view);
-  if (!area || area.id === view) return null;
+  if (!area) return null;
   return (
-    <nav className="workspace-links" aria-label={`${area.label}功能`}>
-      <button type="button" onClick={() => onNavigate(area.id)}>
-        全部功能
+    <nav className="workspace-tabs" aria-label={`${area.label}功能`}>
+      <button
+        className={view === area.id ? 'selected' : ''}
+        aria-current={view === area.id ? 'page' : undefined}
+        disabled={disabled}
+        onClick={() => onNavigate(area.id)}
+      >
+        {area.id === 'teaching'
+          ? '资源工作台'
+          : area.id === 'classManagement'
+            ? '工作台'
+            : '设置概览'}
       </button>
       {area.entries.map((entry) => (
         <button
           key={entry.view}
-          type="button"
+          className={view === entry.view ? 'selected' : ''}
           aria-current={view === entry.view ? 'page' : undefined}
+          disabled={disabled}
           onClick={() => onNavigate(entry.view)}
         >
           {entry.label}

@@ -1,0 +1,1222 @@
+/* Homeroom Workbench Styles - Exact visual design matching customer demonstration video */
+
+.homeroom-workbench {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px 32px 64px;
+  background: #f8faf9;
+  min-height: 100%;
+  color: #1e293b;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  position: relative;
+}
+
+/* Header brand & profile bar */
+.workbench-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+.workbench-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.workbench-badge-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #15803d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.15);
+}
+
+.workbench-brand-info h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workbench-brand-info p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.workbench-header-center {
+  text-align: center;
+}
+
+.workbench-view-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.workbench-view-sub {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.workbench-teacher-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.teacher-meta {
+  text-align: right;
+}
+
+.teacher-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.teacher-role {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.teacher-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  border: 2px solid #e2e8f0;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+/* Subpage Tabs Bar */
+.workbench-subnav-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 8px;
+  overflow-x: auto;
+}
+
+.subnav-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.subnav-tab-btn:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.subnav-tab-btn.active {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: rgba(34, 197, 94, 0.3);
+  font-weight: 600;
+}
+
+/* System functional quick bar for test compatibility & teacher direct jump */
+.workbench-entrance-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #ffffff;
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+}
+
+.entrance-bar-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.workbench-entrance-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.workbench-entrance-grid .workspace-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: auto;
+}
+
+.workbench-entrance-grid .workspace-entry:hover {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.workbench-entrance-grid .workspace-entry-icon {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  display: flex;
+  align-items: center;
+}
+
+/* Section Common */
+.workbench-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.workbench-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-tag-and-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.section-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+.section-tag.alert-tag {
+  color: #ef4444;
+}
+
+.section-tag.today-tag {
+  color: #10b981;
+}
+
+.section-tag.core-tag {
+  color: #6366f1;
+}
+
+.section-tag.teaching-tag {
+  color: #0284c7;
+}
+
+.section-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.section-badge-counter {
+  font-size: 12px;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+/* 1. ALERT: 红线预警区 */
+.alert-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .alert-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.alert-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 18px;
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.alert-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.08);
+}
+
+.alert-card.type-red {
+  background: linear-gradient(180deg, #fff5f5 0%, #ffffff 100%);
+  border-color: rgba(248, 113, 113, 0.25);
+}
+
+.alert-card.type-yellow {
+  background: linear-gradient(180deg, #fffbeb 0%, #ffffff 100%);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.alert-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.alert-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alert-card.type-red .alert-icon-wrap {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.alert-card.type-yellow .alert-icon-wrap {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.alert-number {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.alert-card.type-red .alert-number {
+  color: #ef4444;
+}
+
+.alert-card.type-yellow .alert-number {
+  color: #eab308;
+}
+
+.alert-card-body h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.alert-card-body p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.alert-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.alert-priority-pill {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.alert-card.type-red .alert-priority-pill {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.alert-card.type-yellow .alert-priority-pill {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.alert-arrow {
+  color: #94a3b8;
+}
+
+/* 2. TODAY: 今日待办清单 */
+.today-todo-panel {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px 24px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.todo-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.todo-progress-area {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.todo-progress-num {
+  font-size: 18px;
+  font-weight: 700;
+  color: #15803d;
+}
+
+.todo-progress-sub {
+  font-size: 11px;
+  color: #64748b;
+  margin-left: 2px;
+}
+
+.todo-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.todo-add-btn:hover {
+  background: #bbf7d0;
+}
+
+.todo-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #f1f5f9;
+  transition: all 0.2s ease;
+}
+
+.todo-item:hover {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+.todo-item.done {
+  opacity: 0.6;
+}
+
+.todo-item.done .todo-title {
+  text-decoration: line-through;
+  color: #94a3b8;
+}
+
+.todo-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.todo-checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  background: #ffffff;
+}
+
+.todo-checkbox.checked {
+  background: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+}
+
+.todo-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.todo-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.todo-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.todo-time {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.priority-badge-red {
+  font-size: 11px;
+  font-weight: 600;
+  color: #ef4444;
+  background: #fee2e2;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.priority-badge-orange {
+  font-size: 11px;
+  font-weight: 600;
+  color: #f97316;
+  background: #ffedd5;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.priority-badge-gray {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+/* 3. 日常事务概览 (5 Cards) */
+.overview-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 1100px) {
+  .overview-cards-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .overview-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.overview-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.overview-card:hover {
+  transform: translateY(-2px);
+  border-color: #10b981;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
+}
+
+.overview-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.overview-card-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #f0fdf4;
+  color: #16a34a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.overview-card-rate {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.overview-card h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.overview-card p {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* 4. CORE: 核心工作 (本周重点推进) */
+.core-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 1100px) {
+  .core-cards-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .core-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.core-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.core-card:hover {
+  transform: translateY(-2px);
+  border-color: #6366f1;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+}
+
+.core-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.core-card-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.core-card-pct {
+  font-size: 13px;
+  font-weight: 700;
+  color: #4f46e5;
+}
+
+.core-progress-track {
+  width: 100%;
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.core-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #818cf8);
+  border-radius: 3px;
+}
+
+.core-card-sub {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* 5. TEACHING: 教学工作 */
+.teaching-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .teaching-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.teaching-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.teaching-card:hover {
+  transform: translateY(-2px);
+  border-color: #0284c7;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08);
+}
+
+.teaching-card-label {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.teaching-card-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.teaching-card-sub {
+  font-size: 12px;
+  color: #0284c7;
+}
+
+/* Floating Action Button (FAB) */
+.workbench-fab {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 6px 20px rgba(22, 163, 74, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 100;
+}
+
+.workbench-fab:hover {
+  transform: scale(1.08) rotate(4deg);
+  box-shadow: 0 8px 24px rgba(22, 163, 74, 0.45);
+}
+
+.workbench-fab.active {
+  background: #0f172a;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.3);
+}
+
+/* AI Copilot Drawer */
+.copilot-drawer {
+  position: fixed;
+  top: 0;
+  right: -420px;
+  width: 400px;
+  height: 100vh;
+  background: #ffffff;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border-left: 1px solid #e2e8f0;
+}
+
+.copilot-drawer.open {
+  right: 0;
+}
+
+.copilot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.copilot-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.copilot-avatar-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #dcfce7;
+  color: #16a34a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.copilot-title h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.copilot-title p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.copilot-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+}
+
+.copilot-close-btn:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.copilot-tabs {
+  display: flex;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 4px 12px 0;
+  background: #fafafa;
+}
+
+.copilot-tab-btn {
+  flex: 1;
+  padding: 10px 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.copilot-tab-btn.active {
+  color: #16a34a;
+  border-bottom-color: #16a34a;
+  font-weight: 600;
+}
+
+.copilot-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.copilot-hint-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #64748b;
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.copilot-prompt-capsules {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.prompt-capsule {
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 13px;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1.5;
+}
+
+.prompt-capsule:hover {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.copilot-message-bubble {
+  padding: 12px 14px;
+  background: #f0fdf4;
+  border-radius: 12px;
+  border: 1px solid #bbf7d0;
+  font-size: 13px;
+  color: #166534;
+  line-height: 1.6;
+}
+
+.copilot-footer {
+  padding: 14px 18px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  gap: 8px;
+  background: #ffffff;
+}
+
+.copilot-input {
+  flex: 1;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  outline: none;
+}
+
+.copilot-input:focus {
+  border-color: #16a34a;
+}
+
+.copilot-send-btn {
+  background: #16a34a;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.copilot-send-btn:hover {
+  background: #15803d;
+}
+
+/* Subviews (安全台账, 值日排班, 课程表, 德育活动) */
+.subview-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.subview-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.subview-header-row h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.subview-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.subview-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+/* 学生卡片 (安全与特异体质) */
+.student-health-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .student-health-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.student-health-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.student-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.student-badge-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.student-card-info {
+  flex: 1;
+}
+
+.student-card-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.student-card-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.student-tag-pill {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: #fee2e2;
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.student-card-sno {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.student-health-details {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  row-gap: 6px;
+  font-size: 13px;
+  border-top: 1px solid #f1f5f9;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 10px 0;
+}
+
+.student-health-details dt {
+  color: #64748b;
+}
+
+.student-health-details dd {
+  margin: 0;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.student-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.student-card-actions button {
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.action-view-btn {
+  color: #475569;
+}
+
+.action-remind-btn {
+  color: #dc2626;
+}
+
+/* 值日排班周视图表格 */
+.duty-week-table-wrap {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  overflow-x: auto;
+}
+
+.duty-week-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+}
+
+.duty-week-table th,
+.duty-week-table td {
+  padding: 14px 10px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+}
+
+.duty-week-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+}
+
+.duty-period-cell {
+  text-align: left;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.duty-period-time {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: normal;
+}
+
+.duty-student-chip {
+  display: inline-block;
+  background: #f1f5f9;
+  color: #334155;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin: 2px 4px;
+}
+
+/* 课程表 */
+.timetable-grid-wrap {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  overflow-x: auto;
+}
+
+.timetable-grid {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+}
+
+.timetable-grid th,
+.timetable-grid td {
+  padding: 12px 8px;
+  border: 1px solid #f1f5f9;
+  font-size: 13px;
+}
+
+.timetable-grid th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+}
+
+.timetable-subject-pill {
+  background: #f0fdf4;
+  color: #15803d;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px;
+  display: inline-block;
+}

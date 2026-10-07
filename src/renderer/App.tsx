@@ -32,7 +32,6 @@ import {
   PanelLeftOpen,
   Sparkles,
   SquarePen,
-  MessagesSquare,
   Trash2,
   XCircle,
 } from 'lucide-react';
@@ -59,7 +58,10 @@ import { DevicePage } from './DevicePage';
 import { ModelSettingsPage } from './ModelSettingsPage';
 import { ModelSelectionSummary } from './ModelSelectionSummary';
 import { ConversationWorkspace } from './ConversationWorkspace';
+import { FloatingAssistant } from './FloatingAssistant';
 import { AttendancePage, StudentProfilesPage } from './PupilPages';
+import { HomeroomHome } from './HomeroomHome';
+import { RosterImportDialog } from './RosterImportDialog';
 import {
   workspaceAreas,
   areaForView,
@@ -137,7 +139,15 @@ export function App() {
   const [snapshot, setSnapshot] = useState<Snapshot>();
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<AppView>('conversation');
+  const [view, setView] = useState<AppView>('teaching');
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [view]);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantExpanded, setAssistantExpanded] = useState(false);
+  const [conversationMode, setConversationMode] = useState<'conversation' | 'sessions'>(
+    'conversation',
+  );
   const area = areaForView(view);
   const [navigationFeedback, setNavigationFeedback] = useState<{
     source: AppView;
@@ -145,6 +155,8 @@ export function App() {
   }>();
   const navigationFeedbackRef = useRef<HTMLDivElement>(null);
   const [scoreDirty, setScoreDirty] = useState(false);
+  const [rosterImportOpen, setRosterImportOpen] = useState(false);
+  const [rosterImportDirty, setRosterImportDirty] = useState(false);
   const [seatingDirty, setSeatingDirty] = useState(false);
   const [dutyDirty, setDutyDirty] = useState(false);
   const [lessonDirty, setLessonDirty] = useState(false);
@@ -159,6 +171,7 @@ export function App() {
   const [newConversationRequest, setNewConversationRequest] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const navigationDirty =
+    rosterImportDirty ||
     scoreDirty ||
     seatingDirty ||
     dutyDirty ||
@@ -171,6 +184,7 @@ export function App() {
     providerDirty ||
     conversationDirty;
   const pendingViews: Array<[AppView, boolean]> = [
+    ['roster', rosterImportDirty],
     ['scores', scoreDirty],
     ['seating', seatingDirty],
     ['duty', dutyDirty],
@@ -183,10 +197,13 @@ export function App() {
     [view === 'profiles' ? 'profiles' : 'attendance', pupilDirty],
     ['conversation', conversationDirty],
   ];
-  function canNavigate(target: string): boolean {
-    if (navigationDirty || busy || loading) {
+  function canNavigate(target: string, preserveConversation = false): boolean {
+    const pending = pendingViews.find(
+      ([source, dirty]) => dirty && (!preserveConversation || source !== 'conversation'),
+    );
+    if (pending || busy || loading) {
       setNavigationFeedback({
-        source: pendingViews.find(([, pending]) => pending)?.[0] ?? view,
+        source: pending?.[0] ?? view,
         target,
       });
       requestAnimationFrame(() =>
@@ -198,13 +215,21 @@ export function App() {
     return true;
   }
   function navigate(next: AppView): boolean {
+    if (next === 'conversation' || next === 'sessions') {
+      setConversationMode(next === 'sessions' ? 'sessions' : 'conversation');
+      setAssistantOpen(true);
+      return true;
+    }
     if (next === view) return true;
-    if (!canNavigate(viewLabel(next))) return false;
+    if (!canNavigate(viewLabel(next), true)) return false;
     setView(next);
     return true;
   }
   function startNewConversation() {
-    if (canNavigate('新对话')) setNewConversationRequest((value) => value + 1);
+    setAssistantOpen(true);
+    if (conversationDirty) return;
+    setConversationMode('conversation');
+    setNewConversationRequest((value) => value + 1);
   }
   const [notice, setNotice] = useState<Notice>();
   const [modal, setModal] = useState<Modal>();
@@ -429,7 +454,6 @@ export function App() {
     };
   }, [api]);
 
-  const activeCount = snapshot?.students.filter((student) => student.active).length ?? 0;
   const filtered =
     snapshot?.students.filter(
       (student) =>
@@ -487,7 +511,7 @@ export function App() {
   }
 
   return (
-    <div className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+    <div className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`} data-view={view}>
       <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
           <div className="brand">
@@ -495,7 +519,7 @@ export function App() {
               <GraduationCap size={22} />
             </span>
             <div>
-              班级管理<small>本地工作台</small>
+              班级助手<small>教师工作台</small>
             </div>
           </div>
           <button
@@ -508,31 +532,11 @@ export function App() {
             <PanelLeftClose size={18} />
           </button>
         </div>
-        <button type="button" className="sidebar-new-chat-btn" onClick={startNewConversation}>
-          <SquarePen size={16} />
-          <span>开启新对话</span>
-        </button>
         <div className="environment">
           <span className="dot" />
           Windows · 本地智能体<span className="version">v1.0</span>
         </div>
         <nav aria-label="主导航" className="primary-navigation">
-          <button
-            className={view === 'conversation' ? 'nav-item selected' : 'nav-item'}
-            aria-current={view === 'conversation' ? 'page' : undefined}
-            onClick={() => navigate('conversation')}
-          >
-            <Sparkles size={18} className="nav-item-icon" />
-            <span className="nav-item-text">业务对话</span>
-          </button>
-          <button
-            className={view === 'sessions' ? 'nav-item selected' : 'nav-item'}
-            aria-current={view === 'sessions' ? 'page' : undefined}
-            onClick={() => navigate('sessions')}
-          >
-            <MessagesSquare size={18} className="nav-item-icon" />
-            <span className="nav-item-text">会话管理</span>
-          </button>
           {workspaceAreas.map((item) => (
             <button
               key={item.id}
@@ -540,7 +544,7 @@ export function App() {
               aria-current={area?.id === item.id ? 'page' : undefined}
               onClick={() => navigate(item.id)}
             >
-              <item.icon size={18} className="nav-item-icon" />
+              <item.icon size={22} className="nav-item-icon" />
               <span className="nav-item-text">{item.label}</span>
               <ChevronRight size={13} className="nav-item-arrow" />
             </button>
@@ -592,6 +596,11 @@ export function App() {
             </div>
           ))}
         </section>
+        <button className="sidebar-guide" onClick={() => navigate('settings')}>
+          <strong>第一次使用？</strong>
+          <span>三步准备好工作台</span>
+          <small>查看入门引导 →</small>
+        </button>
         <div className="sidebar-bottom">
           <ShieldCheck size={17} />
           <span>
@@ -625,17 +634,10 @@ export function App() {
               </div>
             )}
             <div className="breadcrumb">
-              {area && area.id !== view ? (
-                <>
-                  <button type="button" onClick={() => navigate(area.id)}>
-                    {area.label}
-                  </button>
-                  <ChevronRight size={14} aria-hidden="true" />
-                </>
-              ) : (
-                <span>工作台</span>
-              )}
-              <span>{viewLabel(view)}</span>
+              <span>
+                {area?.label ??
+                  (view === 'conversation' || view === 'sessions' ? '智能对话' : viewLabel(view))}
+              </span>
             </div>
             {snapshot && snapshot.classes.length > 0 && area?.id === 'classManagement' && (
               <div className="current-class-badge" title="当前管理班级">
@@ -682,7 +684,8 @@ export function App() {
               <button
                 type="button"
                 onClick={() => {
-                  setView(navigationFeedback.source);
+                  if (navigationFeedback.source === 'conversation') setAssistantOpen(true);
+                  else setView(navigationFeedback.source);
                   setNavigationFeedback(undefined);
                 }}
               >
@@ -693,9 +696,38 @@ export function App() {
           <div className="page-heading">
             <div>
               <div className="eyebrow">CLASS MANAGER / M1</div>
-              <h1>{viewLabel(view)}</h1>
+              <h1>
+                {view === 'teaching'
+                  ? '常用教学资源，一处打开'
+                  : view === 'classManagement'
+                    ? '今天的班务，一眼看清'
+                    : view === 'lessons'
+                      ? '从手边资料，开始一节课'
+                      : view === 'conversation'
+                        ? '教学事务，交给你的助手'
+                        : view === 'sessions'
+                          ? '继续上一次的工作'
+                          : viewLabel(view)}
+              </h1>
+              <p className="page-description">
+                {view === 'teaching'
+                  ? '把资源平台、听课资料和公开课放在一起。'
+                  : view === 'classManagement'
+                    ? '先准备班级资料，再逐步处理点名、成绩和日常安排。'
+                    : view === 'conversation'
+                      ? '说出需要做的事，助手先梳理步骤，关键操作由你确认。'
+                      : view === 'sessions'
+                        ? '会话管理已经合并到智能对话，查找和继续都在这里。'
+                        : (area?.entries.find((entry) => entry.view === view)?.description ??
+                          area?.description)}
+              </p>
             </div>
             <div className="heading-actions">
+              {view === 'sessions' && (
+                <button className="primary" disabled={disabled} onClick={startNewConversation}>
+                  新建会话
+                </button>
+              )}
               {view === 'roster' && (
                 <button
                   className="icon-button outlined"
@@ -736,7 +768,7 @@ export function App() {
           </div>
           {notice && (
             <div
-              className={`notice ${notice.error ? 'error' : 'success'}`}
+              className={`notice workspace-feedback ${notice.error ? 'error' : 'success'}`}
               role={notice.error ? 'alert' : 'status'}
             >
               {notice.error ? <CircleAlert size={18} /> : <Check size={18} />}
@@ -783,8 +815,27 @@ export function App() {
               </button>
             </div>
           )}
-          {snapshot && area?.id === view && <WorkspaceHome area={area} onNavigate={navigate} />}
-          {snapshot && <WorkspaceLinks view={view} onNavigate={navigate} />}
+          {snapshot && (
+            <WorkspaceLinks view={view} onNavigate={navigate} disabled={busy || loading} />
+          )}
+          {snapshot && view === 'classManagement' && (
+            <HomeroomHome
+              key={`workbench:${snapshot.epoch}`}
+              snapshot={snapshot}
+              selectedClass={selectedClass}
+              onNavigate={navigate}
+              onImportStudents={() => {
+                setView('roster');
+                setRosterImportOpen(true);
+              }}
+              onAddStudent={() =>
+                setModal(snapshot.classes.length ? { kind: 'student' } : { kind: 'class' })
+              }
+            />
+          )}
+          {snapshot && area?.id === view && view !== 'classManagement' && (
+            <WorkspaceHome area={area} onNavigate={navigate} />
+          )}
           {snapshot && (
             <CountdownBanner key={`countdown:${snapshot.epoch}`} epoch={snapshot.epoch} />
           )}
@@ -793,6 +844,7 @@ export function App() {
               key={`attendance:${snapshot.epoch}`}
               snapshot={snapshot}
               selectedClass={selectedClass}
+              onRoster={() => setView('roster')}
               onDirtyChange={setPupilDirty}
             />
           )}
@@ -803,23 +855,6 @@ export function App() {
               selectedClass={selectedClass}
               onDirtyChange={setPupilDirty}
             />
-          )}
-          {snapshot && (
-            <div hidden={view !== 'conversation' && view !== 'sessions'}>
-              <ConversationWorkspace
-                key={`conversation:${snapshot.epoch}`}
-                snapshot={snapshot}
-                onSnapshot={acceptSnapshot}
-                onNavigate={setView}
-                onDirtyChange={setConversationDirty}
-                active={view === 'conversation' || view === 'sessions'}
-                mode={view === 'sessions' ? 'sessions' : 'conversation'}
-                newRequest={newConversationRequest}
-                onOpen={() => setView('conversation')}
-                restoreNotice={conversationRestoreNotice}
-                onRestoreNotice={setConversationRestoreNotice}
-              />
-            </div>
           )}
           {snapshot && view === 'classroom' && (
             <ClassroomPage
@@ -851,6 +886,7 @@ export function App() {
           {snapshot && view === 'providerSettings' && (
             <ModelSettingsPage
               onDirtyChange={setProviderDirty}
+              onDiagnostics={() => navigate('maintenance')}
               onLegacy={() => {
                 setView('modelSettings');
                 void loadDeepSeekData();
@@ -895,198 +931,206 @@ export function App() {
               snapshot={snapshot}
               onDirtyChange={setScoreDirty}
               navigationBusy={busy || loading}
+              onRoster={() => navigate('roster')}
             />
           )}
           {snapshot && view === 'roster' && (
             <>
-              <section className="metrics" aria-label="名册概况">
-                <div>
-                  <UsersRound size={20} />
-                  <span>
-                    在籍学生
-                    <strong>
-                      {activeCount}
-                      <small>人</small>
-                    </strong>
-                  </span>
-                </div>
-                <div>
-                  <GraduationCap size={20} />
-                  <span>
-                    班级
-                    <strong>
-                      {snapshot.classes.length}
-                      <small>个</small>
-                    </strong>
-                  </span>
-                </div>
-                <div>
-                  <UserRoundMinus size={20} />
-                  <span>
-                    停用记录
-                    <strong>
-                      {snapshot.students.length - activeCount}
-                      <small>人</small>
-                    </strong>
-                  </span>
-                </div>
-              </section>
-              <div className="roster-toolbar">
-                <label className="search">
-                  <Search size={17} />
-                  <input
-                    aria-label="搜索学生"
-                    placeholder="搜索姓名或编号"
-                    value={search}
+              <section className="design-panel roster-panel">
+                <header>
+                  <div>
+                    <h2>学生名单</h2>
+                    <p>
+                      共 {snapshot.students.filter((student) => student.active).length}{' '}
+                      人在籍，资料保存在本机。
+                    </p>
+                  </div>
+                  <button
+                    disabled={disabled || !snapshot.classes.length}
+                    onClick={() => setRosterImportOpen(true)}
+                  >
+                    <FileText size={16} />
+                    批量导入学生
+                  </button>
+                </header>
+                <div className="roster-toolbar">
+                  <label className="search">
+                    <Search size={17} />
+                    <input
+                      aria-label="搜索学生"
+                      placeholder="搜索姓名或编号"
+                      value={search}
+                      onChange={(event) => {
+                        setSearch(event.target.value);
+                        setPage(0);
+                      }}
+                    />
+                  </label>
+                  <select
+                    aria-label="筛选班级"
+                    value={selectedClass}
                     onChange={(event) => {
-                      setSearch(event.target.value);
+                      setSelectedClass(event.target.value);
                       setPage(0);
                     }}
-                  />
-                </label>
-                <select
-                  aria-label="筛选班级"
-                  value={selectedClass}
-                  onChange={(event) => {
-                    setSelectedClass(event.target.value);
-                    setPage(0);
-                  }}
-                >
-                  <option value="all">全部班级</option>
-                  {snapshot.classes.map((classroom) => (
-                    <option key={classroom.id} value={classroom.id}>
-                      {classroom.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  aria-label="筛选状态"
-                  value={status}
-                  onChange={(event) => {
-                    setStatus(event.target.value);
-                    setPage(0);
-                  }}
-                >
-                  <option value="active">在籍</option>
-                  <option value="inactive">停用</option>
-                  <option value="all">全部状态</option>
-                </select>
-                <span className="result-count">共 {filtered.length} 条</span>
-              </div>
-              {snapshot.classes.length === 0 ? (
-                <div className="empty-state">
-                  <UsersRound size={40} />
-                  <h2>尚无班级</h2>
-                  <div className="button-row">
-                    <button disabled={busy} onClick={() => setModal({ kind: 'class' })}>
-                      <Plus size={16} />
-                      创建班级
-                    </button>
+                  >
+                    <option value="all">全部班级</option>
+                    {snapshot.classes.map((classroom) => (
+                      <option key={classroom.id} value={classroom.id}>
+                        {classroom.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    aria-label="筛选状态"
+                    value={status}
+                    onChange={(event) => {
+                      setStatus(event.target.value);
+                      setPage(0);
+                    }}
+                  >
+                    <option value="active">在籍</option>
+                    <option value="inactive">停用</option>
+                    <option value="all">全部状态</option>
+                  </select>
+                  <span className="result-count">共 {filtered.length} 条</span>
+                  {selectedClass !== 'all' && (
                     <button
-                      className="primary"
-                      disabled={busy}
-                      onClick={() => setModal({ kind: 'seed' })}
+                      aria-label={`重命名 ${snapshot.classes.find((item) => item.id === selectedClass)?.name ?? '班级'}`}
+                      disabled={disabled}
+                      onClick={() => setModal({ kind: 'class', id: selectedClass })}
                     >
-                      <Database size={16} />
-                      载入合成样例
+                      <Pencil size={16} /> 编辑班级名称
                     </button>
-                  </div>
+                  )}
                 </div>
-              ) : (
-                <div className="table-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th className="number-cell">序号</th>
-                        <th>学生姓名</th>
-                        <th>学生编号</th>
-                        <th>所属班级</th>
-                        <th>状态</th>
-                        <th className="actions-cell">操作</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((student, index) => (
-                        <tr key={student.id}>
-                          <td className="number-cell">
-                            {String(currentPage * 15 + index + 1).padStart(2, '0')}
-                          </td>
-                          <td>
-                            <span className="student-name">
-                              <span className="avatar">
-                                <UserRound size={16} />
-                              </span>
-                              {student.displayName}
-                            </span>
-                          </td>
-                          <td className="student-number">{student.studentNumber}</td>
-                          <td>{student.className}</td>
-                          <td>
-                            <span className={`status-badge ${student.active ? 'active' : ''}`}>
-                              <span />
-                              {student.active ? '在籍' : '停用'}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="row-actions">
-                              <button
-                                className="icon-button"
-                                title={`编辑 ${student.displayName}`}
-                                aria-label={`编辑 ${student.studentNumber}`}
-                                disabled={busy}
-                                onClick={() => setModal({ kind: 'student', student })}
-                              >
-                                <Pencil size={16} />
-                              </button>
-                              <button
-                                className="icon-button"
-                                title={`${student.active ? '停用' : '恢复在籍'} ${student.displayName}`}
-                                aria-label={`${student.active ? '停用' : '恢复在籍'} ${student.studentNumber}`}
-                                disabled={busy}
-                                onClick={() => setModal({ kind: 'activation', student })}
-                              >
-                                {student.active ? (
-                                  <UserRoundMinus size={16} />
-                                ) : (
-                                  <UserRoundCheck size={16} />
-                                )}
-                              </button>
-                            </div>
-                          </td>
+                {snapshot.classes.length === 0 ? (
+                  <div className="empty-state">
+                    <UsersRound size={40} />
+                    <h2>尚无班级</h2>
+                    <div className="button-row">
+                      <button disabled={busy} onClick={() => setModal({ kind: 'class' })}>
+                        <Plus size={16} />
+                        创建班级
+                      </button>
+                      <button
+                        className="primary"
+                        disabled={busy}
+                        onClick={() => setModal({ kind: 'seed' })}
+                      >
+                        <Database size={16} />
+                        载入合成样例
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th className="number-cell">序号</th>
+                          <th>学生姓名</th>
+                          <th>学生编号</th>
+                          <th>所属班级</th>
+                          <th>状态</th>
+                          <th className="actions-cell">操作</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {rows.length === 0 && <div className="empty-results">没有匹配的学生记录</div>}
-                </div>
-              )}
-              {snapshot.classes.length > 0 && (
-                <footer className="table-footer">
-                  <span>合成名册 · 本机保存</span>
-                  <div className="pagination">
-                    <button
-                      className="icon-button"
-                      title="上一页"
-                      aria-label="上一页"
-                      disabled={currentPage === 0}
-                      onClick={() => setPage(currentPage - 1)}
-                    >
-                      <ArrowLeft size={16} />
-                    </button>
-                    <span>
-                      {currentPage + 1} / {pageCount}
-                    </span>
-                    <button
-                      className="icon-button"
-                      title="下一页"
-                      aria-label="下一页"
-                      disabled={currentPage + 1 >= pageCount}
-                      onClick={() => setPage(currentPage + 1)}
-                    >
-                      <ArrowRight size={16} />
-                    </button>
+                      </thead>
+                      <tbody>
+                        {rows.map((student, index) => (
+                          <tr key={student.id}>
+                            <td className="number-cell">
+                              {String(currentPage * 15 + index + 1).padStart(2, '0')}
+                            </td>
+                            <td>
+                              <span className="student-name">
+                                <span className="avatar">
+                                  <UserRound size={16} />
+                                </span>
+                                {student.displayName}
+                              </span>
+                            </td>
+                            <td className="student-number">{student.studentNumber}</td>
+                            <td>{student.className}</td>
+                            <td>
+                              <span className={`status-badge ${student.active ? 'active' : ''}`}>
+                                <span />
+                                {student.active ? '在籍' : '停用'}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="row-actions">
+                                <button
+                                  className="icon-button"
+                                  title={`编辑 ${student.displayName}`}
+                                  aria-label={`编辑 ${student.studentNumber}`}
+                                  disabled={busy}
+                                  onClick={() => setModal({ kind: 'student', student })}
+                                >
+                                  <Pencil size={16} />
+                                </button>
+                                <button
+                                  className="icon-button"
+                                  title={`${student.active ? '停用' : '恢复在籍'} ${student.displayName}`}
+                                  aria-label={`${student.active ? '停用' : '恢复在籍'} ${student.studentNumber}`}
+                                  disabled={busy}
+                                  onClick={() => setModal({ kind: 'activation', student })}
+                                >
+                                  {student.active ? (
+                                    <UserRoundMinus size={16} />
+                                  ) : (
+                                    <UserRoundCheck size={16} />
+                                  )}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {rows.length === 0 && <div className="empty-results">没有匹配的学生记录</div>}
                   </div>
-                </footer>
+                )}
+                {snapshot.classes.length > 0 && (
+                  <footer className="table-footer">
+                    <span>班级名册 · 本机保存</span>
+                    <div className="pagination">
+                      <button
+                        className="icon-button"
+                        title="上一页"
+                        aria-label="上一页"
+                        disabled={currentPage === 0}
+                        onClick={() => setPage(currentPage - 1)}
+                      >
+                        <ArrowLeft size={16} />
+                      </button>
+                      <span>
+                        {currentPage + 1} / {pageCount}
+                      </span>
+                      <button
+                        className="icon-button"
+                        title="下一页"
+                        aria-label="下一页"
+                        disabled={currentPage + 1 >= pageCount}
+                        onClick={() => setPage(currentPage + 1)}
+                      >
+                        <ArrowRight size={16} />
+                      </button>
+                    </div>
+                  </footer>
+                )}
+              </section>
+              {rosterImportOpen && (
+                <RosterImportDialog
+                  snapshot={snapshot}
+                  initialClass={selectedClass}
+                  onSaved={(saved) => {
+                    acceptSnapshot(saved);
+                    setNotice({ error: false, text: '学生名单已导入，可在名册核对学生数量。' });
+                  }}
+                  onClose={() => setRosterImportOpen(false)}
+                  onDirtyChange={setRosterImportDirty}
+                />
               )}
             </>
           )}
@@ -1216,11 +1260,11 @@ export function App() {
                 <dl>
                   <div>
                     <dt>包含内容</dt>
-                    <dd>程序版本、记录数量、错误编号</dd>
+                    <dd>程序版本、记录数量、错误编号、模型响应校验与重试信息</dd>
                   </div>
                   <div>
                     <dt>排除内容</dt>
-                    <dd>姓名、编号、附件正文、完整路径、密钥</dd>
+                    <dd>姓名、学生编号、附件与模型正文、完整路径、密钥</dd>
                   </div>
                 </dl>
                 <button
@@ -1631,6 +1675,44 @@ export function App() {
           </button>
         )}
       </main>
+      {snapshot && (
+        <FloatingAssistant
+          open={assistantOpen}
+          expanded={assistantExpanded}
+          working={conversationDirty}
+          context={viewLabel(view)}
+          onOpen={() => setAssistantOpen(true)}
+          onClose={() => setAssistantOpen(false)}
+          onExpand={() => setAssistantExpanded((value) => !value)}
+        >
+          <div className="chat-workspace-host">
+            <ConversationWorkspace
+              key={`conversation:${snapshot.epoch}`}
+              snapshot={snapshot}
+              onSnapshot={acceptSnapshot}
+              onNavigate={(next) => {
+                if (navigate(next)) setAssistantOpen(false);
+              }}
+              onDirtyChange={setConversationDirty}
+              active={assistantOpen}
+              mode={conversationMode}
+              compact={!assistantExpanded}
+              executionBlocked={
+                pendingViews.some(([source, pending]) => pending && source !== 'conversation') ||
+                busy
+              }
+              newRequest={newConversationRequest}
+              onOpen={() => {
+                setConversationMode('conversation');
+                setAssistantOpen(true);
+              }}
+              onManage={() => setConversationMode('sessions')}
+              restoreNotice={conversationRestoreNotice}
+              onRestoreNotice={setConversationRestoreNotice}
+            />
+          </div>
+        </FloatingAssistant>
+      )}
       {busy && (
         <div className="busy-indicator" role="status">
           <LoaderCircle size={16} className="spin" />

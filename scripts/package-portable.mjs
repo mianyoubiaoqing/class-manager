@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { extractFile, listPackage, statFile } from '@electron/asar';
 import JSZip from 'jszip';
 import { runPortableSmoke } from './portable-smoke.mjs';
@@ -28,7 +28,9 @@ const stamp = Object.fromEntries(
 const releaseLabel = `Portable-${stamp.year}${stamp.month}${stamp.day}-${stamp.hour}${stamp.minute}`;
 const metadata = JSON.parse(await fs.readFile('package.json', 'utf8'));
 const label = `Class-Manager-${metadata.version}-${releaseLabel}-x64`;
-const buildBase = path.join(process.env.USERPROFILE, 'ClassManagerPortableBuilds');
+const buildBase = process.env.CLASS_MANAGER_PORTABLE_BUILD_ROOT
+  ? path.resolve(process.env.CLASS_MANAGER_PORTABLE_BUILD_ROOT)
+  : path.join(process.env.USERPROFILE, 'ClassManagerPortableBuilds');
 const deliveryBase = path.join(process.env.USERPROFILE, 'ClassManagerDeliveries');
 const evidenceBase = path.resolve('output/playwright/portable');
 for (const directory of [buildBase, deliveryBase, evidenceBase])
@@ -52,7 +54,7 @@ async function inventory(directory, relative = '') {
   return files.sort((a, b) => a.file.localeCompare(b.file));
 }
 const source = [];
-for (const directory of ['src', 'scripts', 'tests'])
+for (const directory of ['src', 'scripts', 'tests', 'tools', 'docs'])
   for (const file of await inventory(directory))
     source.push({ ...file, file: path.join(directory, file.file) });
 for (const file of [
@@ -63,6 +65,7 @@ for (const file of [
   'eslint.config.mjs',
   '.prettierrc.json',
   'docs/handoff/portable-release.md',
+  'docs/handoff/current-delivery-notes.md',
 ])
   source.push({ file, sha256: hash(await fs.readFile(file)) });
 async function verifySource() {
@@ -224,6 +227,102 @@ try {
   );
   const guide = await fs.readFile('docs/handoff/portable-release.md', 'utf8');
   await addText('免安装版本说明.md', guide);
+  await addText(
+    '本地压力测试记录.md',
+    await fs.readFile('docs/handoff/ui-stress-20261007.md', 'utf8'),
+  );
+  await addText(
+    '客户操作卡点诊断.md',
+    await fs.readFile('docs/handoff/customer-friction-20261007.md', 'utf8'),
+  );
+  await addText(
+    'Computer Use 全流程验收记录.md',
+    await fs.readFile('docs/handoff/computer-use-20261007.md', 'utf8'),
+  );
+  await fs.cp('docs/submissions', path.join(program, '使用文档'), {
+    recursive: true,
+    errorOnExist: true,
+    force: false,
+  });
+  const documents = JSON.parse(
+    await fs.readFile('output/docx-delivery-20261006/conversion-manifest.json', 'utf8'),
+  );
+  for (const item of documents) {
+    assert.equal(
+      hash(await fs.readFile(item.source)),
+      item.sourceSha256,
+      'DOCX source changed: ' + item.source,
+    );
+    const bytes = await fs.readFile(path.join('output/docx-delivery-20261006', item.docx));
+    assert.equal(hash(bytes), item.sha256, 'DOCX hash changed: ' + item.docx);
+    await fs.writeFile(path.join(program, '使用文档', item.docx), bytes, { flag: 'wx' });
+  }
+  assert.equal(documents.length, 8, 'Expected original six manuals and two current guides');
+  const git = spawnSync(
+    'rtk',
+    ['proxy', 'git', 'ls-files', '--cached', '--others', '--exclude-standard', '-z'],
+    { windowsHide: true, maxBuffer: 16 * 1024 * 1024 },
+  );
+  assert.equal(git.status, 0, 'Cannot inventory source');
+  const sourceZip = new JSZip();
+  const sourceManifest = [];
+  const sourceFiles = [...new Set(git.stdout.toString('utf8').split('\0').filter(Boolean))]
+    .filter(
+      (file) =>
+        /^(?:src|scripts|tests|tools|docs)\//.test(file) ||
+        [
+          'package.json',
+          'package-lock.json',
+          'tsconfig.json',
+          'vitest.config.ts',
+          'eslint.config.mjs',
+          '.prettierrc.json',
+          '.gitignore',
+          'README.md',
+          'CONTEXT.md',
+        ].includes(file),
+    )
+    .sort();
+  for (const file of sourceFiles) {
+    assert.ok(!(await fs.lstat(file)).isSymbolicLink(), 'Unsupported source link');
+    assert.ok(
+      !/(?:^|\/)(?:credentials|conversation-history|workspace-data|node_modules)(?:\/|$)|\.cmbackup$|\.env(?:\.|$)/i.test(
+        file,
+      ),
+      'Private source file',
+    );
+    if (/\.sqlite(?:-|$)/i.test(file))
+      assert.ok(
+        ['tests/fixtures/frozen-v7.sqlite', 'tests/fixtures/frozen-v6-lessons.sqlite'].includes(
+          file,
+        ),
+        'Unexpected source database',
+      );
+    const bytes = await fs.readFile(file);
+    sourceZip.file('class-manager/' + file, bytes);
+    sourceManifest.push({ file, bytes: bytes.length, sha256: hash(bytes) });
+  }
+  const sourceBytes = await sourceZip.generateAsync({
+    type: 'nodebuffer',
+    platform: 'DOS',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 },
+  });
+  const sourceRead = await JSZip.loadAsync(sourceBytes, { checkCRC32: true });
+  for (const item of sourceManifest)
+    assert.equal(
+      hash(await sourceRead.file('class-manager/' + item.file).async('nodebuffer')),
+      item.sha256,
+    );
+  await fs.writeFile(path.join(program, 'Class-Manager-Source.zip'), sourceBytes, { flag: 'wx' });
+  await fs.writeFile(
+    path.join(program, 'source-manifest.json'),
+    JSON.stringify({ files: sourceManifest }, null, 2),
+  );
+  await addText(
+    '当前版本补充说明.md',
+    await fs.readFile('docs/handoff/current-delivery-notes.md', 'utf8'),
+  );
   const files = await inventory(program);
   assert.ok(files.some((file) => file.file === 'Class Manager.exe'));
   assert.ok(
@@ -278,7 +377,13 @@ try {
   const zipBytes = await fs.readFile(zipFile);
   const reopened = await JSZip.loadAsync(zipBytes, { checkCRC32: true });
   assert.equal(Object.values(reopened.files).filter((file) => !file.dir).length, content.size + 2);
-  const extracted = path.join(buildRoot, '免安装 验证', label);
+  // Execute verification from the user's local drive even when build storage is elsewhere.
+  const verificationBase = path.join(process.env.USERPROFILE, 'ClassManagerPortableBuilds');
+  await fs.mkdir(verificationBase, { recursive: true });
+  report.verificationRoot = await fs.mkdtemp(
+    path.join(verificationBase, releaseLabel + '-verify-'),
+  );
+  const extracted = path.join(report.verificationRoot, '免安装 验证', label);
   for (const entry of Object.values(reopened.files).filter((file) => !file.dir)) {
     const relative = entry.name.slice(label.length + 1);
     assert.ok(entry.name.startsWith(label + '/'));

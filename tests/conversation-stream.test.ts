@@ -89,6 +89,47 @@ function stream(text: string, chunkSize = 7) {
     { headers: { 'Content-Type': 'text/event-stream; charset=utf-8' } },
   );
 }
+test('SSE accepts nullable continuation metadata without losing the completed tool identity', async () => {
+  const response = stream(
+    event(
+      frame({
+        tool_calls: [
+          {
+            index: 0,
+            id: 'call-nullable',
+            type: 'function',
+            function: { name: 'business_action', arguments: '{' },
+          },
+        ],
+      }),
+    ) +
+      event(
+        frame({
+          tool_calls: [
+            {
+              index: 0,
+              id: null,
+              type: null,
+              function: { name: null, arguments: '"action":{"kind":"query","query":"roster"}}' },
+            },
+          ],
+        }),
+      ) +
+      event(frame({ tool_calls: null }, 'tool_calls')) +
+      'data: [DONE]\r\n\r\n',
+  );
+  const result = await readConversationCompletion(response, new AbortController().signal, () => {});
+  expect(result.toolCalls).toEqual([
+    {
+      id: 'call-nullable',
+      type: 'function',
+      function: {
+        name: 'business_action',
+        arguments: '{"action":{"kind":"query","query":"roster"}}',
+      },
+    },
+  ]);
+});
 test('SSE decodes split UTF-8, reasoning and tool arguments with usage after finish', async () => {
   const update = vi.fn();
   const response = stream(
@@ -152,7 +193,63 @@ test('missing DONE never adopts a partial tool call', async () => {
       new AbortController().signal,
       () => {},
     ),
-  ).rejects.toMatchObject({ code: 'INVALID_RESPONSE' });
+  ).rejects.toMatchObject({
+    code: 'INVALID_RESPONSE',
+    diagnostic: {
+      transport: 'sse',
+      stage: 'completion',
+      reason: 'missing-completion',
+      done: false,
+      hasId: true,
+      hasModel: true,
+      hasFinish: true,
+      toolCalls: 1,
+    },
+  });
+});
+
+test('invalid SSE fields report structural paths and types without saving rejected values', async () => {
+  const secret = 'sk-synthetic-diagnostic-private-value';
+  const diagnostic = await readConversationCompletion(
+    stream(
+      event({
+        id: 'test',
+        model: 'test',
+        choices: [{ delta: { content: { [secret]: '学生姓名' } } }],
+      }),
+    ),
+    new AbortController().signal,
+    () => {},
+  ).catch((error) => error.diagnostic);
+  expect(diagnostic).toMatchObject({
+    transport: 'sse',
+    stage: 'frame',
+    reason: 'field-validation',
+    frames: 1,
+    issues: [{ path: ['choices', 0, 'delta', 'content'], actualType: 'object' }],
+  });
+  expect(JSON.stringify(diagnostic)).not.toContain(secret);
+  expect(JSON.stringify(diagnostic)).not.toContain('学生姓名');
+});
+
+test('non-stream invalid JSON receives a body diagnostic without parser text', async () => {
+  await expect(
+    readConversationCompletion(
+      new Response('{private-invalid'),
+      new AbortController().signal,
+      () => {},
+    ),
+  ).rejects.toMatchObject({
+    code: 'INVALID_RESPONSE',
+    diagnostic: {
+      transport: 'json',
+      stage: 'body',
+      reason: 'invalid-json',
+      bytes: 16,
+      frames: 0,
+      issues: [],
+    },
+  });
 });
 
 test('SSE preserves call indices when a batch arrives as interleaved fragments', async () => {

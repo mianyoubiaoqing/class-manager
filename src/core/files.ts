@@ -1,8 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import {
   closeSync,
+  constants,
+  copyFileSync,
   fsyncSync,
   lstatSync,
+  linkSync,
   openSync,
   renameSync,
   unlinkSync,
@@ -67,6 +70,35 @@ export function atomicWrite(
       /* 已成功发布，或临时文件未能建立。 */
     }
   }
+}
+
+/** Publish a template without ever replacing an existing teacher file, including a late race. */
+export function atomicCreate(path: string, bytes: string | Uint8Array): void {
+  atomicWrite(path, bytes, {
+    renameFn: (temporary, target) => {
+      try {
+        try {
+          linkSync(temporary, target);
+        } catch (error) {
+          // Removable FAT/exFAT volumes do not support hard links. Exclusive copy still protects existing files.
+          if (
+            ['EPERM', 'ENOTSUP', 'EOPNOTSUPP', 'ENOSYS'].includes(
+              (error as NodeJS.ErrnoException).code ?? '',
+            )
+          )
+            copyFileSync(temporary, target, constants.COPYFILE_EXCL);
+          else throw error;
+        }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'EEXIST')
+          throw new DomainError(
+            'CONFLICT',
+            '空白模板不能覆盖已有文件。请使用新的文件名；导入现有名单请点击“选择名单文件”。',
+          );
+        throw error;
+      }
+    },
+  });
 }
 
 export function requireRegularFile(path: string, maxBytes: number): void {
