@@ -823,6 +823,7 @@ export const CHANNELS = [
   'listBridgeProposals',
   'resolveBridgeProposal',
   'workBuddyConnection',
+  'startWorkBuddyConnection',
   'openWorkBuddy',
   'selectClassData',
   'configureClassData',

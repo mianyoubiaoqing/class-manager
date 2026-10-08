@@ -48,13 +48,23 @@ try {
     );
   const nav = page.getByRole('navigation', { name: '主导航', exact: true });
   await nav.getByRole('button', { name: '教师备课', exact: true }).click();
-  await page
-    .getByRole('navigation', { name: '教师备课功能', exact: true })
-    .getByRole('button', { name: '班级教学工作台', exact: true })
-    .click();
   const workbench = page.getByRole('region', { name: '班级教学工作台' });
   await workbench.getByRole('heading', { name: '从创建一个班级开始' }).waitFor();
-  checks.push('empty workspace');
+  checks.push('teaching opens full customer workspace directly');
+  const teachingTools = workbench.getByRole('navigation', { name: '教师备课功能', exact: true });
+  for (const [label, heading] of [
+    ['资源平台', '资源平台'],
+    ['本地备课', '从手边资料，开始一节课'],
+    ['课堂与倒计时', '课堂与倒计时'],
+    ['答卷建议与复核', '答卷建议与复核'],
+  ]) {
+    await teachingTools.getByRole('button', { name: label, exact: true }).click();
+    await page.getByRole('heading', { name: heading, exact: true, level: 1 }).waitFor();
+    assert.equal(await page.getByRole('region', { name: '班级教学工作台' }).count(), 1);
+  }
+  await teachingTools.getByRole('button', { name: '班级教学工作台', exact: true }).click();
+  await workbench.getByRole('heading', { name: '从创建一个班级开始' }).waitFor();
+  checks.push('four teaching tools share customer shell in an empty environment');
   await workbench.getByRole('button', { name: '创建班级', exact: true }).click();
   let dialog = page.getByRole('dialog', { name: '新建班级', exact: true });
   await dialog.getByLabel('班级名称').fill('合成教学测试班');
@@ -291,8 +301,36 @@ try {
   });
   assert.equal(readFileSync(image.path).subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
   checks.push('Word / Excel / PNG exports');
+  const workBuddyHome = join(root, 'workbuddy-home');
+  const install = join(workBuddyHome, 'AppData', 'Local', 'Programs', 'WorkBuddy');
+  mkdirSync(install, { recursive: true });
+  writeFileSync(join(install, 'WorkBuddy.exe'), 'synthetic executable');
+  mkdirSync(join(workBuddyHome, '.workbuddy'));
+  const originalConfiguration = '{"mcpServers":{"other":{"command":"synthetic-other"}}}';
+  writeFileSync(join(workBuddyHome, '.workbuddy', 'mcp.json'), originalConfiguration);
+  await application.evaluate(({ app, shell }, path) => {
+    app.setPath('home', path);
+    globalThis.__cmWorkBuddyLaunches = [];
+    shell.openPath = async (executable) => {
+      globalThis.__cmWorkBuddyLaunches.push(executable);
+      return '';
+    };
+  }, workBuddyHome);
+  await workbench.getByRole('button', { name: '开始连接', exact: true }).click();
+  dialog = page.getByRole('dialog', { name: 'WorkBuddy 桥接与确认' });
+  await dialog.getByText('本机 MCP 已注册，等待 WorkBuddy 连接', { exact: true }).waitFor();
+  const configPath = join(workBuddyHome, '.workbuddy', 'mcp.json');
+  const registeredBytes = readFileSync(configPath, 'utf8');
+  const registeredConfiguration = JSON.parse(registeredBytes);
+  assert.deepEqual(registeredConfiguration.mcpServers.other, { command: 'synthetic-other' });
+  assert.equal(await application.evaluate(() => globalThis.__cmWorkBuddyLaunches.length), 1);
+  await dialog.getByRole('button', { name: '重新检测并注册', exact: true }).click();
+  await dialog.getByText('本机 MCP 已注册，等待 WorkBuddy 连接', { exact: true }).waitFor();
+  assert.equal(readFileSync(configPath, 'utf8'), registeredBytes);
   const connection = await call('workBuddyConnection');
-  const config = JSON.parse(connection.configuration).mcpServers['class-manager'];
+  const config = registeredConfiguration.mcpServers['class-manager'];
+  assert.deepEqual(config, JSON.parse(connection.configuration).mcpServers['class-manager']);
+  checks.push('one-click IPC registration preserves other services and is idempotent');
   const child = spawn(config.command, config.args, {
     env: { ...env, ...config.env },
     stdio: ['pipe', 'pipe', 'pipe'],
@@ -324,6 +362,9 @@ try {
   );
   assert.ok((await next()).result);
   child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
+  await dialog.getByText('已检测到本地连接', { exact: true }).waitFor();
+  await dialog.getByRole('button', { name: '完成', exact: true }).click();
+  checks.push('connection status updates from actual MCP traffic');
   child.stdin.write(
     JSON.stringify({
       jsonrpc: '2.0',

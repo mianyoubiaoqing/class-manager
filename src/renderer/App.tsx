@@ -60,6 +60,7 @@ import { ModelSelectionSummary } from './ModelSelectionSummary';
 import { ConversationWorkspace } from './ConversationWorkspace';
 import { FloatingAssistant } from './FloatingAssistant';
 import { TeachingWorkbench } from './features/teaching/TeachingWorkbench';
+import { ResourceHub } from './ResourceHub';
 import { AttendancePage, StudentProfilesPage } from './PupilPages';
 import { HomeroomDashboard, StudentDirectory } from './features/homeroom';
 import type { GrowthSelection } from '../shared/growth';
@@ -200,14 +201,7 @@ export function App() {
     ['growth', growthDirty],
     ['devices', deviceDirty],
     ['providerSettings', providerDirty],
-    [
-      view === 'teacherWorkbench'
-        ? 'teacherWorkbench'
-        : view === 'profiles'
-          ? 'profiles'
-          : 'attendance',
-      pupilDirty,
-    ],
+    [area?.id === 'teaching' ? view : view === 'profiles' ? 'profiles' : 'attendance', pupilDirty],
     ['conversation', conversationDirty],
   ];
   function canNavigate(target: string, preserveConversation = false): boolean {
@@ -746,7 +740,7 @@ export function App() {
               <div className="eyebrow">CLASS MANAGER / M1</div>
               <h1>
                 {view === 'teaching'
-                  ? '常用教学资源，一处打开'
+                  ? '班级教学工作台'
                   : view === 'classManagement'
                     ? '今天的班务，一眼看清'
                     : view === 'lessons'
@@ -759,7 +753,7 @@ export function App() {
               </h1>
               <p className="page-description">
                 {view === 'teaching'
-                  ? '把资源平台、听课资料和公开课放在一起。'
+                  ? '学生、教学记录和备课工具，一处管理。'
                   : view === 'classManagement'
                     ? '先准备班级资料，再逐步处理点名、成绩和日常安排。'
                     : view === 'conversation'
@@ -919,18 +913,49 @@ export function App() {
               }}
             />
           )}
-          {snapshot && area?.id === view && view !== 'classManagement' && (
+          {snapshot && area?.id === view && view !== 'classManagement' && view !== 'teaching' && (
             <WorkspaceHome area={area} onNavigate={navigate} />
           )}
-          {snapshot && view === 'teacherWorkbench' && (
+          {snapshot && area?.id === 'teaching' && (
             <TeachingWorkbench
               key={`teacher-workbench:${snapshot.epoch}`}
               snapshot={snapshot}
               selectedClass={selectedClass}
               onSnapshot={setSnapshot}
               onDirtyChange={setPupilDirty}
-              onBack={() => navigate('teaching')}
-            />
+              view={view}
+              onNavigate={navigate}
+              onSelectClass={setSelectedClass}
+            >
+              {view === 'resources' && <ResourceHub />}
+              {view === 'lessons' && (
+                <LessonPage
+                  key={`lessons:${snapshot.epoch}`}
+                  snapshot={snapshot}
+                  onDirtyChange={setLessonDirty}
+                  navigationBusy={busy || loading}
+                />
+              )}
+              {view === 'classroom' && (
+                <ClassroomPage
+                  key={`classroom:${snapshot.epoch}`}
+                  snapshot={snapshot}
+                  navigationBusy={busy || loading}
+                  onDirtyChange={setClassroomDirty}
+                />
+              )}
+              {view === 'grading' && (
+                <GradingPage
+                  key={`grading:${snapshot.epoch}`}
+                  snapshot={snapshot}
+                  onDirtyChange={setGradingDirty}
+                  navigationBusy={busy || loading}
+                />
+              )}
+              {['grading', 'lessons'].includes(view) && (
+                <ModelSelectionSummary key={`model:${view}:${snapshot.epoch}`} />
+              )}
+            </TeachingWorkbench>
           )}
           {snapshot && (
             <CountdownBanner key={`countdown:${snapshot.epoch}`} epoch={snapshot.epoch} />
@@ -953,22 +978,6 @@ export function App() {
               onDirtyChange={setPupilDirty}
             />
           )}
-          {snapshot && view === 'classroom' && (
-            <ClassroomPage
-              key={`classroom:${snapshot.epoch}`}
-              snapshot={snapshot}
-              navigationBusy={busy || loading}
-              onDirtyChange={setClassroomDirty}
-            />
-          )}
-          {snapshot && view === 'grading' && (
-            <GradingPage
-              key={`grading:${snapshot.epoch}`}
-              snapshot={snapshot}
-              onDirtyChange={setGradingDirty}
-              navigationBusy={busy || loading}
-            />
-          )}
           {snapshot && view === 'growth' && (
             <GrowthPage
               key={`growth:${snapshot.epoch}:${selectedClass}:${selectedPupilId}`}
@@ -980,7 +989,7 @@ export function App() {
               navigationBusy={busy || loading}
             />
           )}
-          {snapshot && ['growth', 'grading', 'lessons', 'scores'].includes(view) && (
+          {snapshot && ['growth', 'scores'].includes(view) && (
             <ModelSelectionSummary key={`model:${view}:${snapshot.epoch}`} />
           )}
           {snapshot && view === 'providerSettings' && (
@@ -1008,14 +1017,6 @@ export function App() {
               snapshot={snapshot}
               onDirtyChange={setSeatingDirty}
               navigationBusy={busy}
-            />
-          )}
-          {snapshot && view === 'lessons' && (
-            <LessonPage
-              key={`lessons:${snapshot.epoch}`}
-              snapshot={snapshot}
-              onDirtyChange={setLessonDirty}
-              navigationBusy={busy || loading}
             />
           )}
           {snapshot && view === 'duty' && (

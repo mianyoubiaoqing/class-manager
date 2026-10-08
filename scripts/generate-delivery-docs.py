@@ -233,6 +233,9 @@ for source, filename, _ in sources:
         doc.styles['Normal'].paragraph_format.line_spacing = 1.15
         doc.styles['Normal'].paragraph_format.space_after = Pt(3)
         doc.sections[0].bottom_margin = Inches(.72)
+    if filename.startswith(('03_', '04_')):
+        # Keep body text clear of the page-number footer after longer connection instructions.
+        doc.sections[0].bottom_margin = Inches(1.1)
     doc.save(OUT / filename)
     item['sha256'] = hashlib.sha256((OUT / filename).read_bytes()).hexdigest()
     manifest.append(item)

@@ -59,8 +59,10 @@
   padding: 18px 12px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
   border-right: 1px solid #dfe5de;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
 }
 .tw-nav .tw-brand {
   background: none;
@@ -73,12 +75,12 @@
 }
 .tw-nav nav {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 .tw-nav nav button {
   background: none;
   border: 0;
-  padding: 12px;
+  padding: 6px 12px;
   justify-content: flex-start;
   gap: 14px;
   font-size: 14px;

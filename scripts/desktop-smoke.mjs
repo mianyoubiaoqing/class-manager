@@ -147,6 +147,7 @@ try {
     'listBridgeProposals',
     'resolveBridgeProposal',
     'workBuddyConnection',
+    'startWorkBuddyConnection',
     'openWorkBuddy',
     'exportTeachingSeatingImage',
     'previewRosterImport',

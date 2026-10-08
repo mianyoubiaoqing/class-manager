@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, Menu, Plus, Pencil, RefreshCw, Bell, Volume2 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Menu, Plus, Pencil, RefreshCw, Bell, Volume2 } from 'lucide-react';
+import type { AppView } from '../../WorkspaceNavigation';
 import type { Snapshot, Result } from '../../../shared/contracts';
 import type {
   TeachingRecord,
@@ -59,15 +60,22 @@ export function TeachingWorkbench({
   selectedClass,
   onSnapshot,
   onDirtyChange,
-  onBack,
+  view,
+  onNavigate,
+  onSelectClass,
+  children,
 }: {
   snapshot: Snapshot;
   selectedClass: string;
   onSnapshot: (s: Snapshot) => void;
   onDirtyChange: (v: boolean) => void;
-  onBack: () => void;
+  view: AppView;
+  onNavigate: (view: AppView) => boolean;
+  onSelectClass: (id: string) => void;
+  children?: ReactNode;
 }) {
   const api = window.classManager;
+  const tool = ['resources', 'lessons', 'classroom', 'grading'].includes(view);
   const [classId, setClassId] = useState(
     snapshot.classes.find((c) => c.id === selectedClass)?.id ?? snapshot.classes[0]?.id ?? '',
   );
@@ -177,6 +185,7 @@ export function TeachingWorkbench({
   };
   const go = (id: Module) =>
     move(() => {
+      if (tool && !onNavigate('teaching')) return;
       setModule(id);
       setSub(GROUPS[id]?.[0]?.[0] ?? 'contacts');
       setMobile(false);
@@ -220,9 +229,37 @@ export function TeachingWorkbench({
             <button
               key={id}
               aria-label={label}
-              aria-current={module === id ? 'page' : undefined}
-              className={module === id ? 'active' : ''}
+              aria-current={!tool && module === id ? 'page' : undefined}
+              className={!tool && module === id ? 'active' : ''}
+              disabled={busy}
               onClick={() => go(id)}
+            >
+              <span>{icon}</span>
+              {label}
+            </button>
+          ))}
+        </nav>
+        <nav aria-label="教师备课功能">
+          <button onClick={() => go('dash')} aria-label="班级教学工作台" disabled={busy}>
+            📊 工作台首页
+          </button>
+          {(
+            [
+              ['resources', '📚', '资源平台'],
+              ['lessons', '📖', '本地备课'],
+              ['classroom', '⏱️', '课堂与倒计时'],
+              ['grading', '📋', '答卷建议与复核'],
+            ] as const
+          ).map(([target, icon, label]) => (
+            <button
+              key={target}
+              aria-label={label}
+              disabled={busy}
+              className={view === target ? 'active' : ''}
+              aria-current={view === target ? 'page' : undefined}
+              onClick={() => {
+                if (onNavigate(target)) setMobile(false);
+              }}
             >
               <span>{icon}</span>
               {label}
@@ -234,10 +271,6 @@ export function TeachingWorkbench({
           <br />
           一次导入，各页面共用
         </p>
-        <button onClick={() => move(onBack)}>
-          <ChevronLeft size={16} />
-          返回教师备课
-        </button>
       </aside>
       <div className="tw-content">
         <header className="tw-topbar">
@@ -252,7 +285,13 @@ export function TeachingWorkbench({
             aria-label="教学工作台当前班级"
             value={classId}
             disabled={busy}
-            onChange={(e) => move(() => setClassId(e.target.value))}
+            onChange={(e) =>
+              move(() => {
+                if (tool && !onNavigate('teaching')) return;
+                setClassId(e.target.value);
+                onSelectClass(e.target.value);
+              })
+            }
           >
             <option value="">请选择班级</option>
             {snapshot.classes.map((c) => (
@@ -300,20 +339,24 @@ export function TeachingWorkbench({
           </button>
         </header>
         <div className="tw-view">
-          <div className="tw-page-head">
-            <h2>{NAV.find((n) => n[0] === module)?.[2]}</h2>
-            <p>
-              {classroom?.name ?? '先创建班级'} ·{' '}
-              {module === 'dash' ? '数据总览' : '与本机名册和成绩同步'}
-            </p>
-          </div>
+          {!tool && (
+            <div className="tw-page-head">
+              <h2>{NAV.find((n) => n[0] === module)?.[2]}</h2>
+              <p>
+                {classroom?.name ?? '先创建班级'} ·{' '}
+                {module === 'dash' ? '数据总览' : '与本机名册和成绩同步'}
+              </p>
+            </div>
+          )}
           {message && (
             <div className={`tw-notice ${error ? 'error' : ''}`} role={error ? 'alert' : 'status'}>
               {message}
             </div>
           )}
           {busy && <p role="status">操作处理中…</p>}
-          {!classId ? (
+          {tool ? (
+            children
+          ) : !classId ? (
             <div className="tw-card tw-empty">
               <h3>从创建一个班级开始</h3>
               <p>新建班级后导入学生名册，成绩、作业、请假和日常记录会自动关联这些学生。</p>
@@ -450,11 +493,13 @@ export function TeachingWorkbench({
                   throw new Error(r.error.message);
                 }
                 onSnapshot(r.value);
-                if (!classForm.rename)
-                  setClassId(
+                if (!classForm.rename) {
+                  const id =
                     r.value.classes.find((c) => !snapshot.classes.some((old) => old.id === c.id))
-                      ?.id ?? classId,
-                  );
+                      ?.id ?? classId;
+                  setClassId(id);
+                  onSelectClass(id);
+                }
                 setClassForm(undefined);
                 return true;
               }, '班级已保存');

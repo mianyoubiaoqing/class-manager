@@ -190,6 +190,17 @@ export interface BridgeProposal {
   result?: unknown;
   preview?: { className?: string; studentName?: string; before: unknown; after: unknown };
 }
+export interface WorkBuddyRegistration {
+  installed: boolean;
+  registered: boolean;
+  changed: boolean;
+  firstRegistration: boolean;
+  launched: boolean;
+  active: boolean;
+  configurationPath?: string;
+  backupPath?: string;
+  launchError?: string;
+}
 export interface TeachingApi {
   exportTeachingSeatingImage(input: {
     epoch: string;
@@ -230,5 +241,6 @@ export interface TeachingApi {
   workBuddyConnection(): Promise<
     import('./contracts').Result<{ configuration: string; active: boolean }>
   >;
+  startWorkBuddyConnection(): Promise<import('./contracts').Result<WorkBuddyRegistration>>;
   openWorkBuddy(): Promise<import('./contracts').Result<null>>;
 }

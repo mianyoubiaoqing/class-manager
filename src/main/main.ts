@@ -43,6 +43,7 @@ import {
 import { z } from 'zod';
 import sharp from 'sharp';
 import { WorkBuddyBridge } from './workbuddy-bridge';
+import { findWorkBuddy, registerWorkBuddy, type WorkBuddyServer } from './workbuddy-registration';
 import { teachingReport } from './teaching-reports';
 import type { TeachingRecord, TeachingSettings } from '../shared/teaching-workbench';
 import { randomUUID } from 'node:crypto';
@@ -444,6 +445,19 @@ if (!app.requestSingleInstanceLock()) {
         };
       }
 
+      function workBuddyServer(): WorkBuddyServer {
+        return {
+          command: process.execPath,
+          args: [
+            app.isPackaged
+              ? join(process.resourcesPath, 'mcp-stdio.cjs')
+              : join(__dirname, 'mcp-stdio.cjs'),
+            '--connection',
+            join(userDataPath, 'workbuddy-connection.json'),
+          ],
+          env: { ELECTRON_RUN_AS_NODE: '1' },
+        };
+      }
       async function dispatch(channel: Channel, input: unknown): Promise<Result<unknown>> {
         switch (channel) {
           case 'exportTeachingSeatingImage': {
@@ -473,8 +487,44 @@ if (!app.requestSingleInstanceLock()) {
             return save(png, `${className.replace(/[<>:"/\\|?*]/g, '_')}-座位表.png`, 'png');
           }
           case 'openWorkBuddy':
-            await shell.openExternal('https://www.workbuddy.cn/');
+            {
+              const installed = findWorkBuddy(app.getPath('home'));
+              if (installed) {
+                const error = await shell.openPath(installed);
+                if (error)
+                  throw new DomainError('STORAGE_ERROR', '未能打开 WorkBuddy，请从桌面启动它。');
+              } else await shell.openExternal('https://www.workbuddy.cn/');
+            }
             return { ok: true, value: null };
+          case 'startWorkBuddyConnection': {
+            const installed = findWorkBuddy(app.getPath('home'));
+            if (!installed)
+              return {
+                ok: true,
+                value: {
+                  installed: false,
+                  registered: false,
+                  changed: false,
+                  firstRegistration: false,
+                  launched: false,
+                  active: false,
+                },
+              };
+            const registration = registerWorkBuddy(app.getPath('home'), workBuddyServer());
+            const launchError = await shell.openPath(installed);
+            return {
+              ok: true,
+              value: {
+                ...registration,
+                installed: true,
+                launched: !launchError,
+                active: bridge.active,
+                ...(launchError
+                  ? { launchError: '已注册，但未能打开 WorkBuddy，请从桌面启动它。' }
+                  : {}),
+              },
+            };
+          }
           case 'workBuddyConnection':
             return {
               ok: true,
@@ -483,15 +533,7 @@ if (!app.requestSingleInstanceLock()) {
                   {
                     mcpServers: {
                       'class-manager': {
-                        command: process.execPath,
-                        args: [
-                          app.isPackaged
-                            ? join(process.resourcesPath, 'mcp-stdio.cjs')
-                            : join(__dirname, 'mcp-stdio.cjs'),
-                          '--connection',
-                          join(userDataPath, 'workbuddy-connection.json'),
-                        ],
-                        env: { ELECTRON_RUN_AS_NODE: '1' },
+                        ...workBuddyServer(),
                       },
                     },
                   },

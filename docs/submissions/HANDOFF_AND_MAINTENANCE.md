@@ -20,6 +20,8 @@ scripts 包含构建、打包和桌面验证；tests 包含自动化测试。doc
 
 WorkBuddy MCP 服务位于 src/main/workbuddy-bridge.ts，连接器位于 src/main/mcp-stdio.ts。服务只监听 127.0.0.1 随机端口，要求本机令牌，拒绝网页 Origin；查询直接返回，修改进入本地确认队列。令牌文件位于 Electron userData 下的 workbuddy-connection.json，退出删除，不应纳入交付。资源目录自带 mcp-stdio.cjs，通过 Electron 的 Node 模式运行，无需另装 Node。
 
+自动注册位于 src/main/workbuddy-registration.ts，检测当前用户 Local Programs 和 Program Files 下的 WorkBuddy/WorkBuddyAI 桌面端，合并当前用户 .workbuddy/mcp.json。保留其他服务、备份原字节、重复注册不重写；配置损坏和同名非本项目服务停止并报错。不读写 WorkBuddy 的授权文件，不强制重启它。首次第三方授权及必要的重新打开由用户在 WorkBuddy 完成；连接状态以本机 MCP 活动检测为准。
+
 群通知通过教学记录 kind=notice 保存标题、日期和正文。MCP teaching_records 查询草稿，propose_teaching_record 形成修改方案；本地 saveTeachingRecord 和 deleteTeachingRecord 执行经确认的写入。当前不提供实际发送或已发送状态；后续发送渠道应单独实现。
 
 免安装打包使用 npm run dist:portable。打包器检查源码、文档和程序哈希，并验证解压后的程序。Word 文档修改后需要重新生成及检查，转换清单中的哈希必须与文件一致。

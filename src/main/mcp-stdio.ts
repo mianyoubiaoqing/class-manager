@@ -58,7 +58,7 @@ lines.on('line', (line) => {
     } catch {
       if (id !== null)
         process.stdout.write(
-          `${JSON.stringify({ jsonrpc: '2.0', id, error: { code: -32000, message: '本地工作台未连接。请先启动程序，并在智能对话中重新复制 WorkBuddy MCP 配置。' } })}\n`,
+          `${JSON.stringify({ jsonrpc: '2.0', id, error: { code: -32000, message: '本地工作台未连接。请先启动程序，并在智能对话中点击开始连接；首次需在 WorkBuddy 授权本机服务。' } })}\n`,
         );
       else process.stderr.write('MCP request could not be handled\n');
     }

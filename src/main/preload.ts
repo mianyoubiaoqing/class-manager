@@ -15,6 +15,7 @@ const api: DesktopApi = {
   listBridgeProposals: () => ipcRenderer.invoke('cm:listBridgeProposals'),
   resolveBridgeProposal: (input) => ipcRenderer.invoke('cm:resolveBridgeProposal', input),
   workBuddyConnection: () => ipcRenderer.invoke('cm:workBuddyConnection'),
+  startWorkBuddyConnection: () => ipcRenderer.invoke('cm:startWorkBuddyConnection'),
   openWorkBuddy: () => ipcRenderer.invoke('cm:openWorkBuddy'),
   selectClassData: (input) => ipcRenderer.invoke('cm:selectClassData', input),
   configureClassData: (input) => ipcRenderer.invoke('cm:configureClassData', input),

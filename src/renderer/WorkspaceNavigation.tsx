@@ -27,6 +27,7 @@ export type AppView =
   | 'modelSettings'
   | 'sessions'
   | 'teacherWorkbench'
+  | 'resources'
   | WorkspaceAreaId;
 interface WorkspaceEntry {
   view: AppView;
@@ -53,6 +54,12 @@ export const workspaceAreas: WorkspaceArea[] = [
         label: '班级教学工作台',
         description: '学生、成绩、作业与日常教学记录，集中管理。',
         icon: UsersRound,
+      },
+      {
+        view: 'resources',
+        label: '资源平台',
+        description: '打开常用教育平台和教学资源。',
+        icon: BookOpen,
       },
       {
         view: 'lessons',
@@ -246,6 +253,7 @@ export function WorkspaceLinks({
 }) {
   const area = areaForView(view);
   if (!area) return null;
+  if (area.id === 'teaching') return null;
   if (area.id === 'classManagement') {
     return (
       <nav className="workspace-tabs shared-class-tabs" aria-label="班主任管理功能">
@@ -286,7 +294,7 @@ export function WorkspaceLinks({
         disabled={disabled}
         onClick={() => onNavigate(area.id)}
       >
-        {area.id === 'teaching' ? '资源工作台' : '设置概览'}
+        设置概览
       </button>
       {area.entries.map((entry) => (
         <button

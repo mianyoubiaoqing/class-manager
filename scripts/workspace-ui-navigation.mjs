@@ -41,7 +41,9 @@ export async function openWorkspacePage(page, area, label) {
     ({ area, currentLabel }) =>
       [...document.querySelectorAll('nav')]
         .find((nav) => nav.getAttribute('aria-label') === `${area}功能`)
-        ?.querySelector('[aria-current="page"]')?.textContent === currentLabel,
+        ?.querySelector('[aria-current="page"]')
+        ?.textContent?.trim()
+        .endsWith(currentLabel),
     { area, currentLabel },
   );
   await page

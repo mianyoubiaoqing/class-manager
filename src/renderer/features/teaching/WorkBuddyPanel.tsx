@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ExternalLink, Plug, ShieldCheck, Check, X } from 'lucide-react';
-import type { BridgeProposal } from '../../../shared/teaching-workbench';
+import type { BridgeProposal, WorkBuddyRegistration } from '../../../shared/teaching-workbench';
 import { TeachingDialog } from './TeachingDialog';
 import { kindLabels, recordFields } from './record-fields';
 import type { Snapshot } from '../../../shared/contracts';
@@ -14,6 +14,7 @@ export function WorkBuddyPanel({
   compact?: boolean;
 }) {
   const api = window.classManager;
+  const [registration, setRegistration] = useState<WorkBuddyRegistration>();
   const [proposals, setProposals] = useState<BridgeProposal[]>([]),
     [open, setOpen] = useState(false),
     [configuration, setConfiguration] = useState(''),
@@ -25,6 +26,13 @@ export function WorkBuddyPanel({
     const poll = async () => {
       const r = await api.listBridgeProposals();
       if (alive && r.ok) setProposals(r.value);
+      if (open) {
+        const connection = await api.workBuddyConnection();
+        if (alive && connection.ok) {
+          setActive(connection.value.active);
+          setConfiguration(connection.value.configuration);
+        }
+      }
     };
     void poll();
     const timer = setInterval(() => void poll(), 3000);
@@ -32,16 +40,28 @@ export function WorkBuddyPanel({
       alive = false;
       clearInterval(timer);
     };
-  }, [api]);
+  }, [api, open]);
   const pending = proposals.filter((p) => p.status === 'pending');
-  async function connect() {
+  async function connect(start = false) {
     setOpen(true);
     setError('');
-    const r = await api.workBuddyConnection();
-    if (r.ok) {
+    setBusy(true);
+    try {
+      if (start) {
+        const r = await api.startWorkBuddyConnection();
+        if (!r.ok) throw new Error(r.error.message);
+        setRegistration(r.value);
+        setActive(r.value.active);
+      }
+      const r = await api.workBuddyConnection();
+      if (!r.ok) throw new Error(r.error.message);
       setConfiguration(r.value.configuration);
       setActive(r.value.active);
-    } else setError(r.error.message);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '连接未完成，请重试。');
+    } finally {
+      setBusy(false);
+    }
   }
   async function resolve(p: BridgeProposal, approve: boolean) {
     setBusy(true);
@@ -137,9 +157,9 @@ export function WorkBuddyPanel({
         <ExternalLink size={16} />
         前往 WorkBuddy
       </button>
-      <button onClick={() => void connect()}>
+      <button disabled={busy} onClick={() => void connect(pending.length === 0)}>
         <Plug size={16} />
-        {pending.length ? `待确认方案 ${pending.length}` : '连接 WorkBuddy'}
+        {pending.length ? `待确认方案 ${pending.length}` : '开始连接'}
       </button>
       {error && !open && <span role="alert">{error}</span>}
       {open && (
@@ -186,24 +206,57 @@ export function WorkBuddyPanel({
                 </article>
               ))}
           </details>
-          <h3>首次连接</h3>
-          <ol>
-            <li>启动本工作台，并在 WorkBuddy 中用客户自己的账号登录。</li>
-            <li>进入 WorkBuddy 的 MCP 设置，添加本地 MCP 服务，使用下面的配置。</li>
-            <li>连接后让 WorkBuddy 查询班级，再提出修改方案，在本工作台确认。</li>
-          </ol>
-          <p>连接状态：{active ? '已检测到本地连接' : '等待 WorkBuddy 连接'}</p>
-          <textarea
-            readOnly
-            aria-label="WorkBuddy MCP 配置"
-            rows={10}
-            value={configuration}
-            onFocus={(e) => e.target.select()}
-          />
-          <p className="tw-hint">
-            选中配置后按 Ctrl+C 复制。更换程序或数据目录后重新复制配置。无需安装
-            Node.js，也无需填写模型 API Key。
+          <h3>连接 WorkBuddy</h3>
+          <p role="status">
+            {busy
+              ? '正在检测并注册…'
+              : active
+                ? '已检测到本地连接'
+                : registration?.registered
+                  ? '本机 MCP 已注册，等待 WorkBuddy 连接'
+                  : registration && !registration.installed
+                    ? '未检测到 WorkBuddy 桌面端'
+                    : '点击开始连接，自动检测桌面端并注册本机服务。'}
           </p>
+          {registration?.registered && !active && (
+            <div className="tw-card">
+              <p>
+                已完成配置，无需复制代码。请在 WorkBuddy 中登录自己的账号，在“插件 → MCP
+                服务器”中首次授权 class-manager 服务。
+              </p>
+              {registration.firstRegistration && (
+                <p>若服务列表暂未显示，请先保存 WorkBuddy 中的工作，再退出并重新打开它。</p>
+              )}
+              <p>授权后试着询问：“查询本地班级名单”。本页会自动更新连接状态。</p>
+            </div>
+          )}
+          {registration && !registration.installed && (
+            <p>请先通过“前往 WorkBuddy”下载安装桌面端并登录，再点击开始连接。</p>
+          )}
+          {registration?.launchError && <p role="alert">{registration.launchError}</p>}
+          <button className="primary" disabled={busy} onClick={() => void connect(true)}>
+            {registration?.registered ? '重新检测并注册' : '开始连接'}
+          </button>
+          <p className="tw-hint">
+            无需安装 Node.js 或填写模型 API Key。账号及平台额度由 WorkBuddy
+            提供；本工作台需保持开启。
+          </p>
+          <details>
+            <summary>高级连接信息与手动配置</summary>
+            {registration?.configurationPath && <p>配置位置：{registration.configurationPath}</p>}
+            {registration?.backupPath && <p>原配置备份：{registration.backupPath}</p>}
+            <textarea
+              readOnly
+              aria-label="WorkBuddy MCP 配置"
+              rows={10}
+              value={configuration}
+              onFocus={(e) => e.target.select()}
+            />
+            <p>
+              非标准安装位置可在 WorkBuddy 的 MCP
+              设置中添加此配置。更换程序位置或数据目录后，重新点击开始连接。
+            </p>
+          </details>
           <details>
             <summary>群通知接口</summary>
             <p>
