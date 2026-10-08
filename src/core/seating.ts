@@ -21,6 +21,39 @@ function inLayout(position: SeatPosition, layout: SeatingLayout): void {
 }
 const byPosition = (a: SeatPosition, b: SeatPosition) => a.row - b.row || a.column - b.column;
 
+export function orderSeating(input: unknown, studentIds: string[]): SeatingDraft {
+  const { draft } = inspectSeatingDraft(input);
+  if (
+    new Set(studentIds).size !== studentIds.length ||
+    studentIds.length !== draft.members.length ||
+    studentIds.some((id) => !draft.members.some((m) => m.studentId === id))
+  )
+    invalid('排序须包含全部成员且不能重复。');
+  const locked = new Set(draft.lockedStudentIds);
+  const kept = draft.assignments.filter((a) => locked.has(a.studentId));
+  const blocked = new Set([...draft.layout.unavailable.map(seatKey), ...kept.map(seatKey)]);
+  const available: SeatPosition[] = [];
+  for (let row = 1; row <= draft.layout.rows; row++)
+    for (let column = 1; column <= draft.layout.columns; column++)
+      if (!blocked.has(seatKey({ row, column }))) available.push({ row, column });
+  const assignments = [
+    ...kept,
+    ...studentIds
+      .filter((id) => !locked.has(id))
+      .map((studentId, index) => ({ studentId, ...available[index]! })),
+  ];
+  return inspectSeatingDraft({ ...draft, assignments: assignments.sort(byPosition) }).draft;
+}
+export function unassignSeating(input: unknown, studentId: string): SeatingDraft {
+  const { draft } = inspectSeatingDraft(input);
+  if (!draft.members.some((m) => m.studentId === studentId)) invalid('学生不属于当前编排名单。');
+  if (draft.lockedStudentIds.includes(studentId)) invalid('请先解除此学生的座位锁定。');
+  return inspectSeatingDraft({
+    ...draft,
+    assignments: draft.assignments.filter((a) => a.studentId !== studentId),
+  }).draft;
+}
+
 /**
  * Return a detached draft with coverage information; incomplete/empty drafts are allowed.
  * ZodError rejects malformed fields; DomainError(VALIDATION) rejects rule conflicts.

@@ -19,6 +19,15 @@ const requestSchema = z
   .object({
     id: z.number().int(),
     operation: z.enum([
+      'listTeachingRecords',
+      'saveTeachingRecord',
+      'deleteTeachingRecord',
+      'readTeachingSettings',
+      'saveTeachingSettings',
+      'dueTeachingReminders',
+      'acknowledgeTeachingReminder',
+      'storeTeachingPhoto',
+      'readTeachingPhoto',
       'selectClassDataBytes',
       'configureClassData',
       'confirmClassData',
@@ -154,6 +163,34 @@ try {
     try {
       let value: unknown;
       switch (operation) {
+        case 'listTeachingRecords':
+          value = workspace.teaching.list(input);
+          break;
+        case 'saveTeachingRecord':
+          value = workspace.teaching.save(input);
+          break;
+        case 'deleteTeachingRecord':
+          value = workspace.teaching.remove(input);
+          break;
+        case 'readTeachingSettings':
+          value = workspace.teaching.settings(input);
+          break;
+        case 'saveTeachingSettings':
+          value = workspace.teaching.saveSettings(input);
+          break;
+        case 'dueTeachingReminders':
+          value = workspace.teaching.due(input);
+          break;
+        case 'acknowledgeTeachingReminder':
+          workspace.teaching.acknowledge(input);
+          value = null;
+          break;
+        case 'storeTeachingPhoto':
+          value = workspace.storeTeachingPhoto(input);
+          break;
+        case 'readTeachingPhoto':
+          value = workspace.readTeachingPhoto(input);
+          break;
         case 'createRubric':
           value = workspace.grading.createRubric(input);
           break;

@@ -59,6 +59,7 @@ import { ModelSettingsPage } from './ModelSettingsPage';
 import { ModelSelectionSummary } from './ModelSelectionSummary';
 import { ConversationWorkspace } from './ConversationWorkspace';
 import { FloatingAssistant } from './FloatingAssistant';
+import { TeachingWorkbench } from './features/teaching/TeachingWorkbench';
 import { AttendancePage, StudentProfilesPage } from './PupilPages';
 import { HomeroomDashboard, StudentDirectory } from './features/homeroom';
 import type { GrowthSelection } from '../shared/growth';
@@ -199,7 +200,14 @@ export function App() {
     ['growth', growthDirty],
     ['devices', deviceDirty],
     ['providerSettings', providerDirty],
-    [view === 'profiles' ? 'profiles' : 'attendance', pupilDirty],
+    [
+      view === 'teacherWorkbench'
+        ? 'teacherWorkbench'
+        : view === 'profiles'
+          ? 'profiles'
+          : 'attendance',
+      pupilDirty,
+    ],
     ['conversation', conversationDirty],
   ];
   function canNavigate(target: string, preserveConversation = false): boolean {
@@ -256,6 +264,15 @@ export function App() {
   const [testResultVision, setTestResultVision] = useState<DeepSeekCheckResult | null>(null);
   const checkTaskIdRef = useRef(0);
   const api = window.classManager;
+  useEffect(() => {
+    const changed = () => {
+      void api.snapshot().then((result) => {
+        if (result.ok) setSnapshot(result.value);
+      });
+    };
+    window.addEventListener('cm:bridgeChanged', changed);
+    return () => window.removeEventListener('cm:bridgeChanged', changed);
+  }, [api]);
 
   async function loadDeepSeekData() {
     if (!api) return;
@@ -894,6 +911,16 @@ export function App() {
           )}
           {snapshot && area?.id === view && view !== 'classManagement' && (
             <WorkspaceHome area={area} onNavigate={navigate} />
+          )}
+          {snapshot && view === 'teacherWorkbench' && (
+            <TeachingWorkbench
+              key={`teacher-workbench:${snapshot.epoch}`}
+              snapshot={snapshot}
+              selectedClass={selectedClass}
+              onSnapshot={setSnapshot}
+              onDirtyChange={setPupilDirty}
+              onBack={() => navigate('teaching')}
+            />
           )}
           {snapshot && (
             <CountdownBanner key={`countdown:${snapshot.epoch}`} epoch={snapshot.epoch} />

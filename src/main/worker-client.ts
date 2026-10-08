@@ -3,6 +3,15 @@ import { randomUUID } from 'node:crypto';
 import type { Result } from '../shared/contracts';
 
 export type WorkerOperation =
+  | 'listTeachingRecords'
+  | 'saveTeachingRecord'
+  | 'deleteTeachingRecord'
+  | 'readTeachingSettings'
+  | 'saveTeachingSettings'
+  | 'dueTeachingReminders'
+  | 'acknowledgeTeachingReminder'
+  | 'storeTeachingPhoto'
+  | 'readTeachingPhoto'
   | 'selectClassDataBytes'
   | 'configureClassData'
   | 'confirmClassData'

@@ -15,6 +15,7 @@ import { validateGradingRecords } from './grading-records';
 import { validateScorePublications } from './score-publication-records';
 import { validateGrowthRecords } from './growth-records';
 import { pupilSchemaStatements, validatePupilRecords } from './pupil-records';
+import { teachingSchemaStatements, validateTeachingRecords } from './teaching-book';
 import {
   MAX_DATABASE_BYTES,
   MAX_SCORE_PAYLOAD_BYTES,
@@ -30,7 +31,7 @@ import {
   MAX_GROWTH_SUMMARY_BYTES,
 } from './storage-limits';
 
-export const SCHEMA_VERSION = 12;
+export const SCHEMA_VERSION = 13;
 export const APPLICATION_ID = 0x434d3030;
 const schemaStatements = [
   `CREATE TABLE classrooms (
@@ -244,6 +245,7 @@ export function validateDatabase(db: DatabaseSync): void {
       version !== 9 &&
       version !== 10 &&
       version !== 11 &&
+      version !== 12 &&
       version !== SCHEMA_VERSION) ||
     applicationId !== APPLICATION_ID
   ) {
@@ -264,6 +266,7 @@ export function validateDatabase(db: DatabaseSync): void {
     ...(Number(version) >= 9 ? publicationSchemaStatements : []),
     ...(Number(version) >= 10 ? growthSchemaStatements : []),
     ...(Number(version) >= 12 ? pupilSchemaStatements : []),
+    ...(Number(version) >= 13 ? teachingSchemaStatements : []),
   ]
     .map(normalized)
     .sort();
@@ -296,6 +299,7 @@ export function validateDatabase(db: DatabaseSync): void {
   if (Number(version) >= 9) validateScorePublications(db);
   if (Number(version) >= 10) validateGrowthRecords(db);
   if (Number(version) >= 12) validatePupilRecords(db);
+  if (Number(version) >= 13) validateTeachingRecords(db);
 }
 
 export function openDatabase(
@@ -336,6 +340,7 @@ export function openDatabase(
           ...publicationSchemaStatements,
           ...growthSchemaStatements,
           ...pupilSchemaStatements,
+          ...teachingSchemaStatements,
         ])
           db.exec(sql);
         db.exec("INSERT INTO duty_clock VALUES (1, '1900-01-01')");
@@ -372,6 +377,7 @@ export function openDatabase(
           if (version < 9) for (const sql of publicationSchemaStatements) db.exec(sql);
           if (version < 10) for (const sql of growthSchemaStatements) db.exec(sql);
           if (version < 12) for (const sql of pupilSchemaStatements) db.exec(sql);
+          if (version < 13) for (const sql of teachingSchemaStatements) db.exec(sql);
           db.exec(`PRAGMA user_version=${SCHEMA_VERSION}`);
           validateDatabase(db);
           options.migrationCheckpoint?.('upgraded');

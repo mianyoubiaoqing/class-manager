@@ -1,3 +1,4 @@
+import type { TeachingApi } from './teaching-workbench';
 import type {
   deviceStatusInput,
   noiseMeasureInput,
@@ -400,7 +401,7 @@ export interface DeepSeekLedgerSummary {
   recentEntries: DeepSeekCallRecord[];
 }
 
-export interface DesktopApi {
+export interface DesktopApi extends TeachingApi {
   readStudentProfile(input: z.input<typeof profileReadInput>): Promise<Result<StudentProfile>>;
   saveStudentProfile(
     input: z.input<typeof profileSaveInput>,
@@ -809,6 +810,20 @@ export interface DesktopApi {
 
 // The preload exposes only these named operations, never an arbitrary IPC caller.
 export const CHANNELS = [
+  'exportTeachingSeatingImage',
+  'listTeachingRecords',
+  'saveTeachingRecord',
+  'deleteTeachingRecord',
+  'readTeachingSettings',
+  'saveTeachingSettings',
+  'exportTeachingReport',
+  'selectTeachingPhotos',
+  'readTeachingPhoto',
+  'saveTeachingExam',
+  'listBridgeProposals',
+  'resolveBridgeProposal',
+  'workBuddyConnection',
+  'openWorkBuddy',
   'selectClassData',
   'configureClassData',
   'confirmClassData',

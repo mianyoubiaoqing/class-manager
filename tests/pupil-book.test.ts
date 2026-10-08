@@ -6,6 +6,7 @@ import { afterEach, expect, test } from 'vitest';
 import { Workspace } from '../src/core/workspace';
 import { openDatabase, validateDatabase, SCHEMA_VERSION } from '../src/core/database';
 import { pupilSchemaStatements } from '../src/core/pupil-records';
+import { teachingSchemaStatements } from '../src/core/teaching-book';
 import { ConversationPrivacy } from '../src/core/conversation-privacy';
 import { ApplicationTools } from '../src/main/application-tools';
 
@@ -174,7 +175,7 @@ test('v11 migration keeps the original file and roster, adding empty profile and
   f.w.close();
   spaces.splice(spaces.indexOf(f.w), 1);
   const db = openDatabase(path, 'open');
-  for (const sql of [...pupilSchemaStatements].reverse()) {
+  for (const sql of [...pupilSchemaStatements, ...teachingSchemaStatements].reverse()) {
     const name = sql.match(/CREATE (?:TABLE|INDEX) (\w+)/)![1]!;
     db.exec(`DROP ${sql.includes('CREATE INDEX') ? 'INDEX' : 'TABLE'} ${name}`);
   }

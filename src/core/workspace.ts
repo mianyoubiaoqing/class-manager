@@ -27,6 +27,7 @@ import { ScoreBook, type ScoreCheckpoint } from './score-book';
 import type { PublicationCheckpoint } from './score-publication';
 import { GrowthBook, type GrowthCheckpoint } from './growth-book';
 import { PupilBook } from './pupil-book';
+import { TeachingBook } from './teaching-book';
 import { parseRosterImport } from './roster-import';
 import { ClassDataImporter } from './class-data-import';
 import {
@@ -204,6 +205,9 @@ export class Workspace {
   }
   get pupils(): PupilBook {
     return (this.pupilBook ??= new PupilBook(this.db, () => this.snapshot()));
+  }
+  get teaching(): TeachingBook {
+    return new TeachingBook(this.db, () => this.snapshot());
   }
 
   get seating(): SeatingBook {
@@ -522,6 +526,56 @@ export class Workspace {
       .prepare('INSERT INTO assets VALUES (?, ?, ?, ?)')
       .run(id, '合成验证附件.txt', bytes.length, sha256);
     return this.snapshot();
+  }
+
+  storeTeachingPhoto(raw: unknown): { id: string; name: string; dataUrl: string } {
+    const input = z
+      .object({
+        epoch: z.uuid(),
+        classId: z.uuid(),
+        name: z.string().min(1).max(255),
+        bytes: z.instanceof(Uint8Array),
+      })
+      .strict()
+      .parse(raw);
+    this.guard(input.epoch);
+    if (!this.snapshot().classes.some((c) => c.id === input.classId))
+      throw new DomainError('NOT_FOUND', '班级不存在。');
+    const bytes = Buffer.from(input.bytes);
+    if (
+      bytes.length > 5 * 1024 * 1024 ||
+      !bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+    )
+      throw new DomainError('VALIDATION', '照片须为不超过 5 MiB 的 PNG 图片。');
+    const quota = this.db
+      .prepare('SELECT COUNT(*) AS count, COALESCE(SUM(bytes),0) AS bytes FROM assets')
+      .get()!;
+    if (Number(quota.count) >= MAX_ASSETS || Number(quota.bytes) + bytes.length > MAX_ASSETS_BYTES)
+      throw new DomainError('STORAGE_LIMIT', '附件存储已达到上限。');
+    const id = randomUUID();
+    durableWrite(join(this.directory, 'assets', `${id}.bin`), bytes);
+    this.db
+      .prepare('INSERT INTO assets VALUES (?,?,?,?)')
+      .run(id, input.name, bytes.length, createHash('sha256').update(bytes).digest('hex'));
+    return { id, name: input.name, dataUrl: `data:image/png;base64,${bytes.toString('base64')}` };
+  }
+
+  readTeachingPhoto(raw: unknown): string {
+    const input = z.object({ epoch: z.uuid(), id: z.uuid() }).strict().parse(raw);
+    this.guard(input.epoch);
+    const row = this.db.prepare('SELECT bytes,sha256 FROM assets WHERE id=?').get(input.id);
+    if (!row || Number(row.bytes) > 5 * 1024 * 1024)
+      throw new DomainError('NOT_FOUND', '照片不存在。');
+    const path = join(this.directory, 'assets', `${input.id}.bin`);
+    requireRegularFile(path, 5 * 1024 * 1024);
+    const bytes = readFileSync(path);
+    if (
+      bytes.length !== Number(row.bytes) ||
+      createHash('sha256').update(bytes).digest('hex') !== row.sha256 ||
+      !bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+    )
+      throw new DomainError('BACKUP_INVALID', '照片文件校验失败。');
+    return `data:image/png;base64,${bytes.toString('base64')}`;
   }
 
   exportBackup(raw: unknown): Buffer {

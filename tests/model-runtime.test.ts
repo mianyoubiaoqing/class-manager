@@ -10,6 +10,7 @@ import type { ModelProviderId, ModelCheckPreparation } from '../src/shared/model
 import { Workspace } from '../src/core/workspace';
 import { openDatabase, SCHEMA_VERSION } from '../src/core/database';
 import { pupilSchemaStatements } from '../src/core/pupil-records';
+import { teachingSchemaStatements } from '../src/core/teaching-book';
 
 const roots: string[] = [],
   workspaces: Workspace[] = [];
@@ -363,7 +364,7 @@ test('Schema10 migrates atomically to11 and model configuration/key/usage stay o
   workspace.close();
   workspaces.splice(workspaces.indexOf(workspace), 1);
   const old = openDatabase(dbPath, 'open');
-  for (const sql of [...pupilSchemaStatements].reverse()) {
+  for (const sql of [...pupilSchemaStatements, ...teachingSchemaStatements].reverse()) {
     const name = sql.match(/CREATE (?:TABLE|INDEX) (\w+)/)![1]!;
     old.exec(`DROP ${sql.includes('CREATE INDEX') ? 'INDEX' : 'TABLE'} ${name}`);
   }

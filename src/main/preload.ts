@@ -2,6 +2,20 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { DesktopApi } from '../shared/contracts';
 
 const api: DesktopApi = {
+  exportTeachingSeatingImage: (input) => ipcRenderer.invoke('cm:exportTeachingSeatingImage', input),
+  listTeachingRecords: (input) => ipcRenderer.invoke('cm:listTeachingRecords', input),
+  saveTeachingRecord: (input) => ipcRenderer.invoke('cm:saveTeachingRecord', input),
+  deleteTeachingRecord: (input) => ipcRenderer.invoke('cm:deleteTeachingRecord', input),
+  readTeachingSettings: (input) => ipcRenderer.invoke('cm:readTeachingSettings', input),
+  saveTeachingSettings: (input) => ipcRenderer.invoke('cm:saveTeachingSettings', input),
+  exportTeachingReport: (input) => ipcRenderer.invoke('cm:exportTeachingReport', input),
+  selectTeachingPhotos: (input) => ipcRenderer.invoke('cm:selectTeachingPhotos', input),
+  readTeachingPhoto: (input) => ipcRenderer.invoke('cm:readTeachingPhoto', input),
+  saveTeachingExam: (input) => ipcRenderer.invoke('cm:saveTeachingExam', input),
+  listBridgeProposals: () => ipcRenderer.invoke('cm:listBridgeProposals'),
+  resolveBridgeProposal: (input) => ipcRenderer.invoke('cm:resolveBridgeProposal', input),
+  workBuddyConnection: () => ipcRenderer.invoke('cm:workBuddyConnection'),
+  openWorkBuddy: () => ipcRenderer.invoke('cm:openWorkBuddy'),
   selectClassData: (input) => ipcRenderer.invoke('cm:selectClassData', input),
   configureClassData: (input) => ipcRenderer.invoke('cm:configureClassData', input),
   confirmClassData: (input) => ipcRenderer.invoke('cm:confirmClassData', input),

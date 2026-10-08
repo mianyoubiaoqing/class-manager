@@ -42,6 +42,12 @@
       "!node_modules/https{,/**/*}"
     ],
     "asar": true,
+    "extraResources": [
+      {
+        "from": "dist/main/mcp-stdio.cjs",
+        "to": "mcp-stdio.cjs"
+      }
+    ],
     "npmRebuild": false,
     "win": {
       "target": "nsis",

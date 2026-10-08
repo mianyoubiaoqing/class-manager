@@ -39,6 +39,8 @@ export const seatingTokenInput = epochInput.extend({ token: z.uuid() });
 export const seatingAdjustInput = seatingTokenInput.extend({
   change: z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('randomize') }).strict(),
+    z.object({ kind: z.literal('order'), studentIds: z.array(z.uuid()).max(400) }).strict(),
+    z.object({ kind: z.literal('unassign'), studentId: z.uuid() }).strict(),
     z.object({ kind: z.literal('move'), studentId: z.uuid(), target: seatPositionSchema }).strict(),
     z.object({ kind: z.literal('lock'), studentId: z.uuid(), locked: z.boolean() }).strict(),
     z.object({ kind: z.literal('layout'), layout: seatingLayoutSchema }).strict(),

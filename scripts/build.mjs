@@ -13,6 +13,7 @@ await bundle(
       'src/main/material-process.ts',
       'src/main/office-process.ts',
       'src/main/classroom-preload.ts',
+      'src/main/mcp-stdio.ts',
     ],
     outdir: 'dist/main',
     outExtension: { '.js': '.cjs' },

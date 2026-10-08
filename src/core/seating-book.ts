@@ -17,6 +17,8 @@ import {
 import type { SeatingDraft } from '../shared/seating';
 import {
   changeSeatingLayout,
+  orderSeating,
+  unassignSeating,
   inspectSeatingDraft,
   moveSeatingStudent,
   randomizeSeating,
@@ -184,6 +186,12 @@ export class SeatingBook {
     const change = input.change;
     let next: SeatingDraft;
     switch (change.kind) {
+      case 'order':
+        next = orderSeating(draft, change.studentIds);
+        break;
+      case 'unassign':
+        next = unassignSeating(draft, change.studentId);
+        break;
       case 'randomize':
         next = randomizeSeating(draft);
         break;

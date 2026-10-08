@@ -21,9 +21,15 @@ import { ResourceHub } from './ResourceHub';
 
 export type WorkspaceAreaId = 'teaching' | 'classManagement' | 'settings';
 export type AppView =
-  BusinessView | 'students' | 'conversation' | 'modelSettings' | 'sessions' | WorkspaceAreaId;
+  | BusinessView
+  | 'students'
+  | 'conversation'
+  | 'modelSettings'
+  | 'sessions'
+  | 'teacherWorkbench'
+  | WorkspaceAreaId;
 interface WorkspaceEntry {
-  view: BusinessView;
+  view: AppView;
   label: string;
   description: string;
   icon: LucideIcon;
@@ -42,6 +48,12 @@ export const workspaceAreas: WorkspaceArea[] = [
     icon: BookOpen,
     description: '整理教学资料、制作教案课件，安排课堂与答卷复核。',
     entries: [
+      {
+        view: 'teacherWorkbench',
+        label: '班级教学工作台',
+        description: '学生、成绩、作业与日常教学记录，集中管理。',
+        icon: UsersRound,
+      },
       {
         view: 'lessons',
         label: '本地备课',

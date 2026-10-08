@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Maximize2, MessageSquare, Minimize2, Sparkles, X } from 'lucide-react';
+import { WorkBuddyPanel } from './features/teaching/WorkBuddyPanel';
 
 /** One persistent workspace: minimising changes visibility, never task ownership. */
 export function FloatingAssistant({
@@ -82,6 +83,7 @@ export function FloatingAssistant({
             <X size={18} />
           </button>
         </header>
+        <WorkBuddyPanel compact />
         <div className="assistant-window-body">{children}</div>
       </section>
       <button

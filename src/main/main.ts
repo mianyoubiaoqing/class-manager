@@ -30,9 +30,23 @@ import {
   modelProviderInput,
   selectModelProviderInput,
 } from '../shared/model-providers';
-import { app, BrowserWindow, dialog, ipcMain, safeStorage, session, shell } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  safeStorage,
+  session,
+  shell,
+  Notification,
+} from 'electron';
+import { z } from 'zod';
+import sharp from 'sharp';
+import { WorkBuddyBridge } from './workbuddy-bridge';
+import { teachingReport } from './teaching-reports';
+import type { TeachingRecord, TeachingSettings } from '../shared/teaching-workbench';
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join, resolve, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
@@ -134,6 +148,32 @@ if (!app.requestSingleInstanceLock()) {
   void app
     .whenReady()
     .then(async () => {
+      if (process.platform === 'win32' && app.isPackaged) {
+        const isolated = Boolean(process.env.CLASS_MANAGER_DATA_DIR);
+        const notificationId = isolated
+          ? `local.classmanager.test.${randomUUID()}`
+          : 'local.classmanager.desktop';
+        app.setAppUserModelId(notificationId);
+        const shortcutDirectory = join(
+          app.getPath('appData'),
+          'Microsoft',
+          'Windows',
+          'Start Menu',
+          'Programs',
+        );
+        const shortcut = join(
+          shortcutDirectory,
+          isolated ? `${notificationId}.lnk` : 'Class Manager 教师提醒.lnk',
+        );
+        mkdirSync(shortcutDirectory, { recursive: true });
+        shell.writeShortcutLink(shortcut, {
+          target: process.execPath,
+          description: '班级助手 教师工作台',
+          appUserModelId: notificationId,
+          toastActivatorClsid: app.toastActivatorCLSID,
+        });
+        if (isolated) app.on('will-quit', () => rmSync(shortcut, { force: true }));
+      }
       const root = join(app.getPath('userData'), 'workspace-data');
       const worker = new WorkerClient(join(__dirname, 'worker.cjs'), root);
       const userDataPath = app.getPath('userData');
@@ -406,6 +446,139 @@ if (!app.requestSingleInstanceLock()) {
 
       async function dispatch(channel: Channel, input: unknown): Promise<Result<unknown>> {
         switch (channel) {
+          case 'exportTeachingSeatingImage': {
+            const result = await worker.call<SeatingVersionView>('readSeatingVersion', input);
+            if (!result.ok) return result;
+            const { arrangement, className } = result.value.payload;
+            const escape = (text: string) =>
+              text.replace(
+                /[<>&"']/g,
+                (char) =>
+                  ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[char]!,
+              );
+            const width = Math.max(480, arrangement.layout.columns * 110 + 40),
+              height = arrangement.layout.rows * 76 + 140;
+            let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="white"/><g font-family="Microsoft YaHei, sans-serif"><text x="20" y="32" font-size="22">${escape(className)} · 座位表</text><text x="${width / 2}" y="80" text-anchor="middle" font-size="18">讲台</text>`;
+            for (let row = 1; row <= arrangement.layout.rows; row++)
+              for (let column = 1; column <= arrangement.layout.columns; column++) {
+                const a = arrangement.assignments.find((a) => a.row === row && a.column === column);
+                const member = arrangement.members.find((m) => m.studentId === a?.studentId);
+                const x = 20 + (column - 1) * 110,
+                  y = 105 + (row - 1) * 76;
+                svg += `<rect x="${x}" y="${y}" width="100" height="64" rx="8" fill="#eef7ef" stroke="#c1dfc7"/><text x="${x + 50}" y="${y + 28}" text-anchor="middle" font-size="16">${escape(member?.displayName ?? '空位')}</text><text x="${x + 50}" y="${y + 49}" text-anchor="middle" font-size="11">${escape(member?.studentNumber ?? `${row}排${column}列`)}</text>`;
+              }
+            const png = await sharp(Buffer.from(svg + '</g></svg>'))
+              .png()
+              .toBuffer();
+            return save(png, `${className.replace(/[<>:"/\\|?*]/g, '_')}-座位表.png`, 'png');
+          }
+          case 'openWorkBuddy':
+            await shell.openExternal('https://www.workbuddy.cn/');
+            return { ok: true, value: null };
+          case 'workBuddyConnection':
+            return {
+              ok: true,
+              value: {
+                configuration: JSON.stringify(
+                  {
+                    mcpServers: {
+                      'class-manager': {
+                        command: process.execPath,
+                        args: [
+                          app.isPackaged
+                            ? join(process.resourcesPath, 'mcp-stdio.cjs')
+                            : join(__dirname, 'mcp-stdio.cjs'),
+                          '--connection',
+                          join(userDataPath, 'workbuddy-connection.json'),
+                        ],
+                        env: { ELECTRON_RUN_AS_NODE: '1' },
+                      },
+                    },
+                  },
+                  null,
+                  2,
+                ),
+                active: bridge.active,
+              },
+            };
+          case 'listBridgeProposals':
+            return { ok: true, value: bridge.list() };
+          case 'resolveBridgeProposal':
+            return { ok: true, value: await bridge.resolve(input) };
+          case 'exportTeachingReport': {
+            const report = await teachingReport(worker, input);
+            return save(report.bytes, report.name, report.extension);
+          }
+          case 'selectTeachingPhotos': {
+            const request = z.object({ epoch: z.uuid(), classId: z.uuid() }).strict().parse(input);
+            const selected = await dialog.showOpenDialog(window!, {
+              properties: ['openFile', 'multiSelections'],
+              filters: [{ name: '活动照片', extensions: ['png', 'jpg', 'jpeg', 'webp'] }],
+            });
+            if (selected.canceled) return { ok: true, value: [] };
+            if (selected.filePaths.length > 30)
+              throw new DomainError('VALIDATION', '每次最多选择 30 张照片。');
+            const value = [];
+            for (const path of selected.filePaths) {
+              requireRegularFile(path, 10 * 1024 * 1024);
+              const original = readFileSync(path);
+              if (original.length > 10 * 1024 * 1024)
+                throw new DomainError('VALIDATION', '单张照片须小于 10 MiB。');
+              let bytes: Buffer;
+              try {
+                bytes = await sharp(original, { limitInputPixels: 40000000 })
+                  .rotate()
+                  .resize({ width: 1800, height: 1800, fit: 'inside', withoutEnlargement: true })
+                  .png()
+                  .toBuffer();
+              } catch {
+                throw new DomainError(
+                  'VALIDATION',
+                  '照片无法读取，请选择完整的 PNG、JPG 或 WebP 图片（不超过 4000 万像素）。',
+                );
+              }
+              const stored = await worker.call('storeTeachingPhoto', {
+                ...request,
+                name: basename(path),
+                bytes,
+              });
+              if (!stored.ok) return stored;
+              value.push(stored.value);
+            }
+            return { ok: true, value };
+          }
+          case 'saveTeachingExam': {
+            const request = z
+              .object({
+                configuration: z.unknown(),
+                csv: z.string().max(5 * 1024 * 1024),
+                requestId: z.uuid(),
+                reason: z.string().trim().min(1).max(300),
+              })
+              .strict()
+              .parse(input);
+            const configuration = scoreFileInput.parse(request.configuration);
+            const preview = await worker.call<PendingScoreView>('previewScoreBytes', {
+              configuration: { ...configuration, fileName: '工作台成绩录入.csv', format: 'csv' },
+              bytes: Buffer.from(request.csv, 'utf8'),
+            });
+            if (!preview.ok) return preview;
+            if (!preview.value.canConfirm || !preview.value.token)
+              throw new DomainError(
+                'VALIDATION',
+                preview.value.issues
+                  .map((i) => i.message)
+                  .slice(0, 3)
+                  .join('；') || '成绩存在无效值，请检查学生、科目满分和缺考标记。',
+              );
+            return worker.call('confirmScores', {
+              epoch: configuration.epoch,
+              token: preview.value.token,
+              expectedRevision: configuration.expectedRevision,
+              requestId: request.requestId,
+              reason: request.reason,
+            });
+          }
           case 'listConversationHistory':
           case 'createConversationHistory':
           case 'readConversationHistory':
@@ -1091,6 +1264,13 @@ if (!app.requestSingleInstanceLock()) {
       }
 
       const EXCLUSIVE_WORKSPACE_CHANNELS = new Set<Channel>([
+        'saveTeachingRecord',
+        'deleteTeachingRecord',
+        'saveTeachingSettings',
+        'saveTeachingExam',
+        'selectTeachingPhotos',
+        'exportTeachingReport',
+        'resolveBridgeProposal',
         'scanMaterialFolder',
         'readMaterialFolder',
         'selectConversationFiles',
@@ -1166,6 +1346,72 @@ if (!app.requestSingleInstanceLock()) {
         'discardExplanation',
       ]);
 
+      const bridge = new WorkBuddyBridge(
+        join(userDataPath, 'workbuddy-connection.json'),
+        async () => {
+          const result = await worker.call<Snapshot>('snapshot');
+          if (!result.ok) throw new DomainError(result.error.code, result.error.message);
+          return result.value;
+        },
+        async (channel, input) => {
+          if (closePending) throw new DomainError('BUSY', '工作台正在退出。');
+          const result = await dispatch(channel, input);
+          if (!result.ok) throw new DomainError(result.error.code, result.error.message);
+          return result.value;
+        },
+      );
+      await bridge.start();
+      const notificationStart = Date.now();
+      let notificationBusy = false;
+      const teachingReminders = setInterval(() => {
+        if (operationBusy || closePending || notificationBusy) return;
+        notificationBusy = true;
+        void (async () => {
+          const snapshot = await worker.call<Snapshot>('snapshot');
+          if (!snapshot.ok) return;
+          const epoch = snapshot.value.epoch;
+          const settings = await worker.call<TeachingSettings>('readTeachingSettings', { epoch });
+          const due = await worker.call<TeachingRecord[]>('dueTeachingReminders', {
+            epoch,
+            now: new Date().toISOString(),
+          });
+          if (!settings.ok || !due.ok) return;
+          for (const record of due.value) {
+            if (!('dueAt' in record.content) || !('text' in record.content)) continue;
+            if (
+              Date.parse(record.content.dueAt) >= notificationStart &&
+              settings.value.notifications &&
+              Notification.isSupported()
+            ) {
+              const notification = new Notification({
+                title: '教师工作台 · 事项提醒',
+                body: record.content.text,
+                silent: !settings.value.sound,
+              });
+              notification.on('click', () => {
+                if (window?.isMinimized()) window.restore();
+                window?.show();
+                window?.focus();
+              });
+              notification.show();
+            }
+            await worker.call('acknowledgeTeachingReminder', {
+              epoch,
+              id: record.id,
+              dueAt: record.content.dueAt,
+            });
+          }
+        })()
+          .catch((error) => remember(publicError(error)))
+          .finally(() => {
+            notificationBusy = false;
+          });
+      }, 5000);
+      app.on('will-quit', () => {
+        clearInterval(teachingReminders);
+        bridge.close();
+      });
+
       for (const channel of CHANNELS) {
         ipcMain.handle(`cm:${channel}`, async (event, input: unknown) => {
           try {
@@ -1185,33 +1431,37 @@ if (!app.requestSingleInstanceLock()) {
             const maximum =
               channel === 'saveConversationHistory'
                 ? 2 * 1024 * 1024
-                : channel === 'saveAttendance'
-                  ? 512 * 1024
-                  : channel === 'saveStudentProfile'
-                    ? 32 * 1024
-                    : channel === 'saveGrowthEvent' ||
-                        channel === 'createGrowthSummary' ||
-                        channel === 'editGrowthSummary'
-                      ? 128 * 1024
-                      : channel === 'createRubric' ||
-                          channel === 'createGrading' ||
-                          channel === 'editGrading' ||
-                          channel === 'rebindGrading'
-                        ? MAX_GRADING_COMMAND_BYTES
-                        : channel === 'prepareGrading'
-                          ? 64 * 1024
-                          : channel === 'editLessonDraft' || channel === 'createLessonDraft'
-                            ? MAX_LESSON_COMMAND_BYTES
-                            : channel === 'prepareLesson'
+                : channel === 'saveTeachingExam'
+                  ? MAX_SCORE_COMMAND_BYTES
+                  : channel === 'saveTeachingRecord'
+                    ? 128 * 1024
+                    : channel === 'saveAttendance'
+                      ? 512 * 1024
+                      : channel === 'saveStudentProfile'
+                        ? 32 * 1024
+                        : channel === 'saveGrowthEvent' ||
+                            channel === 'createGrowthSummary' ||
+                            channel === 'editGrowthSummary'
+                          ? 128 * 1024
+                          : channel === 'createRubric' ||
+                              channel === 'createGrading' ||
+                              channel === 'editGrading' ||
+                              channel === 'rebindGrading'
+                            ? MAX_GRADING_COMMAND_BYTES
+                            : channel === 'prepareGrading'
                               ? 64 * 1024
-                              : channel === 'previewScores' ||
-                                  channel === 'configureClassData' ||
-                                  channel === 'exportScoreTemplate' ||
-                                  channel === 'editExplanation'
-                                ? MAX_SCORE_COMMAND_BYTES
-                                : channel === 'prepareDuty' || channel === 'adjustDuty'
-                                  ? MAX_DUTY_COMMAND_BYTES
-                                  : 16384;
+                              : channel === 'editLessonDraft' || channel === 'createLessonDraft'
+                                ? MAX_LESSON_COMMAND_BYTES
+                                : channel === 'prepareLesson'
+                                  ? 64 * 1024
+                                  : channel === 'previewScores' ||
+                                      channel === 'configureClassData' ||
+                                      channel === 'exportScoreTemplate' ||
+                                      channel === 'editExplanation'
+                                    ? MAX_SCORE_COMMAND_BYTES
+                                    : channel === 'prepareDuty' || channel === 'adjustDuty'
+                                      ? MAX_DUTY_COMMAND_BYTES
+                                      : 16384;
             if (
               channel !== 'previewScores' &&
               input !== undefined &&
