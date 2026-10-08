@@ -476,7 +476,8 @@ export function TeachingWorkbench({
               <button type="button" disabled={busy} onClick={() => setClassForm(undefined)}>
                 取消
               </button>
-              <button className="primary" disabled={busy}>
+              {!classForm.name.trim() && <p role="status">请输入班级名称，不能只填写空格。</p>}
+              <button className="primary" disabled={busy || !classForm.name.trim()}>
                 保存
               </button>
             </footer>

@@ -38,10 +38,19 @@ export function ClassDataImport({
     [matching, setMatching] = useState(false),
     [page, setPage] = useState(0);
   const [choices, setChoices] = useState<Record<string, string>>({});
+  const [problemsOnly, setProblemsOnly] = useState(false);
   const running = useRef(false),
     alive = useRef(true);
   const configChanged =
     !!preview && JSON.stringify(configuration) !== JSON.stringify(preview.configuration);
+  const metadataOnlyChanged =
+    !!preview &&
+    !!configuration &&
+    configChanged &&
+    JSON.stringify({ ...configuration, examName: '', examDate: '' }) ===
+      JSON.stringify({ ...preview.configuration, examName: '', examDate: '' });
+  const errorRows = preview?.rows.filter((row) => row.status === 'error') ?? [];
+  const errorReasons = [...new Set(errorRows.map((row) => row.message))];
   const tableRows = useMemo(() => {
     if (!preview) return [];
     const matchedScoreStudents = new Set(
@@ -54,14 +63,16 @@ export function ClassDataImport({
         )
         .map((row) => row.studentId),
     );
-    return preview.rows.filter(
-      (row) =>
-        !row.key.startsWith(`${preview.configuration.studentSheet}:`) ||
-        row.scores.length > 0 ||
-        (row.status !== 'new' && row.status !== 'existing') ||
-        !matchedScoreStudents.has(row.studentId),
-    );
-  }, [preview]);
+    return preview.rows
+      .filter((row) => !problemsOnly || row.status === 'error' || row.status === 'unresolved')
+      .filter(
+        (row) =>
+          !row.key.startsWith(`${preview.configuration.studentSheet}:`) ||
+          row.scores.length > 0 ||
+          (row.status !== 'new' && row.status !== 'existing') ||
+          !matchedScoreStudents.has(row.studentId),
+      );
+  }, [preview, problemsOnly]);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -78,6 +89,7 @@ export function ClassDataImport({
     setConfiguration(undefined);
     setError(undefined);
     setPage(0);
+    setProblemsOnly(false);
   }, [classId]);
   async function run(work: () => Promise<void>) {
     if (running.current) return;
@@ -102,6 +114,7 @@ export function ClassDataImport({
     setConfiguration(value.configuration);
     setError(undefined);
     setPage(0);
+    setProblemsOnly(false);
   }
   async function select() {
     if (!classId) {
@@ -633,12 +646,16 @@ export function ClassDataImport({
                   <input
                     aria-label="统一导入考试名称"
                     value={configuration.examName}
+                    placeholder="例如：十月月考，请填写便于辨认的名称"
                     maxLength={100}
                     disabled={busy}
                     onChange={(e) =>
                       setConfiguration({ ...configuration, examName: e.target.value })
                     }
                   />
+                  {configuration.examName === '未命名考试' && (
+                    <small>建议改成实际考试名称，便于以后查找。</small>
+                  )}
                 </label>
                 <label>
                   考试日期
@@ -661,6 +678,8 @@ export function ClassDataImport({
               {configuration.subjects.map((s) => (
                 <span className="shared-badge" key={s.header}>
                   {s.name} {s.maxScore}
+                  {' · '}
+                  {s.precision === 0 ? '整数' : `${s.precision} 位小数`}
                 </span>
               ))}
               <button
@@ -731,6 +750,16 @@ export function ClassDataImport({
             </table>
           </div>
           <div className="shared-row shared-pagination">
+            {problemsOnly && (
+              <button
+                onClick={() => {
+                  setProblemsOnly(false);
+                  setPage(0);
+                }}
+              >
+                查看全部资料
+              </button>
+            )}
             <small>
               共 {tableRows.length} 条核对结果
               {tableRows.length !== preview.rows.length && ` · 原表 ${preview.rows.length} 行`}
@@ -765,12 +794,48 @@ export function ClassDataImport({
                 将保存：新增 {preview.added} 名学生{preview.hasScores ? ' + 1 次考试' : ''}
               </strong>
               <p>已有资料不会被覆盖。新资料保存后供点名、排班和成长档案共用。</p>
+              {configChanged ? (
+                <p role="status" className="shared-warning">
+                  {metadataOnlyChanged
+                    ? '名称或日期已修改，尚未保存。点击“确认保存并开始使用”将一并核对并保存。'
+                    : '科目或匹配设置已修改，尚未保存。请先更新核对结果，再确认保存。'}
+                </p>
+              ) : (
+                !preview.canConfirm && (
+                  <div role="alert" aria-label="保存前需处理" className="shared-warning">
+                    <strong>
+                      暂不能保存：
+                      {errorRows.length
+                        ? `${errorRows.length} 行资料有问题。`
+                        : preview.unresolved
+                          ? `${preview.unresolved} 行学生尚未匹配。`
+                          : preview.issues.length
+                            ? preview.issues.join('；')
+                            : '本次没有新增资料。'}
+                    </strong>
+                    {errorReasons.length > 0 && <p>{errorReasons.slice(0, 3).join('；')}</p>}
+                    {errorReasons.some((reason) => reason.includes('小数位')) && (
+                      <p>请在“修改科目与满分”中调整小数位，再更新核对结果。</p>
+                    )}
+                    {(errorRows.length > 0 || preview.unresolved > 0) && (
+                      <button
+                        onClick={() => {
+                          setProblemsOnly(true);
+                          setPage(0);
+                        }}
+                      >
+                        查看问题行
+                      </button>
+                    )}
+                  </div>
+                )
+              )}
             </div>
             <button disabled={busy} onClick={() => void close()}>
               <ArrowLeft size={15} />
               返回
             </button>
-            {configChanged ? (
+            {configChanged && !metadataOnlyChanged ? (
               <button
                 className="primary"
                 disabled={busy}
@@ -781,12 +846,24 @@ export function ClassDataImport({
             ) : (
               <button
                 className="primary"
-                disabled={busy || !preview.canConfirm}
+                disabled={busy || (!metadataOnlyChanged && !preview.canConfirm)}
                 onClick={() =>
                   void run(async () => {
+                    let ready = preview;
+                    if (metadataOnlyChanged) {
+                      const updated = await api.configureClassData(configuration);
+                      if (!alive.current) return;
+                      if (!updated.ok) throw new Error(updated.error.message);
+                      ready = updated.value;
+                      accept(ready);
+                      if (!ready.canConfirm) {
+                        setMessage('核对未通过，尚未保存。请处理保存按钮旁列出的问题。');
+                        return;
+                      }
+                    }
                     const result = await api.confirmClassData({
                       epoch: snapshot.epoch,
-                      token: preview.token,
+                      token: ready.token,
                     });
                     if (!result.ok) throw new Error(result.error.message);
                     if (alive.current) {

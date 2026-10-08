@@ -105,7 +105,19 @@ export function StudentDirectory(props: Props) {
             </button>
           </div>
         )}
-        {students.length > 0 && !filtered.length && <p>没有找到学生，请换个姓名或学号。</p>}
+        {students.length > 0 && !filtered.length && (
+          <div className="teacher-directory-empty" role="status">
+            <p>未找到符合搜索条件的学生，已保存的名单仍在。</p>
+            <button
+              onClick={() => {
+                setSearch('');
+                setPage(0);
+              }}
+            >
+              清空搜索
+            </button>
+          </div>
+        )}
         {pages > 1 && (
           <div className="shared-pagination">
             <span>共 {filtered.length} 人 · 每页 20 人</span>

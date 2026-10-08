@@ -228,7 +228,15 @@ test('invalid score is visible, leaves the original data intact, and can be expl
 test('changed maximum or decimal precision requires revalidation of the saved preview', async () => {
   const { workspace, input, select } = setup();
   const p = await select('姓名,数学\n合成甲,120.5');
-  expect(p.canConfirm).toBe(false);
+  expect(p.canConfirm).toBe(true);
+  expect(p.configuration.subjects[0]!.precision).toBe(1);
+  const restricted = workspace.classData.configure({
+    ...p.configuration,
+    subjects: p.configuration.subjects.map((s) => ({ ...s, precision: 0 })),
+  });
+  expect(restricted.canConfirm).toBe(false);
+  expect(restricted.rows[0]!.message).toContain('数学：');
+  expect(() => workspace.classData.confirm({ epoch: input.epoch, token: p.token })).toThrow();
   const next = workspace.classData.configure({
     ...p.configuration,
     subjects: p.configuration.subjects.map((s) => ({ ...s, precision: 1 })),
@@ -241,6 +249,50 @@ test('changed maximum or decimal precision requires revalidation of the saved pr
   expect(invalid.canConfirm).toBe(false);
   expect(() => workspace.classData.confirm({ epoch: input.epoch, token: p.token })).toThrow();
   expect(workspace.snapshot().students).toHaveLength(0);
+});
+
+test('decimal import infers each subject without rounding unsupported precision or using the file name as the exam name', async () => {
+  const { workspace, input, select } = setup();
+  const p = await select('姓名,数学,英语\n合成甲,120,46.5\n合成乙,99,88.25');
+  expect(p.configuration.subjects.map((s) => s.precision)).toEqual([0, 2]);
+  expect(p.configuration.examName).toBe('未命名考试');
+  expect(p.canConfirm).toBe(true);
+  workspace.classData.confirm({ epoch: input.epoch, token: p.token });
+  const saved = workspace.scores.read({
+    epoch: input.epoch,
+    versionId: workspace.scores.list({ epoch: input.epoch })[0]!.versionId,
+  });
+  expect(
+    saved.payload.analysis.entries.some(
+      (e) => e.score.status === 'valid' && e.score.hundredths === 8825,
+    ),
+  ).toBe(true);
+  const invalid = await select('姓名,英语\n合成甲,88.125');
+  expect(invalid.canConfirm).toBe(false);
+  expect(invalid.rows[0]!.message).toContain('小数位');
+});
+
+test('88 students with 65 fractional English scores can confirm the inferred preview without manual precision changes', async () => {
+  const { workspace, input, select } = setup();
+  const p = await select(
+    [
+      '姓名,数学,英语',
+      ...Array.from({ length: 88 }, (_, i) => `合成学生${i + 1},120,${i < 65 ? '46.5' : '46'}`),
+    ].join('\n'),
+  );
+  expect(p).toMatchObject({ added: 88, scoreRows: 88, canConfirm: true });
+  expect(p.configuration.subjects.map((s) => s.precision)).toEqual([0, 1]);
+  const result = workspace.classData.confirm({ epoch: input.epoch, token: p.token });
+  expect(result.snapshot.students).toHaveLength(88);
+  const saved = workspace.scores.read({
+    epoch: input.epoch,
+    versionId: workspace.scores.list({ epoch: input.epoch })[0]!.versionId,
+  });
+  expect(
+    saved.payload.analysis.entries.filter(
+      (e) => e.score.status === 'valid' && e.score.hundredths === 4650,
+    ),
+  ).toHaveLength(65);
 });
 test('duplicate rows and foreign-class selections cannot silently add or move identities', async () => {
   const { workspace, input, select } = setup();

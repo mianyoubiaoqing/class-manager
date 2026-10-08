@@ -232,6 +232,17 @@ export function StudentsPanel({
             {students.length
               ? '没有符合筛选条件的学生。'
               : '先新增学生，或批量导入 XLSX / CSV 名册。'}
+            {students.length > 0 && (
+              <button
+                onClick={() => {
+                  setSearch('');
+                  setGender('');
+                  setGroup('');
+                }}
+              >
+                清空筛选
+              </button>
+            )}
           </div>
         ) : cards ? (
           <div className="tw-student-cards">

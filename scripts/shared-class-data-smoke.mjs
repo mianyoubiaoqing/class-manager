@@ -86,6 +86,17 @@ try {
   await main().getByRole('button', { name: '班主任管理', exact: true }).click();
   await page.getByRole('heading', { name: '班主任工作台', exact: true }).waitFor();
   await page.getByRole('button', { name: '新建班级', exact: true }).click();
+  assert.equal(
+    await page.getByRole('button', { name: '保存班级', exact: true }).isDisabled(),
+    true,
+  );
+  await page.getByLabel('班级名称', { exact: true }).fill('   ');
+  assert.equal(
+    await page.getByRole('button', { name: '保存班级', exact: true }).isDisabled(),
+    true,
+  );
+  await page.getByText('请输入班级名称，不能只填写空格。', { exact: true }).waitFor();
+  await gate('Empty and whitespace class names show guidance and keep Save disabled.');
   await page.getByLabel('班级名称', { exact: true }).fill('共享资料合成班');
   await page.getByRole('button', { name: '保存班级', exact: true }).click();
   await screenshot('37-initial');
@@ -95,16 +106,42 @@ try {
   await fs.writeFile(roster, '学号,姓名\n001,合成甲\n002,合成乙\n003,合成丙');
   await fs.writeFile(
     scores,
-    '姓名,语文,数学,英语\n合成甲,116,128,120\n合成乙,108,119,105\n合成丙,95,缺考,100',
+    '姓名,语文,数学,英语\n合成甲,116,128,120.5\n合成乙,108,119,105.5\n合成丙,95,缺考,100',
   );
   await files([roster, scores]);
   await page.getByRole('button', { name: '选择学生信息 / 成绩文件', exact: true }).click();
   await page.getByRole('heading', { name: '核对资料，保存后就能使用', exact: true }).waitFor();
+  assert.equal(await page.getByLabel('统一导入考试名称').inputValue(), '未命名考试');
+  assert.equal(
+    await page.getByRole('button', { name: '确认保存并开始使用', exact: true }).isDisabled(),
+    false,
+  );
+  await page.getByRole('button', { name: '修改科目与满分', exact: true }).click();
+  assert.equal(await page.getByLabel('英语小数位', { exact: true }).inputValue(), '1');
+  await page.getByLabel('英语小数位', { exact: true }).selectOption('0');
+  await page
+    .getByText('科目或匹配设置已修改，尚未保存。请先更新核对结果，再确认保存。', { exact: true })
+    .waitFor();
+  await page.getByRole('button', { name: '更新核对结果', exact: true }).click();
+  const blocker = page.getByRole('alert', { name: '保存前需处理' });
+  await blocker.getByText('暂不能保存：2 行资料有问题。', { exact: true }).waitFor();
+  assert.equal(
+    await page.getByRole('button', { name: '确认保存并开始使用', exact: true }).isDisabled(),
+    true,
+  );
+  await blocker.getByRole('button', { name: '查看问题行' }).click();
+  assert.equal(await page.locator('.shared-table-scroll tbody tr').count(), 2);
+  await screenshot('friction-decimal-blocker');
+  await page.getByLabel('英语小数位', { exact: true }).selectOption('1');
+  await page.getByRole('button', { name: '更新核对结果', exact: true }).click();
+  await gate(
+    'Decimal precision is inferred; narrowing precision shows a blocker beside Save and a problem-row filter.',
+  );
   let snapshot = await call('snapshot');
   assert.equal(snapshot.students.length, 0);
   assert.equal((await call('listExams', { epoch: snapshot.epoch })).length, 0);
   await page.getByLabel('统一导入考试名称', { exact: true }).fill('合成十月考试');
-  await page.getByRole('button', { name: '更新核对结果', exact: true }).click();
+  assert.equal(await page.getByRole('button', { name: '更新核对结果', exact: true }).count(), 0);
   await page
     .getByRole('button', { name: '确认保存并开始使用', exact: true })
     .waitFor({ state: 'visible' });
@@ -126,6 +163,10 @@ try {
   );
   await tabs().getByRole('button', { name: '学生档案', exact: true }).click();
   await page.getByRole('heading', { name: '学生档案', exact: true }).waitFor();
+  await page.getByLabel('搜索学生档案').fill('不存在的合成姓名');
+  await page.getByText('未找到符合搜索条件的学生，已保存的名单仍在。', { exact: true }).waitFor();
+  await page.getByRole('button', { name: '清空搜索', exact: true }).click();
+  await gate('No-match searches explain that saved students remain and provide Clear search.');
   await page.getByRole('button', { name: '查看合成甲档案', exact: true }).click();
   await page
     .getByRole('navigation', { name: '学生资料分类', exact: true })
@@ -178,13 +219,12 @@ try {
   await page.getByRole('button', { name: '导入资料', exact: true }).click();
   await fs.writeFile(
     scores,
-    '姓名,语文,数学,英语\n合成甲,120,132,125\n合成乙,110,120,110\n合成丙,100,115,108',
+    '姓名,语文,数学,英语\n合成甲,120,132,125.5\n合成乙,110,120,110\n合成丙,100,115,108',
   );
   await files([scores]);
   await page.getByRole('button', { name: '选择学生信息 / 成绩文件', exact: true }).click();
   await page.getByRole('heading', { name: '核对资料，保存后就能使用', exact: true }).waitFor();
   await page.getByLabel('统一导入考试名称', { exact: true }).fill('合成十一月考试');
-  await page.getByRole('button', { name: '更新核对结果', exact: true }).click();
   await page.getByRole('button', { name: '确认保存并开始使用', exact: true }).click();
   await page.getByText('已保存 3 名学生和 2 次考试', { exact: true }).waitFor();
   snapshot = await call('snapshot');

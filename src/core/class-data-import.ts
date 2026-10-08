@@ -64,6 +64,19 @@ function subjectName(header: string) {
   const name = header.replace(/[（(]\s*\d+(?:\.\d+)?\s*(?:分)?\s*[）)]$/u, '').trim();
   return { 生物: '生物学', 政治: '思想政治' }[name] ?? name;
 }
+function inferPrecision(sheet: Sheet, header: string): 0 | 1 | 2 {
+  const column = sheet.headers.indexOf(header);
+  const values = [
+    header.match(/[（(]\s*(\d+(?:\.\d+)?)/u)?.[1],
+    ...sheet.table.slice(1).map((row) => row[column]?.value),
+  ];
+  let precision = 0;
+  for (const value of values) {
+    const match = /^(?:0|[1-9]\d{0,4})(?:\.(\d+))?$/.exec(text(value));
+    if (match) precision = Math.max(precision, Math.min(2, match[1]?.length ?? 0));
+  }
+  return precision as 0 | 1 | 2;
+}
 function subjectFor(
   header: string,
   name = subjectName(header),
@@ -164,13 +177,18 @@ export class ClassDataImporter {
       token,
       studentSheet: studentSheet?.key ?? null,
       scoreSheet: scoreSheet?.key ?? null,
-      examName: scoreSheet ? scoreSheet.label.replace(/\.(xlsx|csv).*$/iu, '').slice(0, 100) : '',
+      examName: scoreSheet ? '未命名考试' : '',
       examDate: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
       subjects:
         scoreSheet?.headers
           .filter((h) => !ignoredHeaders.has(h))
           .map((header) => {
-            const s = subjectFor(header);
+            const s = subjectFor(
+              header,
+              subjectName(header),
+              undefined,
+              inferPrecision(scoreSheet, header),
+            );
             return { header, name: s.name, maxScore: s.maxScore, precision: s.precision };
           }) ?? [],
       resolutions: [],
@@ -418,7 +436,7 @@ export class ClassDataImporter {
               });
             } catch (error) {
               row.status = 'error';
-              row.message = error instanceof Error ? error.message : '成绩无效';
+              row.message = `${subject.name}：${error instanceof Error ? error.message : '成绩无效'}`;
             }
           }
         }

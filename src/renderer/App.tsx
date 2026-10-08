@@ -246,6 +246,7 @@ export function App() {
   }
   const [notice, setNotice] = useState<Notice>();
   const [modal, setModal] = useState<Modal>();
+  const [classNameInput, setClassNameInput] = useState('');
   const [selectedClass, setSelectedClass] = useState('all');
   useEffect(() => {
     if (area?.id === 'classManagement' && selectedClass === 'all' && snapshot?.classes.length)
@@ -497,7 +498,11 @@ export function App() {
   async function submitClass(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!snapshot || modal?.kind !== 'class') return;
-    const name = String(new FormData(event.currentTarget).get('name') ?? '');
+    const name = String(new FormData(event.currentTarget).get('name') ?? '').trim();
+    if (!name) {
+      setNotice({ error: true, text: '请输入班级名称，不能只填写空格。' });
+      return;
+    }
     const current = snapshot.classes.find((item) => item.id === modal.id);
     const success = await perform(
       () =>
@@ -521,6 +526,11 @@ export function App() {
       '班级已保存。',
     );
     if (success) setModal(undefined);
+  }
+
+  function openClass(id?: string) {
+    setClassNameInput(snapshot?.classes.find((item) => item.id === id)?.name ?? '');
+    setModal({ kind: 'class', id });
   }
 
   async function submitStudent(event: FormEvent<HTMLFormElement>) {
@@ -592,7 +602,7 @@ export function App() {
               title="新建班级"
               aria-label="新建班级"
               disabled={disabled}
-              onClick={() => setModal({ kind: 'class' })}
+              onClick={() => openClass()}
             >
               <Plus size={17} />
             </button>
@@ -623,7 +633,7 @@ export function App() {
                 title={`重命名 ${classroom.name}`}
                 aria-label={`重命名 ${classroom.name}`}
                 disabled={disabled}
-                onClick={() => setModal({ kind: 'class', id: classroom.id })}
+                onClick={() => openClass(classroom.id)}
               >
                 <Pencil size={13} />
               </button>
@@ -772,7 +782,7 @@ export function App() {
                   title="创建班级"
                   aria-label="创建班级"
                   disabled={disabled}
-                  onClick={() => setModal({ kind: 'class' })}
+                  onClick={() => openClass()}
                 >
                   <GraduationCap size={18} />
                 </button>
@@ -870,7 +880,7 @@ export function App() {
               snapshot={snapshot}
               selectedClass={selectedClass}
               onNavigate={navigate}
-              onCreateClass={() => setModal({ kind: 'class' })}
+              onCreateClass={() => openClass()}
               onSelectClass={setSelectedClass}
               onSaved={acceptSnapshot}
               onDirtyChange={setRosterImportDirty}
@@ -1095,7 +1105,7 @@ export function App() {
                     <button
                       aria-label={`重命名 ${snapshot.classes.find((item) => item.id === selectedClass)?.name ?? '班级'}`}
                       disabled={disabled}
-                      onClick={() => setModal({ kind: 'class', id: selectedClass })}
+                      onClick={() => openClass(selectedClass)}
                     >
                       <Pencil size={16} /> 编辑班级名称
                     </button>
@@ -1106,7 +1116,7 @@ export function App() {
                     <UsersRound size={40} />
                     <h2>尚无班级</h2>
                     <div className="button-row">
-                      <button disabled={busy} onClick={() => setModal({ kind: 'class' })}>
+                      <button disabled={busy} onClick={() => openClass()}>
                         <Plus size={16} />
                         创建班级
                       </button>
@@ -1134,6 +1144,24 @@ export function App() {
                         </tr>
                       </thead>
                       <tbody>
+                        {!rows.length && (
+                          <tr>
+                            <td colSpan={6}>
+                              <div className="empty-state" role="status">
+                                <p>未找到符合筛选条件的学生，已保存的名单仍在。</p>
+                                <button
+                                  onClick={() => {
+                                    setSearch('');
+                                    setStatus('all');
+                                    setPage(0);
+                                  }}
+                                >
+                                  清空搜索和状态筛选
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
                         {rows.map((student, index) => (
                           <tr key={student.id}>
                             <td className="number-cell">
@@ -1879,14 +1907,21 @@ export function App() {
                   required
                   maxLength={80}
                   autoFocus
-                  defaultValue={snapshot.classes.find((item) => item.id === modal.id)?.name ?? ''}
+                  value={classNameInput}
+                  onChange={(event) => setClassNameInput(event.target.value)}
+                  aria-describedby="class-name-hint"
                 />
               </label>
+              {!classNameInput.trim() && (
+                <p id="class-name-hint" className="field-hint" role="status">
+                  请输入班级名称，不能只填写空格。
+                </p>
+              )}
               <div className="dialog-actions">
                 <button type="button" disabled={busy} onClick={() => setModal(undefined)}>
                   取消
                 </button>
-                <button className="primary" disabled={busy}>
+                <button className="primary" disabled={busy || !classNameInput.trim()}>
                   保存班级
                 </button>
               </div>
