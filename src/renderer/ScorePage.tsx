@@ -58,10 +58,12 @@ export function ScorePage({
   const updateExplanationDirty = useCallback(
     (dirty: boolean) => {
       setExplanationDirty(dirty);
-      onDirtyChange(dirty);
     },
     [onDirtyChange],
   );
+  useEffect(() => {
+    onDirtyChange(Boolean(draft) || explanationDirty || Boolean(busy));
+  }, [draft, explanationDirty, busy, onDirtyChange]);
   useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
 
   async function run<T>(label: string, work: () => Promise<Result<T>>, accept: (value: T) => void) {
@@ -127,7 +129,7 @@ export function ScorePage({
       locked.current = false;
       void api.cancelScorePreview({ epoch: snapshot.epoch }).catch(() => {});
     };
-  }, [api, snapshot, selectedClass, initialVersionId]);
+  }, [api, snapshot.epoch, selectedClass, initialVersionId]);
 
   useEffect(() => {
     if (!preview?.expiresAt) return;

@@ -43,20 +43,7 @@ export function validateTeachingRecords(db: DatabaseSync): void {
     throw new DomainError('BACKUP_INVALID', '教学记录与版本历史不一致，已拒绝打开。');
   };
   const records = new Map<string, TeachingRecord>();
-  for (const row of db.prepare('SELECT * FROM teaching_records').all()) {
-    const record = parseTeachingRecord(JSON.parse(String(row.payload)));
-    if (
-      record.id !== row.id ||
-      record.classId !== row.class_id ||
-      record.kind !== row.kind ||
-      record.revision !== row.revision ||
-      Number(record.deleted) !== row.deleted ||
-      record.createdAt !== row.created_at ||
-      record.updatedAt !== row.updated_at ||
-      record.createdAt > record.updatedAt
-    )
-      invalid();
-    records.set(record.id, record);
+  const validateReferences = (record: TeachingRecord) => {
     const content = record.content;
     const studentIds =
       'studentId' in content
@@ -87,6 +74,22 @@ export function validateTeachingRecords(db: DatabaseSync): void {
         .get(content.examId, record.classId)
     )
       invalid();
+  };
+  for (const row of db.prepare('SELECT * FROM teaching_records').all()) {
+    const record = parseTeachingRecord(JSON.parse(String(row.payload)));
+    if (
+      record.id !== row.id ||
+      record.classId !== row.class_id ||
+      record.kind !== row.kind ||
+      record.revision !== row.revision ||
+      Number(record.deleted) !== row.deleted ||
+      record.createdAt !== row.created_at ||
+      record.updatedAt !== row.updated_at ||
+      record.createdAt > record.updatedAt
+    )
+      invalid();
+    records.set(record.id, record);
+    validateReferences(record);
   }
   const history = new Map<string, TeachingRecord[]>();
   for (const row of db
@@ -108,7 +111,8 @@ export function validateTeachingRecords(db: DatabaseSync): void {
     )
       invalid();
     const versions = history.get(record.id) ?? [];
-    if (record.revision !== versions.length + 1) invalid();
+    if (record.revision !== versions.length + 1 || record.createdAt > record.updatedAt) invalid();
+    validateReferences(record);
     versions.push(record);
     history.set(record.id, versions);
   }
@@ -263,7 +267,7 @@ export class TeachingBook {
         )
       )
         throw new DomainError('VALIDATION', '学生扩展资料已存在，请编辑原记录。');
-      const now = new Date().toISOString();
+      const now = new Date(Math.max(Date.now(), old ? Date.parse(old.updatedAt) : 0)).toISOString();
       return this.write(
         {
           id: input.id ?? randomUUID(),
@@ -297,7 +301,7 @@ export class TeachingBook {
           ...old,
           revision: old.revision + 1,
           deleted: input.deleted,
-          updatedAt: new Date().toISOString(),
+          updatedAt: new Date(Math.max(Date.now(), Date.parse(old.updatedAt))).toISOString(),
         },
         input.requestId,
         hash,
@@ -320,7 +324,10 @@ export class TeachingBook {
     return settings;
   }
   due(raw: unknown): TeachingRecord[] {
-    const { epoch, now } = z.object({ epoch: z.uuid(), now: z.iso.datetime() }).strict().parse(raw);
+    const { epoch, now, since } = z
+      .object({ epoch: z.uuid(), now: z.iso.datetime(), since: z.iso.datetime().optional() })
+      .strict()
+      .parse(raw);
     this.guard(epoch);
     return this.list({ epoch }).filter((r) => {
       if ((r.kind !== 'todo' && r.kind !== 'reminder') || !('dueAt' in r.content) || r.content.done)
@@ -329,7 +336,11 @@ export class TeachingBook {
       const receipt = this.db
         .prepare('SELECT due_at FROM teaching_reminder_receipts WHERE record_id=?')
         .get(r.id);
-      return delta >= 0 && delta <= 60000 && receipt?.due_at !== r.content.dueAt;
+      return (
+        delta >= 0 &&
+        (!since || Date.parse(r.content.dueAt) >= Date.parse(since)) &&
+        receipt?.due_at !== r.content.dueAt
+      );
     });
   }
   acknowledge(raw: unknown): void {

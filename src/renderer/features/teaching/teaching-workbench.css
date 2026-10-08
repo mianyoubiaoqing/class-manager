@@ -884,3 +884,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.tw-dialog > .tw-dialog-body {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}

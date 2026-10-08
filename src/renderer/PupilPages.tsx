@@ -55,6 +55,9 @@ export function AttendancePage({
     running = useRef(false),
     saveId = useRef<string | undefined>(undefined);
   useEffect(() => {
+    setClassId(selectedClass === 'all' ? (snapshot.classes[0]?.id ?? '') : selectedClass);
+  }, [selectedClass, snapshot.epoch]);
+  useEffect(() => {
     onDirtyChange(dirty || busy || review);
     return () => onDirtyChange(false);
   }, [dirty, busy, review, onDirtyChange]);

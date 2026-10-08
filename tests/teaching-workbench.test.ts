@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import { Workspace } from '../src/core/workspace';
 import { openDatabase, validateDatabase, SCHEMA_VERSION } from '../src/core/database';
 import { teachingSchemaStatements } from '../src/core/teaching-book';
@@ -10,8 +10,89 @@ import { orderSeating, unassignSeating } from '../src/core/seating';
 const spaces: Workspace[] = [],
   roots: string[] = [];
 afterEach(() => {
+  vi.useRealTimers();
   spaces.splice(0).forEach((w) => w.close());
   roots.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true }));
+});
+
+test('record edits, deletion and restoration remain reopenable after clock rollback', () => {
+  const f = fixture();
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-10-08T10:00:00Z'));
+  let record = f.workspace.teaching.save(f.command);
+  vi.setSystemTime(new Date('2026-10-07T10:00:00Z'));
+  record = f.workspace.teaching.save({
+    ...f.command,
+    id: record.id,
+    expectedRevision: 1,
+    requestId: randomUUID(),
+  });
+  expect(record.updatedAt >= record.createdAt).toBe(true);
+  record = f.workspace.teaching.remove({
+    epoch: f.snapshot.epoch,
+    id: record.id,
+    expectedRevision: 2,
+    deleted: true,
+    requestId: randomUUID(),
+  });
+  record = f.workspace.teaching.remove({
+    epoch: f.snapshot.epoch,
+    id: record.id,
+    expectedRevision: 3,
+    deleted: false,
+    requestId: randomUUID(),
+  });
+  f.workspace.close();
+  spaces.splice(spaces.indexOf(f.workspace), 1);
+  const reopened = new Workspace(f.root);
+  spaces.push(reopened);
+  expect(reopened.teaching.list({ epoch: reopened.snapshot().epoch })[0]).toEqual(record);
+});
+
+test('historical student references are validated even after the current record is corrected', () => {
+  const f = fixture();
+  const record = f.workspace.teaching.save(f.command);
+  f.workspace.teaching.save({
+    ...f.command,
+    id: record.id,
+    expectedRevision: 1,
+    requestId: randomUUID(),
+    content: { ...f.command.content, content: '更正内容' },
+  });
+  const pointer = JSON.parse(readFileSync(join(f.root, 'current.json'), 'utf8'));
+  f.workspace.close();
+  spaces.splice(spaces.indexOf(f.workspace), 1);
+  const db = openDatabase(join(f.root, 'workspaces', pointer.workspaceId, 'data.sqlite'), 'open');
+  const row = db
+    .prepare('SELECT payload FROM teaching_record_revisions WHERE record_id=? AND revision=1')
+    .get(record.id)!;
+  const historical = JSON.parse(String(row.payload));
+  historical.content.studentId = randomUUID();
+  db.prepare('UPDATE teaching_record_revisions SET payload=? WHERE record_id=? AND revision=1').run(
+    JSON.stringify(historical),
+    record.id,
+  );
+  try {
+    expect(() => validateDatabase(db)).toThrow(/不一致/);
+  } finally {
+    db.close();
+  }
+});
+
+test('reminders catch up after long operations but exclude dates before this launch', () => {
+  const f = fixture();
+  const since = '2026-10-08T09:00:00Z',
+    dueAt = '2026-10-08T10:00:00Z';
+  const reminder = f.workspace.teaching.save({
+    ...f.command,
+    kind: 'reminder',
+    content: { text: '稍后提醒', dueAt, priority: 'medium', done: false },
+  });
+  const input = { epoch: f.snapshot.epoch, since, now: '2026-10-08T10:05:00Z' };
+  expect(f.workspace.teaching.due(input).map((r) => r.id)).toEqual([reminder.id]);
+  expect(f.workspace.teaching.due({ ...input, since: '2026-10-08T10:01:00Z' })).toEqual([]);
+  f.workspace.teaching.acknowledge({ epoch: f.snapshot.epoch, id: reminder.id, dueAt });
+  expect(f.workspace.teaching.due(input)).toEqual([]);
 });
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'cm-teaching-'));

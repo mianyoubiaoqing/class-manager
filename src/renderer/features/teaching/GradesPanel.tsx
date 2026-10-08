@@ -46,6 +46,14 @@ export function GradesPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [archive, setArchive] = useState<ScoreVersionView>();
+  const [importDirty, setImportDirty] = useState(false);
+  const [pendingTab, setPendingTab] = useState<typeof tab>();
+  const [reloadError, setReloadError] = useState('');
+  function changeTab(next: typeof tab) {
+    if (next === tab || busy) return;
+    if (importDirty || draft) setPendingTab(next);
+    else setTab(next);
+  }
   const archivedIds = new Set(
     records
       .filter((r) => r.kind === 'examArchive' && 'archived' in r.content && r.content.archived)
@@ -54,9 +62,9 @@ export function GradesPanel({
   const visible = exams.filter((v) => archivedIds.has(v.record.examId) === archived),
     view = visible.find((v) => v.record.id === selected) ?? visible[0];
   useEffect(() => {
-    onDirtyChange(Boolean(draft));
+    onDirtyChange(Boolean(draft) || importDirty || busy);
     return () => onDirtyChange(false);
-  }, [draft, onDirtyChange]);
+  }, [draft, importDirty, busy, onDirtyChange]);
   function edit(v?: ScoreVersionView) {
     const d = v ? correctionDraft(snapshot.epoch, classId, v) : newExam(snapshot, classId);
     d.configuration.scoreBasis = 'raw';
@@ -98,7 +106,7 @@ export function GradesPanel({
           const value = cells[cellKey(s.studentId, subject.id)]?.trim() ?? '';
           if (
             value &&
-            !['缺考', '缺失', '未选科'].includes(value) &&
+            !['缺考', '缺失', '未录入', '未选科', '未选考'].includes(value) &&
             (!/^\d+(\.\d{1,2})?$/.test(value) || Number(value) > Number(subject.maxScore))
           ) {
             setError(
@@ -114,7 +122,10 @@ export function GradesPanel({
           s.studentNumber,
           s.displayName,
           classroom.name,
-          ...c.subjects.map((sub) => cells[cellKey(s.studentId, sub.id)] ?? ''),
+          ...c.subjects.map((sub) => {
+            const value = cells[cellKey(s.studentId, sub.id)]?.trim() ?? '';
+            return ({ 缺失: '未录入', 未选科: '未选考' } as Record<string, string>)[value] ?? value;
+          }),
         ]),
       ]
         .map((row) => row.map(csvCell).join(','))
@@ -129,7 +140,14 @@ export function GradesPanel({
         setError(r.error.message);
         throw new Error(r.error.message);
       }
-      await refresh();
+      setDraft(undefined);
+      setTab('analysis');
+      setReloadError('');
+      try {
+        await refresh();
+      } catch {
+        setReloadError('成绩已保存，考试列表读取失败。请重新读取，不要重复提交。');
+      }
       return true;
     }, '成绩已确认保存');
     setBusy(false);
@@ -141,16 +159,54 @@ export function GradesPanel({
   return (
     <>
       <div className="tw-tabs">
-        <button className={tab === 'manage' ? 'active' : ''} onClick={() => setTab('manage')}>
+        <button className={tab === 'manage' ? 'active' : ''} onClick={() => changeTab('manage')}>
           考试管理
         </button>
-        <button className={tab === 'analysis' ? 'active' : ''} onClick={() => setTab('analysis')}>
+        <button
+          className={tab === 'analysis' ? 'active' : ''}
+          onClick={() => changeTab('analysis')}
+        >
           多维度分析
         </button>
-        <button className={tab === 'import' ? 'active' : ''} onClick={() => setTab('import')}>
+        <button className={tab === 'import' ? 'active' : ''} onClick={() => changeTab('import')}>
           文件导入
         </button>
       </div>
+      {reloadError && (
+        <div role="alert">
+          <p>{reloadError}</p>
+          <button
+            onClick={() =>
+              void execute(async () => {
+                await refresh();
+                setReloadError('');
+                return true;
+              })
+            }
+          >
+            重新读取考试列表
+          </button>
+        </div>
+      )}
+      {pendingTab && (
+        <TeachingDialog title="离开当前编辑？" onClose={() => setPendingTab(undefined)}>
+          <p>未保存的考试导入内容会丢失。</p>
+          <footer>
+            <button onClick={() => setPendingTab(undefined)}>继续编辑</button>
+            <button
+              className="danger"
+              onClick={() => {
+                setDraft(undefined);
+                setImportDirty(false);
+                setTab(pendingTab);
+                setPendingTab(undefined);
+              }}
+            >
+              放弃修改并离开
+            </button>
+          </footer>
+        </TeachingDialog>
+      )}
       {tab === 'import' ? (
         <>
           <p className="tw-hint">
@@ -160,7 +216,7 @@ export function GradesPanel({
             key={classId}
             snapshot={snapshot}
             selectedClass={classId}
-            onDirtyChange={onDirtyChange}
+            onDirtyChange={setImportDirty}
             navigationBusy={busy}
             onRoster={onStudents}
           />
@@ -177,7 +233,7 @@ export function GradesPanel({
               <Plus size={16} />
               新增考试与录入
             </button>
-            <button onClick={() => setTab('import')}>
+            <button onClick={() => changeTab('import')}>
               <FileUp size={16} />
               导入成绩文件
             </button>

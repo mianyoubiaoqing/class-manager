@@ -1,6 +1,7 @@
 import { fork } from 'node:child_process';
 import { z } from 'zod';
 import { DomainError } from '../core/errors';
+import { teachingReportDocument, type TeachingReportDocument } from '../shared/teaching-report';
 import {
   OFFICE_LIMITS,
   officeExportInput,
@@ -66,10 +67,25 @@ export class OfficeTaskRunner {
     rawOptions: OfficeExportInput,
     signal?: AbortSignal,
   ): Promise<{ bytes: Buffer; pages: number | null }> {
-    if (this.closed) throw new DomainError('EXPORT_CLOSED', '导出服务已关闭。');
-    if (this.active) throw new DomainError('BUSY', 'Office 导出尚未结束。');
     const snapshot = officeSnapshotSchema.parse(rawSnapshot);
     const options = officeExportInput.parse(rawOptions);
+    return this.run({ snapshot, options }, options.format, signal);
+  }
+  async generateTeachingReport(
+    raw: TeachingReportDocument,
+    signal?: AbortSignal,
+  ): Promise<{ bytes: Buffer; pages: number | null }> {
+    const report = teachingReportDocument.parse(raw);
+    return this.run({ report }, report.format, signal);
+  }
+  private async run(
+    input:
+      { snapshot: OfficeSnapshot; options: OfficeExportInput } | { report: TeachingReportDocument },
+    format: 'docx' | 'pptx' | 'xlsx',
+    signal?: AbortSignal,
+  ): Promise<{ bytes: Buffer; pages: number | null }> {
+    if (this.closed) throw new DomainError('EXPORT_CLOSED', '导出服务已关闭。');
+    if (this.active) throw new DomainError('BUSY', 'Office 导出尚未结束。');
     if (signal?.aborted) throw new DomainError('EXPORT_CANCELLED', 'Office 导出已取消。');
     const env: NodeJS.ProcessEnv = { ELECTRON_RUN_AS_NODE: '1' };
     for (const name of ['SystemRoot', 'WINDIR', 'PATH', 'TEMP', 'TMP'])
@@ -111,8 +127,7 @@ export class OfficeTaskRunner {
           error = new DomainError(result.data.error.code, result.data.error.message);
           return;
         }
-        if ((options.format === 'docx') !== (result.data.value.pages === null))
-          return stop(failed());
+        if ((format !== 'pptx') !== (result.data.value.pages === null)) return stop(failed());
         value = result.data.value;
       });
       child.once('error', () => stop(failed()));
@@ -125,7 +140,7 @@ export class OfficeTaskRunner {
         else if (code !== 0 || !value) reject(failed());
         else resolve(value);
       });
-      child.send({ snapshot, options }, (error) => {
+      child.send(input, (error) => {
         if (error) stop(failed());
       });
       if (signal?.aborted) cancel();

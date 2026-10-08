@@ -145,6 +145,31 @@ export function SeatingPanel({
   return (
     <>
       <div className="tw-toolbar">
+        {history.length > 0 && (
+          <label>
+            座位表历史
+            <select
+              aria-label="座位表历史"
+              value={version?.record.id ?? ''}
+              disabled={busy || Boolean(draft)}
+              onChange={(e) => {
+                const versionId = e.target.value;
+                void run(async () => {
+                  const r = await api.readSeatingVersion({ epoch: snapshot.epoch, versionId });
+                  if (!r.ok) throw new Error(r.error.message);
+                  setVersion(r.value);
+                  return true;
+                });
+              }}
+            >
+              {history.map((v) => (
+                <option key={v.id} value={v.id}>
+                  第 {v.revision} 版 · {new Date(v.createdAt).toLocaleString('zh-CN')}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label>
           行数
           <input
@@ -206,6 +231,7 @@ export function SeatingPanel({
                     reason: '工作台确认座位编排',
                   });
                   if (!r.ok) throw new Error(r.error.message);
+                  setDraft(undefined);
                   const h = await api.seatingHistory({ epoch: snapshot.epoch, classId });
                   const v = await api.readSeatingVersion({
                     epoch: snapshot.epoch,
@@ -262,6 +288,10 @@ export function SeatingPanel({
         />
       </div>
       <p className="tw-hint">
+        {version &&
+          !draft &&
+          version.record.id !== history[0]?.id &&
+          '正在预览历史版本；“调整座位”会从最新版本开始，历史记录不会被覆盖。'}
         {draft
           ? '拖动可交换座位，双击可指派学生或清空座位。所有学生安排完成后点击“确认保存”。'
           : '点击“调整座位”进入编排；未保存的调整不会改变已确认座位表。'}

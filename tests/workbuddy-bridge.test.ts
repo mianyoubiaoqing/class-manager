@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { buildSync } from 'esbuild';
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import { Workspace } from '../src/core/workspace';
 import { WorkBuddyBridge } from '../src/main/workbuddy-bridge';
 import { nodeBundleOptions } from '../scripts/node-bundle-options';
@@ -13,9 +13,28 @@ const roots: string[] = [],
   spaces: Workspace[] = [],
   bridges: WorkBuddyBridge[] = [];
 afterEach(() => {
+  vi.useRealTimers();
   bridges.splice(0).forEach((b) => b.close());
   spaces.splice(0).forEach((w) => w.close());
   roots.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true }));
+});
+
+test('disconnect and idle expiry release MCP sessions across more than 32 reconnects', async () => {
+  const f = await fixture();
+  for (let i = 0; i < 40; i++) {
+    const client = randomUUID();
+    expect(
+      await f.bridge.rpc({ jsonrpc: '2.0', id: i, method: 'initialize' }, client),
+    ).toHaveProperty('result');
+    await f.bridge.rpc({ jsonrpc: '2.0', method: 'notifications/disconnected' }, client);
+  }
+  vi.useFakeTimers();
+  for (let i = 0; i < 30; i++)
+    await f.bridge.rpc({ jsonrpc: '2.0', id: i, method: 'initialize' }, randomUUID());
+  vi.setSystemTime(Date.now() + 10 * 60 * 1000);
+  expect(
+    await f.bridge.rpc({ jsonrpc: '2.0', id: 100, method: 'initialize' }, randomUUID()),
+  ).toHaveProperty('result');
 });
 async function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'cm-mcp-'));

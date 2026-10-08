@@ -16,6 +16,7 @@ import { SeatingPanel } from './SeatingPanel';
 import { WorkBuddyPanel } from './WorkBuddyPanel';
 import { TeachingDialog } from './TeachingDialog';
 import { today, recordTitle } from './record-fields';
+import { withinLocalDays } from './date-range';
 import './teaching-workbench.css';
 const NAV = [
   ['dash', '📊', '仪表盘'],
@@ -96,6 +97,18 @@ export function TeachingWorkbench({
   const [clock, setClock] = useState(new Date());
   const locked = useRef(false),
     scope = useRef({ epoch: snapshot.epoch, classId });
+  const alive = useRef(true),
+    refreshRequest = useRef(0);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      refreshRequest.current++;
+    };
+  }, []);
+  useEffect(() => {
+    if (snapshot.classes.some((c) => c.id === selectedClass)) setClassId(selectedClass);
+  }, [selectedClass, snapshot.epoch]);
   scope.current = { epoch: snapshot.epoch, classId };
   const execute: Execute = useCallback(async <T,>(work: () => Promise<T>, success?: string) => {
     if (locked.current) return undefined;
@@ -119,6 +132,7 @@ export function TeachingWorkbench({
     }
   }, []);
   const refresh = useCallback(async () => {
+    const serial = ++refreshRequest.current;
     const epoch = snapshot.epoch,
       id = classId;
     if (!id) {
@@ -131,6 +145,13 @@ export function TeachingWorkbench({
       api.readTeachingSettings({ epoch }),
       api.snapshot(),
     ]);
+    if (
+      !alive.current ||
+      serial !== refreshRequest.current ||
+      scope.current.epoch !== epoch ||
+      scope.current.classId !== id
+    )
+      return;
     const views: ScoreVersionView[] = [];
     const list = take(examList);
     for (let start = 0; start < list.length; start += 10) {
@@ -141,7 +162,14 @@ export function TeachingWorkbench({
       );
       batch.forEach((r) => views.push(take(r)));
     }
-    if (scope.current.epoch !== epoch || scope.current.classId !== id) return;
+    if (
+      !alive.current ||
+      serial !== refreshRequest.current ||
+      scope.current.epoch !== epoch ||
+      scope.current.classId !== id
+    )
+      return;
+    if (take(current).epoch !== epoch) return;
     setRecords(take(data));
     setExams(
       views.sort((a, b) => b.payload.definition.date.localeCompare(a.payload.definition.date)),
@@ -150,15 +178,23 @@ export function TeachingWorkbench({
     onSnapshot(take(current));
   }, [api, classId, snapshot.epoch, onSnapshot]);
   useEffect(() => {
+    let active = true;
     setRecords([]);
     setExams([]);
     setLoading(true);
     void refresh()
       .catch((e) => {
+        if (!active) return;
         setMessage(e instanceof Error ? e.message : '资料读取失败。');
         setError(true);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+      refreshRequest.current++;
+    };
   }, [refresh]);
   useEffect(() => {
     const changed = () => {
@@ -172,13 +208,10 @@ export function TeachingWorkbench({
     return () => clearInterval(timer);
   }, []);
   useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
-  const updateDirty = useCallback(
-    (v: boolean) => {
-      setDirty(v);
-      onDirtyChange(v);
-    },
-    [onDirtyChange],
-  );
+  useEffect(() => {
+    onDirtyChange(dirty || busy || Boolean(classForm));
+  }, [dirty, busy, classForm, onDirtyChange]);
+  const updateDirty = useCallback((v: boolean) => setDirty(v), []);
   const move = (action: () => void) => {
     if (dirty) setPending(() => action);
     else action();
@@ -221,9 +254,7 @@ export function TeachingWorkbench({
   return (
     <section className="teaching-workbench" aria-label="班级教学工作台">
       <aside className={`tw-nav ${mobile ? 'open' : ''}`}>
-        <button className="tw-brand" onClick={() => go('dash')}>
-          🌿 班级教学工作台
-        </button>
+        <div className="tw-brand">🌿 班级教学工作台</div>
         <nav aria-label="班级教学功能">
           {NAV.map(([id, icon, label]) => (
             <button
@@ -240,9 +271,6 @@ export function TeachingWorkbench({
           ))}
         </nav>
         <nav aria-label="教师备课功能">
-          <button onClick={() => go('dash')} aria-label="班级教学工作台" disabled={busy}>
-            📊 工作台首页
-          </button>
           {(
             [
               ['resources', '📚', '资源平台'],
@@ -285,13 +313,14 @@ export function TeachingWorkbench({
             aria-label="教学工作台当前班级"
             value={classId}
             disabled={busy}
-            onChange={(e) =>
+            onChange={(e) => {
+              const targetClass = e.target.value;
               move(() => {
                 if (tool && !onNavigate('teaching')) return;
-                setClassId(e.target.value);
-                onSelectClass(e.target.value);
-              })
-            }
+                setClassId(targetClass);
+                onSelectClass(targetClass);
+              });
+            }}
           >
             <option value="">请选择班级</option>
             {snapshot.classes.map((c) => (
@@ -566,10 +595,10 @@ function Dashboard({
 }) {
   const active = snapshot.students.filter((s) => s.active && s.classId === classId).length;
   const now = Date.now();
-  const within = (r: TeachingRecord, days: number) =>
-    'date' in r.content &&
-    Date.parse(r.content.date) <= now &&
-    Date.parse(r.content.date) >= now - days * 86400000;
+  const within = (r: TeachingRecord, days: number) => {
+    if (!('date' in r.content)) return false;
+    return withinLocalDays(r.content.date, days, new Date(now));
+  };
   const openTasks = records.filter(
     (r) => (r.kind === 'todo' || r.kind === 'reminder') && 'done' in r.content && !r.content.done,
   );

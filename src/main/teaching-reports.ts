@@ -1,14 +1,4 @@
-import {
-  Document,
-  Packer,
-  Paragraph,
-  Table,
-  TableCell,
-  TableRow,
-  WidthType,
-  HeadingLevel,
-} from 'docx';
-import ExcelJS from 'exceljs';
+import type { OfficeTaskRunner } from './office-task';
 import type { Snapshot } from '../shared/contracts';
 import { teachingExportInput, type TeachingRecord } from '../shared/teaching-workbench';
 import type { ScoreVersionView, ExamSummary } from '../shared/score-commands';
@@ -75,6 +65,7 @@ const values: Record<string, string> = {
 export async function teachingReport(
   worker: WorkerClient,
   raw: unknown,
+  generator: Pick<OfficeTaskRunner, 'generateTeachingReport'>,
 ): Promise<{ bytes: Uint8Array; name: string; extension: 'docx' | 'xlsx' }> {
   const input = teachingExportInput.parse(raw);
   async function call<T>(operation: WorkerOperation, args: unknown): Promise<T> {
@@ -219,45 +210,13 @@ export async function teachingReport(
   }
   if ((await call<Snapshot>('snapshot', undefined)).epoch !== input.epoch)
     throw new DomainError('STALE_WORKSPACE', '工作区已变化，请重新导出。');
-  let bytes: Uint8Array;
-  if (input.format === 'xlsx') {
-    const book = new ExcelJS.Workbook();
-    const sheet = book.addWorksheet('工作台资料');
-    sheet.addRows(rows);
-    sheet.getRow(1).font = { bold: true };
-    sheet.columns.forEach((col) => {
-      col.width = 24;
-    });
-    bytes = new Uint8Array(await book.xlsx.writeBuffer());
-  } else {
-    const document = new Document({
-      sections: [
-        {
-          children: [
-            new Paragraph({ text: `${classroom.name} · ${title}`, heading: HeadingLevel.TITLE }),
-            new Paragraph(
-              `导出日期：${new Date().toLocaleDateString('zh-CN')}  数据来源：本地工作台`,
-            ),
-            new Table({
-              width: { size: 100, type: WidthType.PERCENTAGE },
-              rows: rows.map(
-                (row) =>
-                  new TableRow({
-                    children: row.map(
-                      (text) =>
-                        new TableCell({
-                          children: text.split('\n').map((line) => new Paragraph(line)),
-                        }),
-                    ),
-                  }),
-              ),
-            }),
-          ],
-        },
-      ],
-    });
-    bytes = await Packer.toBuffer(document);
-  }
+  const { bytes } = await generator.generateTeachingReport({
+    title: `${classroom.name} · ${title}`,
+    rows,
+    format: input.format,
+  });
+  if ((await call<Snapshot>('snapshot', undefined)).epoch !== input.epoch)
+    throw new DomainError('STALE_WORKSPACE', '工作区已变化，请重新导出。');
   return {
     bytes,
     name:

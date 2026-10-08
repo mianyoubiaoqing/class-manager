@@ -30,6 +30,15 @@ const modelImageSchema = z
     mime: z.literal('image/jpeg'),
   })
   .strict();
+const teachingPhotoSchema = modelImageSchema.extend({
+  mime: z.literal('image/png'),
+  width: z.number().int().positive().max(1800),
+  height: z.number().int().positive().max(1800),
+  bytes: z
+    .instanceof(Buffer)
+    .refine((bytes) => bytes.length > 0 && bytes.length <= 5 * 1024 * 1024),
+});
+type TeachingPhoto = z.infer<typeof teachingPhotoSchema>;
 const replySchema = z.discriminatedUnion('ok', [
   z
     .object({
@@ -49,6 +58,7 @@ const replySchema = z.discriminatedUnion('ok', [
           })
           .strict(),
         modelImageSchema,
+        teachingPhotoSchema,
         modelImageSchema
           .extend({
             transformHash: z.string().regex(/^[a-f0-9]{64}$/),
@@ -115,8 +125,14 @@ export class MaterialTaskRunner {
 
   async modelImage(bytes: Buffer, signal?: AbortSignal): Promise<ModelImage> {
     const value = await this.run(bytes, 'model-image', signal);
-    if ('version' in value || 'transformHash' in value) throw failure();
+    if ('version' in value || 'transformHash' in value || value.mime !== 'image/jpeg')
+      throw failure();
     return value;
+  }
+  async teachingPhoto(bytes: Buffer, signal?: AbortSignal): Promise<Buffer> {
+    const value = await this.run(bytes, 'teaching-photo', signal);
+    if ('version' in value || value.mime !== 'image/png') throw failure();
+    return value.bytes;
   }
 
   /**
@@ -127,16 +143,17 @@ export class MaterialTaskRunner {
   async gradingImage(bytes: Buffer, raw: unknown, signal?: AbortSignal): Promise<GradingImage> {
     const transform = gradingTransformSchema.parse(raw);
     const value = await this.run(bytes, 'grading-image', signal, transform);
-    if ('version' in value || !('transformHash' in value)) throw failure();
+    if ('version' in value || !('transformHash' in value) || value.mime !== 'image/jpeg')
+      throw failure();
     return value;
   }
 
   private async run(
     bytes: Buffer,
-    format: MaterialVersion['format'] | 'model-image' | 'grading-image',
+    format: MaterialVersion['format'] | 'model-image' | 'grading-image' | 'teaching-photo',
     signal?: AbortSignal,
     transform?: GradingTransform,
-  ): Promise<ParsedMaterial | ModelImage | GradingImage> {
+  ): Promise<ParsedMaterial | ModelImage | GradingImage | TeachingPhoto> {
     if (this.closed) throw new DomainError('MATERIAL_TASK_CLOSED', '资料服务已关闭。');
     if (this.active)
       throw new DomainError('MATERIAL_TASK_BUSY', '已有资料正在解析，请等待或取消。');
@@ -147,7 +164,16 @@ export class MaterialTaskRunner {
         (format === 'model-image' || format === 'grading-image'
           ? MATERIAL_IMAGE_LIMITS.outputBytes
           : LESSON_LIMITS.fileBytes) ||
-      !['txt', 'docx', 'jpg', 'png', 'pdf', 'model-image', 'grading-image'].includes(format)
+      ![
+        'txt',
+        'docx',
+        'jpg',
+        'png',
+        'pdf',
+        'model-image',
+        'grading-image',
+        'teaching-photo',
+      ].includes(format)
     )
       throw new DomainError('MATERIAL_INVALID', '资料为空、格式不支持或超过 10 MiB。');
     if (signal?.aborted) throw new DomainError('MATERIAL_CANCELLED', '资料解析已取消。');
@@ -169,140 +195,159 @@ export class MaterialTaskRunner {
     const done = new Promise<void>((resolve) => {
       finishDone = resolve;
     });
-    return new Promise<ParsedMaterial | ModelImage | GradingImage>((resolve, reject) => {
-      let result: ParsedMaterial | ModelImage | GradingImage | undefined;
-      let error: Error | undefined;
-      let received = false;
-      const stop = (reason: Error) => {
-        error ??= reason;
-        child.kill();
-      };
-      const cancel = () => stop(new DomainError('MATERIAL_CANCELLED', '资料解析已取消。'));
-      const timer = setTimeout(
-        () => stop(new DomainError('MATERIAL_TIMEOUT', '资料解析超时，请拆分资料后重试。')),
-        this.timeoutMs,
-      );
-      this.active = { child, cancel, done };
-      signal?.addEventListener('abort', cancel, { once: true });
-      child.on('message', (raw: unknown) => {
-        if (error) return;
-        if (received) {
-          stop(failure());
-          return;
-        }
-        received = true;
-        const parsed = replySchema.safeParse(raw);
-        if (!parsed.success) {
-          stop(failure());
-          return;
-        }
-        if (!parsed.data.ok) {
-          error = new DomainError(parsed.data.error.code, parsed.data.error.message);
-          return;
-        }
-        const value = parsed.data.value;
-        if (format === 'model-image' || format === 'grading-image') {
-          if (
-            'version' in value ||
-            value.inputHash !== expectedHash ||
-            !value.bytes.subarray(0, 3).equals(Buffer.from([255, 216, 255])) ||
-            !value.bytes.subarray(-2).equals(Buffer.from([255, 217]))
-          ) {
+    return new Promise<ParsedMaterial | ModelImage | GradingImage | TeachingPhoto>(
+      (resolve, reject) => {
+        let result: ParsedMaterial | ModelImage | GradingImage | TeachingPhoto | undefined;
+        let error: Error | undefined;
+        let received = false;
+        const stop = (reason: Error) => {
+          error ??= reason;
+          child.kill();
+        };
+        const cancel = () => stop(new DomainError('MATERIAL_CANCELLED', '资料解析已取消。'));
+        const timer = setTimeout(
+          () => stop(new DomainError('MATERIAL_TIMEOUT', '资料解析超时，请拆分资料后重试。')),
+          this.timeoutMs,
+        );
+        this.active = { child, cancel, done };
+        signal?.addEventListener('abort', cancel, { once: true });
+        child.on('message', (raw: unknown) => {
+          if (error) return;
+          if (received) {
             stop(failure());
             return;
           }
-          if (format === 'grading-image') {
+          received = true;
+          const parsed = replySchema.safeParse(raw);
+          if (!parsed.success) {
+            stop(failure());
+            return;
+          }
+          if (!parsed.data.ok) {
+            error = new DomainError(parsed.data.error.code, parsed.data.error.message);
+            return;
+          }
+          const value = parsed.data.value;
+          if (format === 'teaching-photo') {
             if (
-              !transform ||
-              !('transformHash' in value) ||
-              value.transformHash !== gradingTransformHash(expectedHash, transform) ||
-              JSON.stringify(value.crop) !==
-                JSON.stringify(
-                  gradingEffectiveCrop(transform.page, transform.width, transform.height),
-                )
+              'version' in value ||
+              value.mime !== 'image/png' ||
+              value.inputHash !== expectedHash ||
+              !value.bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
             ) {
               stop(failure());
               return;
             }
-          } else if ('transformHash' in value) {
+            result = value;
+            return;
+          }
+          if (!('version' in value) && value.mime === 'image/png') {
+            stop(failure());
+            return;
+          }
+          if (format === 'model-image' || format === 'grading-image') {
+            if (
+              'version' in value ||
+              value.inputHash !== expectedHash ||
+              !value.bytes.subarray(0, 3).equals(Buffer.from([255, 216, 255])) ||
+              !value.bytes.subarray(-2).equals(Buffer.from([255, 217]))
+            ) {
+              stop(failure());
+              return;
+            }
+            if (format === 'grading-image') {
+              if (
+                !transform ||
+                !('transformHash' in value) ||
+                value.transformHash !== gradingTransformHash(expectedHash, transform) ||
+                JSON.stringify(value.crop) !==
+                  JSON.stringify(
+                    gradingEffectiveCrop(transform.page, transform.width, transform.height),
+                  )
+              ) {
+                stop(failure());
+                return;
+              }
+            } else if ('transformHash' in value) {
+              stop(failure());
+              return;
+            }
+            result = value;
+            return;
+          }
+          if (!('version' in value)) {
+            stop(failure());
+            return;
+          }
+          const { version, assets } = value;
+          const byId = new Map(assets.map((asset) => [asset.id, asset]));
+          const original = byId.get(version.originalAssetId);
+          const imageIds = new Set(
+            version.fragments.flatMap((fragment) =>
+              fragment.kind === 'image' ? [fragment.assetId] : [],
+            ),
+          );
+          if (
+            version.format !== format ||
+            version.sha256 !== expectedHash ||
+            version.bytes !== expectedBytes ||
+            !original ||
+            original.mime !== MATERIAL_MIME[format] ||
+            original.bytes.length !== expectedBytes ||
+            byId.size !== assets.length ||
+            assets.some((asset) => asset.bytes.length === 0) ||
+            assets.some(
+              (asset) =>
+                asset.id !== original.id &&
+                (!imageIds.has(asset.id) ||
+                  asset.mime !== 'image/png' ||
+                  asset.bytes.length > MATERIAL_IMAGE_LIMITS.outputBytes),
+            ) ||
+            assets.reduce((sum, asset) => sum + asset.bytes.length, 0) >
+              expectedBytes + MATERIAL_IMAGE_LIMITS.totalOutputBytes
+          ) {
+            stop(failure());
+            return;
+          }
+          const hashes = new Map(assets.map((asset) => [asset.id, hash(asset.bytes)]));
+          if (
+            hashes.get(original.id) !== expectedHash ||
+            version.fragments.some(
+              (fragment) =>
+                fragment.kind === 'image' &&
+                (!byId.has(fragment.assetId) ||
+                  fragment.assetId === original.id ||
+                  hashes.get(fragment.assetId) !== fragment.sha256),
+            )
+          ) {
             stop(failure());
             return;
           }
           result = value;
-          return;
-        }
-        if (!('version' in value)) {
-          stop(failure());
-          return;
-        }
-        const { version, assets } = value;
-        const byId = new Map(assets.map((asset) => [asset.id, asset]));
-        const original = byId.get(version.originalAssetId);
-        const imageIds = new Set(
-          version.fragments.flatMap((fragment) =>
-            fragment.kind === 'image' ? [fragment.assetId] : [],
-          ),
+        });
+        child.once('error', () => stop(failure()));
+        child.once('close', (code) => {
+          clearTimeout(timer);
+          signal?.removeEventListener('abort', cancel);
+          this.active = undefined;
+          finishDone();
+          if (error) reject(error);
+          else if (code !== 0 || !result) reject(failure());
+          else resolve(result);
+        });
+        child.send(
+          format === 'grading-image'
+            ? { bytes, operation: format, transform }
+            : format === 'model-image' || format === 'teaching-photo'
+              ? { bytes, operation: format }
+              : { bytes, format },
+          (sendError) => {
+            if (sendError) stop(failure());
+          },
         );
-        if (
-          version.format !== format ||
-          version.sha256 !== expectedHash ||
-          version.bytes !== expectedBytes ||
-          !original ||
-          original.mime !== MATERIAL_MIME[format] ||
-          original.bytes.length !== expectedBytes ||
-          byId.size !== assets.length ||
-          assets.some((asset) => asset.bytes.length === 0) ||
-          assets.some(
-            (asset) =>
-              asset.id !== original.id &&
-              (!imageIds.has(asset.id) ||
-                asset.mime !== 'image/png' ||
-                asset.bytes.length > MATERIAL_IMAGE_LIMITS.outputBytes),
-          ) ||
-          assets.reduce((sum, asset) => sum + asset.bytes.length, 0) >
-            expectedBytes + MATERIAL_IMAGE_LIMITS.totalOutputBytes
-        ) {
-          stop(failure());
-          return;
-        }
-        const hashes = new Map(assets.map((asset) => [asset.id, hash(asset.bytes)]));
-        if (
-          hashes.get(original.id) !== expectedHash ||
-          version.fragments.some(
-            (fragment) =>
-              fragment.kind === 'image' &&
-              (!byId.has(fragment.assetId) ||
-                fragment.assetId === original.id ||
-                hashes.get(fragment.assetId) !== fragment.sha256),
-          )
-        ) {
-          stop(failure());
-          return;
-        }
-        result = value;
-      });
-      child.once('error', () => stop(failure()));
-      child.once('close', (code) => {
-        clearTimeout(timer);
-        signal?.removeEventListener('abort', cancel);
-        this.active = undefined;
-        finishDone();
-        if (error) reject(error);
-        else if (code !== 0 || !result) reject(failure());
-        else resolve(result);
-      });
-      child.send(
-        format === 'grading-image'
-          ? { bytes, operation: format, transform }
-          : format === 'model-image'
-            ? { bytes, operation: format }
-            : { bytes, format },
-        (sendError) => {
-          if (sendError) stop(failure());
-        },
-      );
-      if (signal?.aborted) cancel();
-    });
+        if (signal?.aborted) cancel();
+      },
+    );
   }
 
   async close(): Promise<void> {

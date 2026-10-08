@@ -548,7 +548,7 @@ if (!app.requestSingleInstanceLock()) {
           case 'resolveBridgeProposal':
             return { ok: true, value: await bridge.resolve(input) };
           case 'exportTeachingReport': {
-            const report = await teachingReport(worker, input);
+            const report = await teachingReport(worker, input, officeTask);
             return save(report.bytes, report.name, report.extension);
           }
           case 'selectTeachingPhotos': {
@@ -568,11 +568,7 @@ if (!app.requestSingleInstanceLock()) {
                 throw new DomainError('VALIDATION', '单张照片须小于 10 MiB。');
               let bytes: Buffer;
               try {
-                bytes = await sharp(original, { limitInputPixels: 40000000 })
-                  .rotate()
-                  .resize({ width: 1800, height: 1800, fit: 'inside', withoutEnlargement: true })
-                  .png()
-                  .toBuffer();
+                bytes = await materialTask.teachingPhoto(original);
               } catch {
                 throw new DomainError(
                   'VALIDATION',
@@ -1416,6 +1412,7 @@ if (!app.requestSingleInstanceLock()) {
           const due = await worker.call<TeachingRecord[]>('dueTeachingReminders', {
             epoch,
             now: new Date().toISOString(),
+            since: new Date(notificationStart).toISOString(),
           });
           if (!settings.ok || !due.ok) return;
           for (const record of due.value) {

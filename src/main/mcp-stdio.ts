@@ -8,6 +8,35 @@ const client = randomUUID();
 const lines = createInterface({ input: process.stdin, crlfDelay: Infinity });
 let chain = Promise.resolve();
 let exceeded = false;
+let endpoint: { url: string; token: string } | undefined;
+const notify = async (method: string) => {
+  if (!endpoint) return;
+  await fetch(endpoint.url, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${endpoint.token}`,
+      'content-type': 'application/json',
+      'x-cm-client': client,
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      method,
+      ...(method === 'ping' ? { id: 'keepalive' } : {}),
+    }),
+    signal: AbortSignal.timeout(3000),
+    redirect: 'error',
+  })
+    .then((response) => response.body?.cancel())
+    .catch(() => {});
+};
+const heartbeat = setInterval(() => {
+  void notify('ping');
+}, 60000);
+heartbeat.unref();
+lines.once('close', () => {
+  clearInterval(heartbeat);
+  void chain.then(() => notify('notifications/disconnected'));
+});
 process.stdin.on('data', (chunk: Buffer) => {
   if (chunk.length > 256 * 1024) {
     exceeded = true;
@@ -38,6 +67,7 @@ lines.on('line', (line) => {
         !/^[a-f0-9]{64}$/.test(connection.token)
       )
         throw new Error('Invalid local endpoint');
+      endpoint = connection;
       const response = await fetch(connection.url, {
         method: 'POST',
         headers: {

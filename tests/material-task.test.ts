@@ -45,6 +45,22 @@ test('isolated child returns bounded original bytes and source metadata without 
   expect(Buffer.isBuffer(parsed.assets[0]!.bytes)).toBe(true);
 });
 
+test('teaching photos decode WebP and strip metadata in the bounded material child', async () => {
+  const instance = runner();
+  const input = await sharp({
+    create: { width: 2000, height: 1000, channels: 3, background: '#224477' },
+  })
+    .webp()
+    .toBuffer();
+  const png = await instance.teachingPhoto(input);
+  expect(await sharp(png).metadata()).toMatchObject({ format: 'png', width: 1800, height: 900 });
+  await expect(instance.teachingPhoto(Buffer.from('not an image'))).rejects.toMatchObject({
+    code: 'MATERIAL_INVALID',
+  });
+  const again = await instance.teachingPhoto(input);
+  expect(again.equals(png)).toBe(true);
+});
+
 test('native image decoding works in the spawned process and can run again after it exits', async () => {
   const instance = runner();
   const bytes = await sharp({

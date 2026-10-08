@@ -170,7 +170,7 @@ export class WorkBuddyBridge {
     string,
     BridgeProposal & { epoch: string; expires: number; channel: Channel }
   >();
-  private sessions = new Map<string, boolean>();
+  private sessions = new Map<string, { initialized: boolean; lastSeen: number }>();
   private lastConnection = 0;
   constructor(
     private readonly connectionFile: string,
@@ -257,12 +257,22 @@ export class WorkBuddyBridge {
     const parsed = payloadSchema.safeParse(raw);
     if (!parsed.success) return errorReply(null, -32600, '无效的 JSON-RPC 请求');
     const request = parsed.data;
+    const now = Date.now();
+    for (const [id, session] of this.sessions) {
+      if (now - session.lastSeen >= 5 * 60 * 1000) this.sessions.delete(id);
+    }
+    const session = this.sessions.get(client);
+    if (session) session.lastSeen = now;
+    if (request.method === 'notifications/disconnected') {
+      this.sessions.delete(client);
+      return undefined;
+    }
     const reply = (result: unknown) =>
       request.id === undefined ? undefined : { jsonrpc: '2.0', id: request.id, result };
     if (request.method === 'initialize') {
       if (this.sessions.size >= 32 && !this.sessions.has(client))
         return errorReply(request.id, -32000, '连接数量达到上限');
-      this.sessions.set(client, false);
+      this.sessions.set(client, { initialized: false, lastSeen: now });
       return reply({
         protocolVersion: '2025-06-18',
         capabilities: { tools: { listChanged: false } },
@@ -272,12 +282,13 @@ export class WorkBuddyBridge {
       });
     }
     if (request.method === 'notifications/initialized' && this.sessions.has(client)) {
-      this.sessions.set(client, true);
+      this.sessions.set(client, { initialized: true, lastSeen: now });
       return undefined;
     }
     if (request.id === undefined) return undefined;
     if (request.method === 'ping') return reply({});
-    if (!this.sessions.get(client)) return errorReply(request.id, -32002, '请先完成 MCP 初始化');
+    if (!this.sessions.get(client)?.initialized)
+      return errorReply(request.id, -32002, '请先完成 MCP 初始化');
     if (request.method === 'tools/list')
       return reply({
         tools: tools.map((t) => ({

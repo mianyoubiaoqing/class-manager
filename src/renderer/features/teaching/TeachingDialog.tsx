@@ -31,7 +31,9 @@ export function TeachingDialog({
           <X size={18} />
         </button>
       </header>
-      {children}
+      <fieldset className="tw-dialog-body" disabled={busy}>
+        {children}
+      </fieldset>
     </dialog>
   );
 }

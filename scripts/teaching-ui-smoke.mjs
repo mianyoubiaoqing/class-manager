@@ -62,7 +62,11 @@ try {
     await page.getByRole('heading', { name: heading, exact: true, level: 1 }).waitFor();
     assert.equal(await page.getByRole('region', { name: '班级教学工作台' }).count(), 1);
   }
-  await teachingTools.getByRole('button', { name: '班级教学工作台', exact: true }).click();
+  assert.equal(await workbench.getByRole('button', { name: '工作台首页', exact: true }).count(), 0);
+  await workbench
+    .getByRole('navigation', { name: '班级教学功能', exact: true })
+    .getByRole('button', { name: '仪表盘', exact: true })
+    .click();
   await workbench.getByRole('heading', { name: '从创建一个班级开始' }).waitFor();
   checks.push('four teaching tools share customer shell in an empty environment');
   await workbench.getByRole('button', { name: '创建班级', exact: true }).click();
