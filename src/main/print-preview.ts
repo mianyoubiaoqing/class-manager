@@ -39,11 +39,12 @@ export async function openPrintPreview(
   parent: BrowserWindow,
   document: PrintDocument,
   paths: { temp: string; documents: string; dataRoot: string },
-  kind: 'seating' | 'duty',
+  kind: 'seating' | 'duty' | 'resource',
   loadBatch?: (pageOffset: number) => Promise<PrintDocument>,
 ): Promise<PrintReceipt> {
-  const label = kind === 'seating' ? '座位表' : '值日表';
-  const previewLabel = kind === 'seating' ? '座位打印预览' : '值日打印预览';
+  const label = kind === 'seating' ? '座位表' : kind === 'resource' ? '教学资源' : '值日表';
+  const previewLabel =
+    kind === 'seating' ? '座位打印预览' : kind === 'resource' ? '教学资源打印预览' : '值日打印预览';
   const file = await createPrintPreviewFile(paths.temp, document.html);
   const { path } = file;
   let preview: BrowserWindow | undefined;
@@ -202,8 +203,9 @@ export async function openPrintPreview(
         const result = await new Promise<{ success: boolean; reason?: string }>(
           (resolve, reject) => {
             try {
-              window.webContents.print(DOCUMENT_PRINT_OPTIONS, (success, reason) =>
-                resolve({ success, reason }),
+              window.webContents.print(
+                { ...DOCUMENT_PRINT_OPTIONS, landscape: kind !== 'resource' },
+                (success, reason) => resolve({ success, reason }),
               );
             } catch (error) {
               reject(error);
@@ -255,7 +257,10 @@ export async function openPrintPreview(
         assertExportDestination(selected.filePath, paths.dataRoot);
         // Do not let an export overwrite the very document being previewed.
         assertExportDestination(selected.filePath, paths.temp);
-        const bytes = await window.webContents.printToPDF(DOCUMENT_PDF_OPTIONS);
+        const bytes = await window.webContents.printToPDF({
+          ...DOCUMENT_PDF_OPTIONS,
+          landscape: kind !== 'resource',
+        });
         if (ended) return;
         atomicWrite(selected.filePath, bytes);
         receipt.pdfExports++;

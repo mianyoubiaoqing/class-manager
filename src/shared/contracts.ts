@@ -1,4 +1,5 @@
 import type { TeachingApi } from './teaching-workbench';
+import type { ResourceApi } from './resource-library';
 import type {
   deviceStatusInput,
   noiseMeasureInput,
@@ -401,7 +402,7 @@ export interface DeepSeekLedgerSummary {
   recentEntries: DeepSeekCallRecord[];
 }
 
-export interface DesktopApi extends TeachingApi {
+export interface DesktopApi extends TeachingApi, ResourceApi {
   readStudentProfile(input: z.input<typeof profileReadInput>): Promise<Result<StudentProfile>>;
   saveStudentProfile(
     input: z.input<typeof profileSaveInput>,
@@ -810,6 +811,17 @@ export interface DesktopApi extends TeachingApi {
 
 // The preload exposes only these named operations, never an arbitrary IPC caller.
 export const CHANNELS = [
+  'previewResourcePrint',
+  'readResourceDocument',
+  'saveResourceDocument',
+  'listResourceAttachments',
+  'selectResourceFiles',
+  'scanResourceFolder',
+  'readResourceFolder',
+  'addResourceLink',
+  'removeResourceAttachment',
+  'openResourceAttachment',
+  'exportResourceDocument',
   'exportTeachingSeatingImage',
   'listTeachingRecords',
   'saveTeachingRecord',

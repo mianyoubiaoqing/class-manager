@@ -32,20 +32,30 @@ export async function createTeachingReportDocument(
           new Paragraph(
             `导出日期：${new Date().toLocaleDateString('zh-CN')}  数据来源：本地工作台`,
           ),
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            rows: input.rows.map(
-              (row) =>
-                new TableRow({
-                  children: row.map(
-                    (text) =>
-                      new TableCell({
-                        children: text.split('\n').map((line) => new Paragraph(line)),
+          ...(input.layout === 'paragraphs'
+            ? input.rows.flatMap((row) =>
+                row.flatMap((text) =>
+                  text
+                    .split('\n')
+                    .map((line) => new Paragraph({ text: line, spacing: { after: 120 } })),
+                ),
+              )
+            : [
+                new Table({
+                  width: { size: 100, type: WidthType.PERCENTAGE },
+                  rows: input.rows.map(
+                    (row) =>
+                      new TableRow({
+                        children: row.map(
+                          (text) =>
+                            new TableCell({
+                              children: text.split('\n').map((line) => new Paragraph(line)),
+                            }),
+                        ),
                       }),
                   ),
                 }),
-            ),
-          }),
+              ]),
         ],
       },
     ],

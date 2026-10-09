@@ -5,28 +5,35 @@ export async function openWorkspacePage(page, area, label) {
     .getByRole('navigation', { name: '主导航', exact: true })
     .getByRole('button', { name: area, exact: true })
     .click();
-  const tabs = page.getByRole('navigation', { name: `${area}功能`, exact: true });
+  const tabs = page.getByRole('navigation', {
+    name: area === '班主任管理' ? '班主任资料与记录' : `${area}功能`,
+    exact: true,
+  });
   await tabs.waitFor();
   const aliases = { 资料备课: '本地备课', 模型设置: '模型连接', 数据与维护: '数据与备份' };
   const currentLabel = aliases[label] ?? label;
   if (area === '班主任管理') {
     const labels = {
-      班级名册: '花名册',
-      学生资料: '学生档案',
-      成绩管理: '成绩分析',
-      座位编排: '座次表',
-      值日轮换: '值日表',
-      成长档案: '成长记录',
+      班级名册: '名册与在籍状态',
+      学生资料: '学生详细资料',
+      成绩管理: '成绩导入与历史',
+      座位编排: '智能座位方案',
+      值日轮换: '值日轮换',
+      成长档案: '成长档案',
     };
     const target = labels[label] ?? label;
     await tabs.getByRole('button', { name: target, exact: true }).click();
-    if (label === '学生资料') {
-      await page.locator('.teacher-directory tbody .teacher-student-name').first().click();
-      await page.getByRole('button', { name: '编辑学生信息', exact: true }).click();
-    }
     await page
       .getByRole('heading', {
-        name: label === '学生资料' ? label : target === '成长记录' ? '成长档案' : target,
+        name:
+          {
+            班级名册: '花名册',
+            学生资料: '学生资料',
+            成绩管理: '成绩分析',
+            座位编排: '座次表',
+            值日轮换: '值日表',
+            成长档案: '成长档案',
+          }[label] ?? target,
         exact: true,
         level: 1,
       })

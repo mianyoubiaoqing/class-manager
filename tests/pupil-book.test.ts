@@ -1,3 +1,4 @@
+import { resourceSchemaStatements } from '../src/core/resource-library';
 import { randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -175,7 +176,11 @@ test('v11 migration keeps the original file and roster, adding empty profile and
   f.w.close();
   spaces.splice(spaces.indexOf(f.w), 1);
   const db = openDatabase(path, 'open');
-  for (const sql of [...pupilSchemaStatements, ...teachingSchemaStatements].reverse()) {
+  for (const sql of [
+    ...pupilSchemaStatements,
+    ...teachingSchemaStatements,
+    ...resourceSchemaStatements,
+  ].reverse()) {
     const name = sql.match(/CREATE (?:TABLE|INDEX) (\w+)/)![1]!;
     db.exec(`DROP ${sql.includes('CREATE INDEX') ? 'INDEX' : 'TABLE'} ${name}`);
   }

@@ -1,3 +1,4 @@
+import { TeachingResources } from './features/resources/TeachingResources';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import {
   Archive,
@@ -62,7 +63,7 @@ import { FloatingAssistant } from './FloatingAssistant';
 import { TeachingWorkbench } from './features/teaching/TeachingWorkbench';
 import { ResourceHub } from './ResourceHub';
 import { AttendancePage, StudentProfilesPage } from './PupilPages';
-import { HomeroomDashboard, StudentDirectory } from './features/homeroom';
+import { ClassDataImport, StudentDirectory } from './features/homeroom';
 import type { GrowthSelection } from '../shared/growth';
 import { RosterImportDialog } from './RosterImportDialog';
 import {
@@ -159,9 +160,9 @@ export function App() {
   const navigationFeedbackRef = useRef<HTMLDivElement>(null);
   const [scoreDirty, setScoreDirty] = useState(false);
   const [rosterImportOpen, setRosterImportOpen] = useState(false);
-  const [classDataImportRequest, setClassDataImportRequest] = useState(0);
+
   const [selectedPupilId, setSelectedPupilId] = useState('');
-  const [selectedScoreVersion, setSelectedScoreVersion] = useState('');
+  const [selectedScoreVersion] = useState('');
   const [growthScoreSeed, setGrowthScoreSeed] = useState<GrowthSelection['scores']>([]);
   const [rosterImportDirty, setRosterImportDirty] = useState(false);
   const [seatingDirty, setSeatingDirty] = useState(false);
@@ -173,6 +174,8 @@ export function App() {
   const [deviceDirty, setDeviceDirty] = useState(false);
   const [providerDirty, setProviderDirty] = useState(false);
   const [pupilDirty, setPupilDirty] = useState(false);
+  const [workbenchDirty, setWorkbenchDirty] = useState(false);
+  const [resourceDirty, setResourceDirty] = useState(false);
   const [conversationDirty, setConversationDirty] = useState(false);
   const [conversationRestoreNotice, setConversationRestoreNotice] = useState('');
   const [newConversationRequest, setNewConversationRequest] = useState(0);
@@ -187,6 +190,8 @@ export function App() {
     gradingDirty ||
     growthDirty ||
     pupilDirty ||
+    workbenchDirty ||
+    resourceDirty ||
     deviceDirty ||
     providerDirty ||
     conversationDirty;
@@ -201,7 +206,9 @@ export function App() {
     ['growth', growthDirty],
     ['devices', deviceDirty],
     ['providerSettings', providerDirty],
-    [area?.id === 'teaching' ? view : view === 'profiles' ? 'profiles' : 'attendance', pupilDirty],
+    [view, pupilDirty],
+    [view, workbenchDirty],
+    [view, resourceDirty],
     ['conversation', conversationDirty],
   ];
   function canNavigate(target: string, preserveConversation = false): boolean {
@@ -739,10 +746,10 @@ export function App() {
             <div>
               <div className="eyebrow">CLASS MANAGER / M1</div>
               <h1>
-                {view === 'teaching'
-                  ? '班级教学工作台'
+                {view === 'teaching' || view === 'resourceLibrary'
+                  ? '教学资源库'
                   : view === 'classManagement'
-                    ? '今天的班务，一眼看清'
+                    ? '班主任工作台'
                     : view === 'lessons'
                       ? '从手边资料，开始一节课'
                       : view === 'conversation'
@@ -752,8 +759,8 @@ export function App() {
                           : viewLabel(view)}
               </h1>
               <p className="page-description">
-                {view === 'teaching'
-                  ? '学生、教学记录和备课工具，一处管理。'
+                {view === 'teaching' || view === 'resourceLibrary'
+                  ? '按学科与教材章节整理教学资源，编辑模板并添加本机资料。'
                   : view === 'classManagement'
                     ? '先准备班级资料，再逐步处理点名、成绩和日常安排。'
                     : view === 'conversation'
@@ -868,64 +875,359 @@ export function App() {
               }
             />
           )}
-          {snapshot && view === 'classManagement' && (
-            <HomeroomDashboard
-              key={`workbench:${snapshot.epoch}`}
-              snapshot={snapshot}
-              selectedClass={selectedClass}
-              onNavigate={navigate}
-              onCreateClass={() => openClass()}
-              onSelectClass={setSelectedClass}
-              onSaved={acceptSnapshot}
-              onDirtyChange={setRosterImportDirty}
-              importRequest={classDataImportRequest}
-              onSelectExam={(id) => {
-                setSelectedScoreVersion(id);
-                navigate('scores');
-              }}
-              onManualEntry={() => {
-                setRosterImportDirty(false);
-                setView('roster');
-              }}
-            />
-          )}
-          {snapshot && view === 'students' && (
-            <StudentDirectory
-              key={`shared-students:${snapshot.epoch}:${selectedClass}`}
-              snapshot={snapshot}
-              selectedClass={selectedClass}
-              initialStudentId={selectedPupilId}
-              onNavigate={navigate}
-              onSelectStudent={setSelectedPupilId}
-              onEditProfile={(id) => {
-                setSelectedPupilId(id);
-                navigate('profiles');
-              }}
-              onAddStudent={() => setModal({ kind: 'student' })}
-              onEditStudent={(student) => setModal({ kind: 'student', student })}
-              onImport={() => {
-                if (navigate('classManagement')) setClassDataImportRequest((n) => n + 1);
-              }}
-              onGrowth={(id, scores) => {
-                setSelectedPupilId(id);
-                setGrowthScoreSeed(scores);
-                navigate('growth');
-              }}
-            />
-          )}
           {snapshot && area?.id === view && view !== 'classManagement' && view !== 'teaching' && (
             <WorkspaceHome area={area} onNavigate={navigate} />
           )}
-          {snapshot && area?.id === 'teaching' && (
+          {snapshot && area?.id === 'classManagement' && (
             <TeachingWorkbench
-              key={`teacher-workbench:${snapshot.epoch}`}
+              key={`homeroom-workbench:${snapshot.epoch}`}
               snapshot={snapshot}
               selectedClass={selectedClass}
               onSnapshot={setSnapshot}
-              onDirtyChange={setPupilDirty}
+              onDirtyChange={setWorkbenchDirty}
               view={view}
               onNavigate={navigate}
               onSelectClass={setSelectedClass}
+              navigationBusy={navigationDirty}
+              onImport={() => navigate('classImport')}
+            >
+              {view === 'classImport' && (
+                <ClassDataImport
+                  key={selectedClass}
+                  snapshot={snapshot}
+                  classId={
+                    selectedClass === 'all' ? (snapshot.classes[0]?.id ?? '') : selectedClass
+                  }
+                  onSelectClass={setSelectedClass}
+                  onCreateClass={() => openClass()}
+                  onSaved={(saved) => {
+                    acceptSnapshot(saved);
+                    setView('classManagement');
+                    setNotice({ error: false, text: '学生信息与成绩已保存，各页面可直接使用。' });
+                  }}
+                  onClose={() => navigate('classManagement')}
+                  onDirtyChange={setRosterImportDirty}
+                  onNavigate={navigate}
+                />
+              )}
+              {snapshot && view === 'students' && (
+                <StudentDirectory
+                  key={`shared-students:${snapshot.epoch}:${selectedClass}`}
+                  snapshot={snapshot}
+                  selectedClass={selectedClass}
+                  initialStudentId={selectedPupilId}
+                  onNavigate={navigate}
+                  onSelectStudent={setSelectedPupilId}
+                  onEditProfile={(id) => {
+                    setSelectedPupilId(id);
+                    navigate('profiles');
+                  }}
+                  onAddStudent={() => setModal({ kind: 'student' })}
+                  onEditStudent={(student) => setModal({ kind: 'student', student })}
+                  onImport={() => {
+                    navigate('classImport');
+                  }}
+                  onGrowth={(id, scores) => {
+                    setSelectedPupilId(id);
+                    setGrowthScoreSeed(scores);
+                    navigate('growth');
+                  }}
+                />
+              )}
+              {snapshot && view === 'attendance' && (
+                <AttendancePage
+                  key={`attendance:${snapshot.epoch}`}
+                  snapshot={snapshot}
+                  selectedClass={selectedClass}
+                  onRoster={() => setView('roster')}
+                  onDirtyChange={setPupilDirty}
+                />
+              )}
+              {snapshot && view === 'profiles' && (
+                <StudentProfilesPage
+                  key={`profiles:${snapshot.epoch}:${selectedClass}:${selectedPupilId}`}
+                  initialStudentId={selectedPupilId}
+                  snapshot={snapshot}
+                  selectedClass={selectedClass}
+                  onDirtyChange={setPupilDirty}
+                />
+              )}
+              {snapshot && view === 'growth' && (
+                <GrowthPage
+                  key={`growth:${snapshot.epoch}:${selectedClass}:${selectedPupilId}`}
+                  selectedClass={selectedClass}
+                  initialStudentId={selectedPupilId}
+                  initialScores={growthScoreSeed}
+                  snapshot={snapshot}
+                  onDirtyChange={setGrowthDirty}
+                  navigationBusy={busy || loading}
+                />
+              )}
+              {snapshot && ['growth', 'scores'].includes(view) && (
+                <ModelSelectionSummary key={`model:${view}:${snapshot.epoch}`} />
+              )}
+              {snapshot && view === 'seating' && (
+                <SeatingPage
+                  key={`seating:${snapshot.epoch}:${selectedClass}`}
+                  selectedClass={selectedClass}
+                  snapshot={snapshot}
+                  onDirtyChange={setSeatingDirty}
+                  navigationBusy={busy}
+                />
+              )}
+              {snapshot && view === 'duty' && (
+                <DutyPage
+                  key={`duty:${snapshot.epoch}:${selectedClass}`}
+                  selectedClass={selectedClass}
+                  snapshot={snapshot}
+                  onDirtyChange={setDutyDirty}
+                  navigationBusy={busy || loading}
+                />
+              )}
+              {snapshot && view === 'scores' && (
+                <ScorePage
+                  key={`scores:${snapshot.epoch}:${selectedClass}:${selectedScoreVersion}`}
+                  selectedClass={selectedClass}
+                  initialVersionId={selectedScoreVersion}
+                  onUnifiedImport={() => {
+                    navigate('classImport');
+                  }}
+                  snapshot={snapshot}
+                  onDirtyChange={setScoreDirty}
+                  navigationBusy={busy || loading}
+                  onRoster={() => navigate('roster')}
+                />
+              )}
+              {snapshot && view === 'roster' && (
+                <>
+                  <section className="design-panel roster-panel">
+                    <header>
+                      <div>
+                        <h2>学生名单</h2>
+                        <p>
+                          共 {snapshot.students.filter((student) => student.active).length}{' '}
+                          人在籍，资料保存在本机。
+                        </p>
+                      </div>
+                      <button
+                        disabled={disabled || !snapshot.classes.length}
+                        onClick={() => setRosterImportOpen(true)}
+                      >
+                        <FileText size={16} />
+                        批量导入学生
+                      </button>
+                    </header>
+                    <div className="roster-toolbar">
+                      <label className="search">
+                        <Search size={17} />
+                        <input
+                          aria-label="搜索学生"
+                          placeholder="搜索姓名或编号"
+                          value={search}
+                          onChange={(event) => {
+                            setSearch(event.target.value);
+                            setPage(0);
+                          }}
+                        />
+                      </label>
+                      <select
+                        aria-label="筛选班级"
+                        value={selectedClass}
+                        onChange={(event) => {
+                          setSelectedClass(event.target.value);
+                          setPage(0);
+                        }}
+                      >
+                        <option value="all">全部班级</option>
+                        {snapshot.classes.map((classroom) => (
+                          <option key={classroom.id} value={classroom.id}>
+                            {classroom.name}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        aria-label="筛选状态"
+                        value={status}
+                        onChange={(event) => {
+                          setStatus(event.target.value);
+                          setPage(0);
+                        }}
+                      >
+                        <option value="active">在籍</option>
+                        <option value="inactive">停用</option>
+                        <option value="all">全部状态</option>
+                      </select>
+                      <span className="result-count">共 {filtered.length} 条</span>
+                      {selectedClass !== 'all' && (
+                        <button
+                          aria-label={`重命名 ${snapshot.classes.find((item) => item.id === selectedClass)?.name ?? '班级'}`}
+                          disabled={disabled}
+                          onClick={() => openClass(selectedClass)}
+                        >
+                          <Pencil size={16} /> 编辑班级名称
+                        </button>
+                      )}
+                    </div>
+                    {snapshot.classes.length === 0 ? (
+                      <div className="empty-state">
+                        <UsersRound size={40} />
+                        <h2>尚无班级</h2>
+                        <div className="button-row">
+                          <button disabled={busy} onClick={() => openClass()}>
+                            <Plus size={16} />
+                            创建班级
+                          </button>
+                          <button
+                            className="primary"
+                            disabled={busy}
+                            onClick={() => setModal({ kind: 'seed' })}
+                          >
+                            <Database size={16} />
+                            载入合成样例
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="table-scroll">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th className="number-cell">序号</th>
+                              <th>学生姓名</th>
+                              <th>学生编号</th>
+                              <th>所属班级</th>
+                              <th>状态</th>
+                              <th className="actions-cell">操作</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {!rows.length && (
+                              <tr>
+                                <td colSpan={6}>
+                                  <div className="empty-state" role="status">
+                                    <p>未找到符合筛选条件的学生，已保存的名单仍在。</p>
+                                    <button
+                                      onClick={() => {
+                                        setSearch('');
+                                        setStatus('all');
+                                        setPage(0);
+                                      }}
+                                    >
+                                      清空搜索和状态筛选
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                            {rows.map((student, index) => (
+                              <tr key={student.id}>
+                                <td className="number-cell">
+                                  {String(currentPage * 15 + index + 1).padStart(2, '0')}
+                                </td>
+                                <td>
+                                  <span className="student-name">
+                                    <span className="avatar">
+                                      <UserRound size={16} />
+                                    </span>
+                                    {student.displayName}
+                                  </span>
+                                </td>
+                                <td className="student-number">{student.studentNumber}</td>
+                                <td>{student.className}</td>
+                                <td>
+                                  <span
+                                    className={`status-badge ${student.active ? 'active' : ''}`}
+                                  >
+                                    <span />
+                                    {student.active ? '在籍' : '停用'}
+                                  </span>
+                                </td>
+                                <td>
+                                  <div className="row-actions">
+                                    <button
+                                      className="icon-button"
+                                      title={`编辑 ${student.displayName}`}
+                                      aria-label={`编辑 ${student.studentNumber}`}
+                                      disabled={busy}
+                                      onClick={() => setModal({ kind: 'student', student })}
+                                    >
+                                      <Pencil size={16} />
+                                    </button>
+                                    <button
+                                      className="icon-button"
+                                      title={`${student.active ? '停用' : '恢复在籍'} ${student.displayName}`}
+                                      aria-label={`${student.active ? '停用' : '恢复在籍'} ${student.studentNumber}`}
+                                      disabled={busy}
+                                      onClick={() => setModal({ kind: 'activation', student })}
+                                    >
+                                      {student.active ? (
+                                        <UserRoundMinus size={16} />
+                                      ) : (
+                                        <UserRoundCheck size={16} />
+                                      )}
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        {rows.length === 0 && (
+                          <div className="empty-results">没有匹配的学生记录</div>
+                        )}
+                      </div>
+                    )}
+                    {snapshot.classes.length > 0 && (
+                      <footer className="table-footer">
+                        <span>班级名册 · 本机保存</span>
+                        <div className="pagination">
+                          <button
+                            className="icon-button"
+                            title="上一页"
+                            aria-label="上一页"
+                            disabled={currentPage === 0}
+                            onClick={() => setPage(currentPage - 1)}
+                          >
+                            <ArrowLeft size={16} />
+                          </button>
+                          <span>
+                            {currentPage + 1} / {pageCount}
+                          </span>
+                          <button
+                            className="icon-button"
+                            title="下一页"
+                            aria-label="下一页"
+                            disabled={currentPage + 1 >= pageCount}
+                            onClick={() => setPage(currentPage + 1)}
+                          >
+                            <ArrowRight size={16} />
+                          </button>
+                        </div>
+                      </footer>
+                    )}
+                  </section>
+                  {rosterImportOpen && (
+                    <RosterImportDialog
+                      snapshot={snapshot}
+                      initialClass={selectedClass}
+                      onSaved={(saved) => {
+                        acceptSnapshot(saved);
+                        setNotice({ error: false, text: '学生名单已导入，可在名册核对学生数量。' });
+                      }}
+                      onClose={() => setRosterImportOpen(false)}
+                      onDirtyChange={setRosterImportDirty}
+                    />
+                  )}
+                </>
+              )}
+            </TeachingWorkbench>
+          )}
+          {snapshot && area?.id === 'teaching' && (
+            <TeachingResources
+              snapshot={snapshot}
+              view={view}
+              onNavigate={navigate}
+              onDirtyChange={setResourceDirty}
             >
               {view === 'resources' && <ResourceHub />}
               {view === 'lessons' && (
@@ -955,42 +1257,10 @@ export function App() {
               {['grading', 'lessons'].includes(view) && (
                 <ModelSelectionSummary key={`model:${view}:${snapshot.epoch}`} />
               )}
-            </TeachingWorkbench>
+            </TeachingResources>
           )}
           {snapshot && (
             <CountdownBanner key={`countdown:${snapshot.epoch}`} epoch={snapshot.epoch} />
-          )}
-          {snapshot && view === 'attendance' && (
-            <AttendancePage
-              key={`attendance:${snapshot.epoch}`}
-              snapshot={snapshot}
-              selectedClass={selectedClass}
-              onRoster={() => setView('roster')}
-              onDirtyChange={setPupilDirty}
-            />
-          )}
-          {snapshot && view === 'profiles' && (
-            <StudentProfilesPage
-              key={`profiles:${snapshot.epoch}:${selectedClass}:${selectedPupilId}`}
-              initialStudentId={selectedPupilId}
-              snapshot={snapshot}
-              selectedClass={selectedClass}
-              onDirtyChange={setPupilDirty}
-            />
-          )}
-          {snapshot && view === 'growth' && (
-            <GrowthPage
-              key={`growth:${snapshot.epoch}:${selectedClass}:${selectedPupilId}`}
-              selectedClass={selectedClass}
-              initialStudentId={selectedPupilId}
-              initialScores={growthScoreSeed}
-              snapshot={snapshot}
-              onDirtyChange={setGrowthDirty}
-              navigationBusy={busy || loading}
-            />
-          )}
-          {snapshot && ['growth', 'scores'].includes(view) && (
-            <ModelSelectionSummary key={`model:${view}:${snapshot.epoch}`} />
           )}
           {snapshot && view === 'providerSettings' && (
             <ModelSettingsPage
@@ -1009,256 +1279,6 @@ export function App() {
               onDirtyChange={setDeviceDirty}
               navigationBusy={busy || loading}
             />
-          )}
-          {snapshot && view === 'seating' && (
-            <SeatingPage
-              key={`seating:${snapshot.epoch}:${selectedClass}`}
-              selectedClass={selectedClass}
-              snapshot={snapshot}
-              onDirtyChange={setSeatingDirty}
-              navigationBusy={busy}
-            />
-          )}
-          {snapshot && view === 'duty' && (
-            <DutyPage
-              key={`duty:${snapshot.epoch}:${selectedClass}`}
-              selectedClass={selectedClass}
-              snapshot={snapshot}
-              onDirtyChange={setDutyDirty}
-              navigationBusy={busy || loading}
-            />
-          )}
-          {snapshot && view === 'scores' && (
-            <ScorePage
-              key={`scores:${snapshot.epoch}:${selectedClass}:${selectedScoreVersion}`}
-              selectedClass={selectedClass}
-              initialVersionId={selectedScoreVersion}
-              onUnifiedImport={() => {
-                if (navigate('classManagement')) setClassDataImportRequest((n) => n + 1);
-              }}
-              snapshot={snapshot}
-              onDirtyChange={setScoreDirty}
-              navigationBusy={busy || loading}
-              onRoster={() => navigate('roster')}
-            />
-          )}
-          {snapshot && view === 'roster' && (
-            <>
-              <section className="design-panel roster-panel">
-                <header>
-                  <div>
-                    <h2>学生名单</h2>
-                    <p>
-                      共 {snapshot.students.filter((student) => student.active).length}{' '}
-                      人在籍，资料保存在本机。
-                    </p>
-                  </div>
-                  <button
-                    disabled={disabled || !snapshot.classes.length}
-                    onClick={() => setRosterImportOpen(true)}
-                  >
-                    <FileText size={16} />
-                    批量导入学生
-                  </button>
-                </header>
-                <div className="roster-toolbar">
-                  <label className="search">
-                    <Search size={17} />
-                    <input
-                      aria-label="搜索学生"
-                      placeholder="搜索姓名或编号"
-                      value={search}
-                      onChange={(event) => {
-                        setSearch(event.target.value);
-                        setPage(0);
-                      }}
-                    />
-                  </label>
-                  <select
-                    aria-label="筛选班级"
-                    value={selectedClass}
-                    onChange={(event) => {
-                      setSelectedClass(event.target.value);
-                      setPage(0);
-                    }}
-                  >
-                    <option value="all">全部班级</option>
-                    {snapshot.classes.map((classroom) => (
-                      <option key={classroom.id} value={classroom.id}>
-                        {classroom.name}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    aria-label="筛选状态"
-                    value={status}
-                    onChange={(event) => {
-                      setStatus(event.target.value);
-                      setPage(0);
-                    }}
-                  >
-                    <option value="active">在籍</option>
-                    <option value="inactive">停用</option>
-                    <option value="all">全部状态</option>
-                  </select>
-                  <span className="result-count">共 {filtered.length} 条</span>
-                  {selectedClass !== 'all' && (
-                    <button
-                      aria-label={`重命名 ${snapshot.classes.find((item) => item.id === selectedClass)?.name ?? '班级'}`}
-                      disabled={disabled}
-                      onClick={() => openClass(selectedClass)}
-                    >
-                      <Pencil size={16} /> 编辑班级名称
-                    </button>
-                  )}
-                </div>
-                {snapshot.classes.length === 0 ? (
-                  <div className="empty-state">
-                    <UsersRound size={40} />
-                    <h2>尚无班级</h2>
-                    <div className="button-row">
-                      <button disabled={busy} onClick={() => openClass()}>
-                        <Plus size={16} />
-                        创建班级
-                      </button>
-                      <button
-                        className="primary"
-                        disabled={busy}
-                        onClick={() => setModal({ kind: 'seed' })}
-                      >
-                        <Database size={16} />
-                        载入合成样例
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="table-scroll">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th className="number-cell">序号</th>
-                          <th>学生姓名</th>
-                          <th>学生编号</th>
-                          <th>所属班级</th>
-                          <th>状态</th>
-                          <th className="actions-cell">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {!rows.length && (
-                          <tr>
-                            <td colSpan={6}>
-                              <div className="empty-state" role="status">
-                                <p>未找到符合筛选条件的学生，已保存的名单仍在。</p>
-                                <button
-                                  onClick={() => {
-                                    setSearch('');
-                                    setStatus('all');
-                                    setPage(0);
-                                  }}
-                                >
-                                  清空搜索和状态筛选
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                        {rows.map((student, index) => (
-                          <tr key={student.id}>
-                            <td className="number-cell">
-                              {String(currentPage * 15 + index + 1).padStart(2, '0')}
-                            </td>
-                            <td>
-                              <span className="student-name">
-                                <span className="avatar">
-                                  <UserRound size={16} />
-                                </span>
-                                {student.displayName}
-                              </span>
-                            </td>
-                            <td className="student-number">{student.studentNumber}</td>
-                            <td>{student.className}</td>
-                            <td>
-                              <span className={`status-badge ${student.active ? 'active' : ''}`}>
-                                <span />
-                                {student.active ? '在籍' : '停用'}
-                              </span>
-                            </td>
-                            <td>
-                              <div className="row-actions">
-                                <button
-                                  className="icon-button"
-                                  title={`编辑 ${student.displayName}`}
-                                  aria-label={`编辑 ${student.studentNumber}`}
-                                  disabled={busy}
-                                  onClick={() => setModal({ kind: 'student', student })}
-                                >
-                                  <Pencil size={16} />
-                                </button>
-                                <button
-                                  className="icon-button"
-                                  title={`${student.active ? '停用' : '恢复在籍'} ${student.displayName}`}
-                                  aria-label={`${student.active ? '停用' : '恢复在籍'} ${student.studentNumber}`}
-                                  disabled={busy}
-                                  onClick={() => setModal({ kind: 'activation', student })}
-                                >
-                                  {student.active ? (
-                                    <UserRoundMinus size={16} />
-                                  ) : (
-                                    <UserRoundCheck size={16} />
-                                  )}
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {rows.length === 0 && <div className="empty-results">没有匹配的学生记录</div>}
-                  </div>
-                )}
-                {snapshot.classes.length > 0 && (
-                  <footer className="table-footer">
-                    <span>班级名册 · 本机保存</span>
-                    <div className="pagination">
-                      <button
-                        className="icon-button"
-                        title="上一页"
-                        aria-label="上一页"
-                        disabled={currentPage === 0}
-                        onClick={() => setPage(currentPage - 1)}
-                      >
-                        <ArrowLeft size={16} />
-                      </button>
-                      <span>
-                        {currentPage + 1} / {pageCount}
-                      </span>
-                      <button
-                        className="icon-button"
-                        title="下一页"
-                        aria-label="下一页"
-                        disabled={currentPage + 1 >= pageCount}
-                        onClick={() => setPage(currentPage + 1)}
-                      >
-                        <ArrowRight size={16} />
-                      </button>
-                    </div>
-                  </footer>
-                )}
-              </section>
-              {rosterImportOpen && (
-                <RosterImportDialog
-                  snapshot={snapshot}
-                  initialClass={selectedClass}
-                  onSaved={(saved) => {
-                    acceptSnapshot(saved);
-                    setNotice({ error: false, text: '学生名单已导入，可在名册核对学生数量。' });
-                  }}
-                  onClose={() => setRosterImportOpen(false)}
-                  onDirtyChange={setRosterImportDirty}
-                />
-              )}
-            </>
           )}
           {snapshot && view === 'maintenance' && (
             <div className="maintenance">

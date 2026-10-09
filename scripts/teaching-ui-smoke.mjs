@@ -35,7 +35,7 @@ try {
   page.on('pageerror', (e) => errors.push(e.message));
   await page.getByText('本地就绪', { exact: true }).waitFor();
   await application.evaluate(({ BrowserWindow }) =>
-    BrowserWindow.getAllWindows()[0].setTitle('班级教学工作台 · 隔离测试'),
+    BrowserWindow.getAllWindows()[0].setTitle('班主任工作台 · 隔离测试'),
   );
   const call = async (method, input) =>
     page.evaluate(
@@ -48,10 +48,9 @@ try {
     );
   const nav = page.getByRole('navigation', { name: '主导航', exact: true });
   await nav.getByRole('button', { name: '教师备课', exact: true }).click();
-  const workbench = page.getByRole('region', { name: '班级教学工作台' });
-  await workbench.getByRole('heading', { name: '从创建一个班级开始' }).waitFor();
-  checks.push('teaching opens full customer workspace directly');
-  const teachingTools = workbench.getByRole('navigation', { name: '教师备课功能', exact: true });
+  await page.getByRole('region', { name: '学科教学资源库', exact: true }).waitFor();
+  checks.push('teaching opens the customer resource library directly');
+  const teachingTools = page.getByRole('navigation', { name: '教师备课功能', exact: true });
   for (const [label, heading] of [
     ['资源平台', '资源平台'],
     ['本地备课', '从手边资料，开始一节课'],
@@ -60,15 +59,12 @@ try {
   ]) {
     await teachingTools.getByRole('button', { name: label, exact: true }).click();
     await page.getByRole('heading', { name: heading, exact: true, level: 1 }).waitFor();
-    assert.equal(await page.getByRole('region', { name: '班级教学工作台' }).count(), 1);
   }
-  assert.equal(await workbench.getByRole('button', { name: '工作台首页', exact: true }).count(), 0);
-  await workbench
-    .getByRole('navigation', { name: '班级教学功能', exact: true })
-    .getByRole('button', { name: '仪表盘', exact: true })
-    .click();
+  await nav.getByRole('button', { name: '班主任管理', exact: true }).click();
+  const workbench = page.getByRole('region', { name: '班主任工作台', exact: true });
   await workbench.getByRole('heading', { name: '从创建一个班级开始' }).waitFor();
-  checks.push('four teaching tools share customer shell in an empty environment');
+  assert.equal(await workbench.getByRole('button', { name: '工作台首页', exact: true }).count(), 0);
+  checks.push('original full workbench moved to homeroom; no duplicate homepage');
   await workbench.getByRole('button', { name: '创建班级', exact: true }).click();
   let dialog = page.getByRole('dialog', { name: '新建班级', exact: true });
   await dialog.getByLabel('班级名称').fill('合成教学测试班');
@@ -76,7 +72,7 @@ try {
   await dialog.waitFor({ state: 'hidden' });
   const go = async (name) => {
     await workbench
-      .getByRole('navigation', { name: '班级教学功能', exact: true })
+      .getByRole('navigation', { name: '班主任工作台功能', exact: true })
       .getByRole('button', { name, exact: true })
       .click();
     await workbench.getByRole('heading', { name, exact: true, level: 2 }).waitFor();

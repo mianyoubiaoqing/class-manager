@@ -65,6 +65,8 @@ export function TeachingWorkbench({
   onNavigate,
   onSelectClass,
   children,
+  navigationBusy,
+  onImport,
 }: {
   snapshot: Snapshot;
   selectedClass: string;
@@ -74,9 +76,11 @@ export function TeachingWorkbench({
   onNavigate: (view: AppView) => boolean;
   onSelectClass: (id: string) => void;
   children?: ReactNode;
+  navigationBusy: boolean;
+  onImport: () => void;
 }) {
   const api = window.classManager;
-  const tool = ['resources', 'lessons', 'classroom', 'grading'].includes(view);
+  const tool = !['classManagement', 'teacherWorkbench'].includes(view);
   const [classId, setClassId] = useState(
     snapshot.classes.find((c) => c.id === selectedClass)?.id ?? snapshot.classes[0]?.id ?? '',
   );
@@ -225,7 +229,7 @@ export function TeachingWorkbench({
   };
   const go = (id: Module) =>
     move(() => {
-      if (tool && !onNavigate('teaching')) return;
+      if (tool && !onNavigate('classManagement')) return;
       setModule(id);
       setSub(GROUPS[id]?.[0]?.[0] ?? 'contacts');
       setMobile(false);
@@ -259,10 +263,10 @@ export function TeachingWorkbench({
     }, '提醒设置已保存');
   }
   return (
-    <section className="teaching-workbench" aria-label="班级教学工作台">
+    <section className="teaching-workbench" aria-label="班主任工作台">
       <aside className={`tw-nav ${mobile ? 'open' : ''}`}>
-        <div className="tw-brand">🌿 班级教学工作台</div>
-        <nav aria-label="班级教学功能">
+        <div className="tw-brand">🌿 班主任工作台</div>
+        <nav aria-label="班主任工作台功能">
           {NAV.map(([id, icon, label]) => (
             <button
               key={id}
@@ -277,13 +281,18 @@ export function TeachingWorkbench({
             </button>
           ))}
         </nav>
-        <nav aria-label="教师备课功能">
+        <nav aria-label="班主任资料与记录">
           {(
             [
-              ['resources', '📚', '资源平台'],
-              ['lessons', '📖', '本地备课'],
-              ['classroom', '⏱️', '课堂与倒计时'],
-              ['grading', '📋', '答卷建议与复核'],
+              ['classImport', '📥', '导入班级资料'],
+              ['roster', '📒', '名册与在籍状态'],
+              ['attendance', '✅', '上课点名'],
+              ['profiles', '🪪', '学生详细资料'],
+              ['students', '👤', '学生综合档案'],
+              ['scores', '📊', '成绩导入与历史'],
+              ['seating', '🪑', '智能座位方案'],
+              ['duty', '🧹', '值日轮换'],
+              ['growth', '🌱', '成长档案'],
             ] as const
           ).map(([target, icon, label]) => (
             <button
@@ -311,19 +320,19 @@ export function TeachingWorkbench({
         <header className="tw-topbar">
           <button
             className="tw-hamb"
-            aria-label="展开教学功能菜单"
+            aria-label="展开班主任功能菜单"
             onClick={() => setMobile(!mobile)}
           >
             <Menu size={20} />
           </button>
           <select
-            aria-label="教学工作台当前班级"
+            aria-label="班主任工作台当前班级"
             value={classId}
-            disabled={busy}
+            disabled={busy || navigationBusy}
             onChange={(e) => {
               const targetClass = e.target.value;
               move(() => {
-                if (tool && !onNavigate('teaching')) return;
+                if (tool && !onNavigate('classManagement')) return;
                 setClassId(targetClass);
                 onSelectClass(targetClass);
               });
@@ -418,13 +427,20 @@ export function TeachingWorkbench({
                 </div>
               )}
               {module === 'dash' && (
-                <Dashboard
-                  snapshot={snapshot}
-                  classId={classId}
-                  records={records}
-                  exams={exams}
-                  onGo={go}
-                />
+                <>
+                  <div className="tw-toolbar">
+                    <button className="primary" onClick={onImport}>
+                      导入学生信息与成绩
+                    </button>
+                  </div>
+                  <Dashboard
+                    snapshot={snapshot}
+                    classId={classId}
+                    records={records}
+                    exams={exams}
+                    onGo={go}
+                  />
+                </>
               )}
               {(module === 'students' || (module === 'comms' && sub === 'contacts')) && (
                 <StudentsPanel

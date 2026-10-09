@@ -6,7 +6,7 @@
 
 src/main 负责桌面窗口、文件选择和受控接口。其中 src/main/preload.ts 暴露桌面接口，src/shared 定义契约，src/core 实现本地业务与 SQLite。
 
-src/renderer/features/homeroom 集中放置班主任工作台、资料导入、学生目录、档案小窗及对应样式。App.tsx 继续负责应用状态、导航和已有弹窗。其他业务页面按原模块维护，新增班务界面优先进入该功能目录。
+src/renderer/features/homeroom 放置统一资料导入、学生目录和档案小窗；features/teaching 放置当前班主任工作台和日常记录面板；features/resources 放置学科教学资源库。App.tsx 负责应用状态、区域导航和已有弹窗。
 
 scripts 包含构建、打包和桌面验证；tests 包含自动化测试。docs/submissions 是比赛及用户文档源码，docs/handoff 保留专项实现和验收记录。历史验收记录不作为当前教师操作手册。
 
@@ -16,7 +16,7 @@ scripts 包含构建、打包和桌面验证；tests 包含自动化测试。doc
 
 修改后运行 npm run typecheck、npm run lint、npm run format:check 和 npm test，再运行 npm run build。桌面回归入口为 node scripts/desktop-smoke.mjs，新版共享资料流程为 node scripts/shared-class-data-smoke.mjs。这些测试使用独立合成数据，不应指向客户的数据目录。
 
-客户教学界面集中在 src/renderer/features/teaching；契约在 src/shared/teaching-workbench.ts，事务与校验在 src/core/teaching-book.ts。数据库版本 13，新增记录采用版本检查、请求去重和软删除；备份校验覆盖当前记录及修改历史。新增界面回归入口为 scripts/teaching-ui-smoke.mjs。
+班主任工作台契约在 src/shared/teaching-workbench.ts，事务与校验在 src/core/teaching-book.ts。新增资源库契约和目录在 src/shared/resource-library，存储在 src/core/resource-library.ts，原生文件与导出通过 Main 和 worker 处理。数据库版本 14，编辑记录采用版本检查与请求去重；附件绑定教材章节，原始字节存入现有附件库，随备份恢复。旧库先保留副本再事务迁移。新增界面回归入口为 scripts/teaching-ui-smoke.mjs 和 scripts/resource-library-ui-smoke.mjs。
 
 WorkBuddy MCP 服务位于 src/main/workbuddy-bridge.ts，连接器位于 src/main/mcp-stdio.ts。服务只监听 127.0.0.1 随机端口，要求本机令牌，拒绝网页 Origin；查询直接返回，修改进入本地确认队列。令牌文件位于 Electron userData 下的 workbuddy-connection.json，退出删除，不应纳入交付。资源目录自带 mcp-stdio.cjs，通过 Electron 的 Node 模式运行，无需另装 Node。
 

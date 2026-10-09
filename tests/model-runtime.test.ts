@@ -1,3 +1,4 @@
+import { resourceSchemaStatements } from '../src/core/resource-library';
 import { randomUUID, createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -364,7 +365,11 @@ test('Schema10 migrates atomically to11 and model configuration/key/usage stay o
   workspace.close();
   workspaces.splice(workspaces.indexOf(workspace), 1);
   const old = openDatabase(dbPath, 'open');
-  for (const sql of [...pupilSchemaStatements, ...teachingSchemaStatements].reverse()) {
+  for (const sql of [
+    ...pupilSchemaStatements,
+    ...teachingSchemaStatements,
+    ...resourceSchemaStatements,
+  ].reverse()) {
     const name = sql.match(/CREATE (?:TABLE|INDEX) (\w+)/)![1]!;
     old.exec(`DROP ${sql.includes('CREATE INDEX') ? 'INDEX' : 'TABLE'} ${name}`);
   }

@@ -4,6 +4,7 @@ export const teachingReportDocument = z
   .object({
     title: z.string().min(1).max(240),
     format: z.enum(['docx', 'xlsx']),
+    layout: z.enum(['table', 'paragraphs']).optional(),
     rows: z
       .array(z.array(z.string().max(10000)).min(1).max(30))
       .min(1)

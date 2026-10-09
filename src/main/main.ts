@@ -1,4 +1,7 @@
 import { GrowthRunner } from './growth-runner';
+import * as fs from 'node:fs/promises';
+import { createResourcePrintDocument } from '../core/resource-print';
+import { openPrintPreview } from './print-preview';
 import {
   classDataSelectInput,
   classDataConfigureInput,
@@ -64,6 +67,18 @@ import {
 import { MAX_BACKUP_BYTES } from '../core/backup';
 import { atomicCreate, atomicWrite, requireRegularFile } from '../core/files';
 import { DomainError, publicError } from '../core/errors';
+import {
+  resourceReadInput,
+  resourceFolderReadInput,
+  resourceAttachmentInput,
+  resourceExportInput,
+  resourceSection,
+  resourceTypes,
+  resourceFileExtensions,
+  type ResourceReadInput,
+  type ResourceAttachment,
+} from '../shared/resource-library';
+import { MAX_ASSET_BYTES } from '../core/storage-limits';
 import { MaterialFolders } from './material-folders';
 import { resourceLinkInput } from '../shared/material-folders';
 import {
@@ -237,6 +252,43 @@ if (!app.requestSingleInstanceLock()) {
         if (!result.ok) throw new DomainError(result.error.code, result.error.message);
         return result.value.epoch;
       });
+      let resourceFolderTarget: ResourceReadInput | undefined;
+      const importResourceFile = async (path: string, target: ResourceReadInput) => {
+        await assertLocalScorePath(path);
+        requireRegularFile(path, MAX_ASSET_BYTES);
+        const before = await fs.stat(path);
+        const bytes = await fs.readFile(path);
+        const after = await fs.stat(path);
+        if (
+          before.size !== after.size ||
+          before.mtimeMs !== after.mtimeMs ||
+          bytes.length !== before.size
+        )
+          throw new DomainError('CONFLICT', '文件在读取时发生变化，请重新选择。');
+        const result = await worker.call<ResourceAttachment>('storeResourceFile', {
+          ...target,
+          name: basename(path),
+          bytes,
+        });
+        if (!result.ok) throw new DomainError(result.error.code, result.error.message);
+        return result.value;
+      };
+      const resourceFolders = new MaterialFolders(
+        materials,
+        async () => {
+          const current = await worker.call<Snapshot>('snapshot');
+          if (!current.ok) throw new DomainError(current.error.code, current.error.message);
+          return current.value.epoch;
+        },
+        {
+          extensions: resourceFileExtensions.map((e) => '.' + e),
+          maxBytes: MAX_ASSET_BYTES,
+          importFile: async (path) => {
+            if (!resourceFolderTarget) throw new DomainError('CONFLICT', '请重新选择教材章节。');
+            return (await importResourceFile(path, resourceFolderTarget)).id;
+          },
+        },
+      );
       const gradings = new GradingRunner(worker, models, models, models, materialTask, (kind) =>
         models.selection(kind),
       );
@@ -286,6 +338,7 @@ if (!app.requestSingleInstanceLock()) {
         gradings.invalidate();
         materials.invalidate();
         materialFolders.invalidate();
+        resourceFolders.invalidate();
         office.invalidate();
         void officeTask.close();
         void materialTask.close();
@@ -460,6 +513,139 @@ if (!app.requestSingleInstanceLock()) {
       }
       async function dispatch(channel: Channel, input: unknown): Promise<Result<unknown>> {
         switch (channel) {
+          case 'previewResourcePrint': {
+            const request = resourceExportInput.parse(input);
+            const current = await worker.call('readResourceDocument', {
+              epoch: request.epoch,
+              key: request.key,
+              type: request.type,
+            });
+            if (!current.ok) return current;
+            return {
+              ok: true,
+              value: await openPrintPreview(
+                window!,
+                createResourcePrintDocument(request),
+                { temp: printCacheRoot, documents: app.getPath('documents'), dataRoot: root },
+                'resource',
+              ),
+            };
+          }
+          case 'readResourceDocument':
+          case 'saveResourceDocument':
+          case 'listResourceAttachments':
+          case 'addResourceLink':
+          case 'removeResourceAttachment':
+            return worker.call(channel, input);
+          case 'selectResourceFiles': {
+            const target = resourceReadInput.parse(input);
+            resourceSection(target.key);
+            const selected = await dialog.showOpenDialog(window!, {
+              title: '添加本地教学资料',
+              properties: ['openFile', 'multiSelections'],
+              filters: [{ name: '教学资料', extensions: resourceFileExtensions }],
+            });
+            if (selected.canceled) return { ok: true, value: { cancelled: true, files: [] } };
+            if (selected.filePaths.length > 25)
+              throw new DomainError('VALIDATION', '每次最多添加 25 份文件。');
+            const files = [];
+            for (const path of selected.filePaths) {
+              try {
+                const stored = await importResourceFile(path, target);
+                files.push({ name: basename(path), id: stored.id });
+              } catch (error) {
+                files.push({
+                  name: basename(path),
+                  error:
+                    error instanceof DomainError
+                      ? error.message
+                      : '文件无法读取，请检查格式或权限。',
+                });
+              }
+            }
+            return { ok: true, value: { cancelled: false, files } };
+          }
+          case 'scanResourceFolder':
+            return {
+              ok: true,
+              value: await resourceFolders.scan(input, async () => {
+                const selected = await dialog.showOpenDialog(window!, {
+                  title: '选择教学资源文件夹',
+                  properties: ['openDirectory'],
+                });
+                return selected.canceled ? null : (selected.filePaths[0] ?? null);
+              }),
+            };
+          case 'readResourceFolder': {
+            const request = resourceFolderReadInput.parse(input);
+            resourceSection(request.key);
+            resourceFolderTarget = { epoch: request.epoch, key: request.key, type: request.type };
+            try {
+              return {
+                ok: true,
+                value: await resourceFolders.read({
+                  epoch: request.epoch,
+                  token: request.token,
+                  ids: request.ids,
+                }),
+              };
+            } finally {
+              resourceFolderTarget = undefined;
+            }
+          }
+          case 'openResourceAttachment': {
+            const request = resourceAttachmentInput.parse(input);
+            const result = await worker.call<{
+              id: string;
+              name: string;
+              url: string | null;
+              bytes?: Uint8Array;
+            }>('readResourceFile', request);
+            if (!result.ok) return result;
+            if (result.value.url) await shell.openExternal(result.value.url);
+            else {
+              const directory = join(userDataPath, 'resource-open', request.epoch, result.value.id);
+              await fs.mkdir(directory, { recursive: true });
+              const path = join(directory, result.value.name);
+              await assertLocalScorePath(path);
+              atomicWrite(path, Buffer.from(result.value.bytes!));
+              const error = await shell.openPath(path);
+              if (error)
+                throw new DomainError(
+                  'STORAGE_ERROR',
+                  '文件已保存，但电脑没有可打开它的软件，请安装对应软件后重试。',
+                );
+            }
+            return { ok: true, value: undefined };
+          }
+          case 'exportResourceDocument': {
+            const request = resourceExportInput.parse(input);
+            const current = await worker.call('readResourceDocument', {
+              epoch: request.epoch,
+              key: request.key,
+              type: request.type,
+            });
+            if (!current.ok) return current;
+            const section = resourceSection(request.key),
+              title = section.section.title + ' · ' + resourceTypes[request.type];
+            const rows: string[][] = [];
+            for (const line of request.body.split('\n')) {
+              if (!line) {
+                rows.push(['']);
+                continue;
+              }
+              for (let start = 0; start < line.length; start += 9000)
+                rows.push([line.slice(start, start + 9000)]);
+            }
+            const bytes = await officeTask.generateTeachingReport({
+              title,
+              format: 'docx',
+              layout: 'paragraphs',
+              rows,
+            });
+            return save(bytes.bytes, title.replace(/[<>:"/\\|?*]/g, '_') + '.docx', 'docx');
+          }
+
           case 'exportTeachingSeatingImage': {
             const result = await worker.call<SeatingVersionView>('readSeatingVersion', input);
             if (!result.ok) return result;
@@ -1125,6 +1311,7 @@ if (!app.requestSingleInstanceLock()) {
               gradings.invalidate();
               materials.invalidate();
               materialFolders.invalidate();
+              resourceFolders.invalidate();
               office.invalidate();
               scoreSelectionGeneration++;
               selectedScoreFile = undefined;
@@ -1302,6 +1489,15 @@ if (!app.requestSingleInstanceLock()) {
       }
 
       const EXCLUSIVE_WORKSPACE_CHANNELS = new Set<Channel>([
+        'previewResourcePrint',
+        'saveResourceDocument',
+        'selectResourceFiles',
+        'scanResourceFolder',
+        'readResourceFolder',
+        'addResourceLink',
+        'removeResourceAttachment',
+        'openResourceAttachment',
+        'exportResourceDocument',
         'saveTeachingRecord',
         'deleteTeachingRecord',
         'saveTeachingSettings',
@@ -1468,7 +1664,10 @@ if (!app.requestSingleInstanceLock()) {
             if (closePending && channel !== 'saveConversationHistory')
               throw new DomainError('BUSY', '正在保存课堂进度并退出，请稍后操作。');
             const maximum =
-              channel === 'saveConversationHistory'
+              channel === 'saveConversationHistory' ||
+              channel === 'saveResourceDocument' ||
+              channel === 'exportResourceDocument' ||
+              channel === 'previewResourcePrint'
                 ? 2 * 1024 * 1024
                 : channel === 'saveTeachingExam'
                   ? MAX_SCORE_COMMAND_BYTES

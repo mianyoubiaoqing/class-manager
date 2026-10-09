@@ -19,6 +19,13 @@ const requestSchema = z
   .object({
     id: z.number().int(),
     operation: z.enum([
+      'readResourceDocument',
+      'saveResourceDocument',
+      'listResourceAttachments',
+      'storeResourceFile',
+      'readResourceFile',
+      'addResourceLink',
+      'removeResourceAttachment',
       'listTeachingRecords',
       'saveTeachingRecord',
       'deleteTeachingRecord',
@@ -163,6 +170,27 @@ try {
     try {
       let value: unknown;
       switch (operation) {
+        case 'readResourceDocument':
+          value = workspace.resources.read(input);
+          break;
+        case 'saveResourceDocument':
+          value = workspace.resources.save(input);
+          break;
+        case 'listResourceAttachments':
+          value = workspace.resources.listFiles(input);
+          break;
+        case 'storeResourceFile':
+          value = workspace.resources.storeFile(input);
+          break;
+        case 'readResourceFile':
+          value = workspace.resources.readFile(input);
+          break;
+        case 'addResourceLink':
+          value = workspace.resources.addLink(input);
+          break;
+        case 'removeResourceAttachment':
+          value = workspace.resources.removeFile(input);
+          break;
         case 'listTeachingRecords':
           value = workspace.teaching.list(input);
           break;

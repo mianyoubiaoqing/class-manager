@@ -2,6 +2,17 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { DesktopApi } from '../shared/contracts';
 
 const api: DesktopApi = {
+  previewResourcePrint: (input) => ipcRenderer.invoke('cm:previewResourcePrint', input),
+  readResourceDocument: (input) => ipcRenderer.invoke('cm:readResourceDocument', input),
+  saveResourceDocument: (input) => ipcRenderer.invoke('cm:saveResourceDocument', input),
+  listResourceAttachments: (input) => ipcRenderer.invoke('cm:listResourceAttachments', input),
+  selectResourceFiles: (input) => ipcRenderer.invoke('cm:selectResourceFiles', input),
+  scanResourceFolder: (input) => ipcRenderer.invoke('cm:scanResourceFolder', input),
+  readResourceFolder: (input) => ipcRenderer.invoke('cm:readResourceFolder', input),
+  addResourceLink: (input) => ipcRenderer.invoke('cm:addResourceLink', input),
+  removeResourceAttachment: (input) => ipcRenderer.invoke('cm:removeResourceAttachment', input),
+  openResourceAttachment: (input) => ipcRenderer.invoke('cm:openResourceAttachment', input),
+  exportResourceDocument: (input) => ipcRenderer.invoke('cm:exportResourceDocument', input),
   exportTeachingSeatingImage: (input) => ipcRenderer.invoke('cm:exportTeachingSeatingImage', input),
   listTeachingRecords: (input) => ipcRenderer.invoke('cm:listTeachingRecords', input),
   saveTeachingRecord: (input) => ipcRenderer.invoke('cm:saveTeachingRecord', input),

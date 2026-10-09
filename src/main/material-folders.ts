@@ -26,6 +26,11 @@ export class MaterialFolders {
   constructor(
     private readonly importer: MaterialImporter,
     private readonly currentEpoch: () => Promise<string>,
+    private readonly options?: {
+      extensions: string[];
+      maxBytes: number;
+      importFile: (path: string) => Promise<string>;
+    },
   ) {}
   get busy() {
     return Boolean(this.task) || this.scanning;
@@ -109,15 +114,15 @@ export class MaterialFolders {
             }
             if (!stat.isFile()) continue;
             const fingerprint = await this.fingerprint(path, root);
-            const supported = ['.txt', '.docx', '.pdf', '.png', '.jpg', '.jpeg'].includes(
-              extname(path).toLowerCase(),
-            );
+            const supported = (
+              this.options?.extensions ?? ['.txt', '.docx', '.pdf', '.png', '.jpg', '.jpeg']
+            ).includes(extname(path).toLowerCase());
             const id = randomUUID();
             const status = !supported
               ? 'unsupported'
               : !stat.size
                 ? 'empty'
-                : stat.size > LESSON_LIMITS.fileBytes
+                : stat.size > (this.options?.maxBytes ?? LESSON_LIMITS.fileBytes)
                   ? 'tooLarge'
                   : 'ready';
             value.entries.push({ id, name: relative(root, path), bytes: stat.size, status });
@@ -163,6 +168,12 @@ export class MaterialFolders {
         try {
           if ((await this.fingerprint(file.path, root)) !== file.fingerprint)
             throw new DomainError('MATERIAL_INVALID', '文件已变化，请重新扫描。');
+          if (this.options) {
+            const stored = await this.options.importFile(file.path);
+            receipt.files.push({ name, id: stored });
+            inventory.files.delete(id);
+            continue;
+          }
           const preview = await this.importer.preview(
             { epoch: input.epoch },
             async () => file.path,

@@ -28,6 +28,7 @@ import type { PublicationCheckpoint } from './score-publication';
 import { GrowthBook, type GrowthCheckpoint } from './growth-book';
 import { PupilBook } from './pupil-book';
 import { TeachingBook } from './teaching-book';
+import { ResourceLibrary } from './resource-library';
 import { parseRosterImport } from './roster-import';
 import { ClassDataImporter } from './class-data-import';
 import {
@@ -208,6 +209,13 @@ export class Workspace {
   }
   get teaching(): TeachingBook {
     return new TeachingBook(this.db, () => this.snapshot());
+  }
+  get resources(): ResourceLibrary {
+    return new ResourceLibrary(
+      this.db,
+      () => this.epoch,
+      () => this.directory,
+    );
   }
 
   get seating(): SeatingBook {

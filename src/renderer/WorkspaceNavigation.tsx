@@ -27,6 +27,8 @@ export type AppView =
   | 'modelSettings'
   | 'sessions'
   | 'teacherWorkbench'
+  | 'resourceLibrary'
+  | 'classImport'
   | 'resources'
   | WorkspaceAreaId;
 interface WorkspaceEntry {
@@ -50,9 +52,9 @@ export const workspaceAreas: WorkspaceArea[] = [
     description: '整理教学资料、制作教案课件，安排课堂与答卷复核。',
     entries: [
       {
-        view: 'teacherWorkbench',
-        label: '班级教学工作台',
-        description: '学生、成绩、作业与日常教学记录，集中管理。',
+        view: 'resourceLibrary',
+        label: '教学资源库',
+        description: '按学科与教材章节整理教学设计、课件提纲和复习资料。',
         icon: UsersRound,
       },
       {
@@ -164,13 +166,18 @@ export function areaForView(view: AppView): WorkspaceArea | undefined {
     (area) =>
       area.id === view ||
       area.entries.some((entry) => entry.view === view) ||
-      (view === 'students' && area.id === 'classManagement') ||
+      (['students', 'teacherWorkbench', 'classImport'].includes(view) &&
+        area.id === 'classManagement') ||
       (view === 'modelSettings' && area.id === 'settings'),
   );
 }
 export function viewLabel(view: AppView): string {
   const teacherLabels: Partial<Record<AppView, string>> = {
+    teaching: '教学资源库',
     classManagement: '班主任工作台',
+    teacherWorkbench: '班主任工作台',
+    classImport: '导入班级资料',
+    resourceLibrary: '教学资源库',
     roster: '花名册',
     students: '学生档案',
     scores: '成绩分析',
@@ -253,39 +260,7 @@ export function WorkspaceLinks({
 }) {
   const area = areaForView(view);
   if (!area) return null;
-  if (area.id === 'teaching') return null;
-  if (area.id === 'classManagement') {
-    return (
-      <nav className="workspace-tabs shared-class-tabs" aria-label="班主任管理功能">
-        {(
-          [
-            ['classManagement', '工作台'],
-            ['roster', '花名册'],
-            ['attendance', '上课点名'],
-            ['scores', '成绩分析'],
-            ['seating', '座次表'],
-            ['duty', '值日表'],
-            ['students', '学生档案'],
-            ['growth', '成长记录'],
-          ] as const
-        ).map(([target, label]) => (
-          <button
-            key={target}
-            className={
-              view === target || (view === 'profiles' && target === 'students') ? 'selected' : ''
-            }
-            aria-current={
-              view === target || (view === 'profiles' && target === 'students') ? 'page' : undefined
-            }
-            disabled={disabled}
-            onClick={() => onNavigate(target)}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
-    );
-  }
+  if (area.id !== 'settings') return null;
   return (
     <nav className="workspace-tabs" aria-label={`${area.label}功能`}>
       <button

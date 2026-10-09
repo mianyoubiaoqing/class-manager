@@ -79,28 +79,22 @@ async function size(width, height) {
   await page.waitForFunction((width) => window.innerWidth === width, width);
 }
 const main = () => page.getByRole('navigation', { name: '主导航', exact: true });
-const tabs = () => page.getByRole('navigation', { name: '班主任管理功能', exact: true });
+const tabs = () => page.getByRole('navigation', { name: '班主任资料与记录', exact: true });
 try {
   await launch();
   await size(1440, 960);
   await main().getByRole('button', { name: '班主任管理', exact: true }).click();
-  await page.getByRole('heading', { name: '班主任工作台', exact: true }).waitFor();
+  await page.getByRole('heading', { name: '仪表盘', exact: true }).waitFor();
   await page.getByRole('button', { name: '新建班级', exact: true }).click();
-  assert.equal(
-    await page.getByRole('button', { name: '保存班级', exact: true }).isDisabled(),
-    true,
-  );
+  assert.equal(await page.getByRole('button', { name: '保存', exact: true }).isDisabled(), true);
   await page.getByLabel('班级名称', { exact: true }).fill('   ');
-  assert.equal(
-    await page.getByRole('button', { name: '保存班级', exact: true }).isDisabled(),
-    true,
-  );
+  assert.equal(await page.getByRole('button', { name: '保存', exact: true }).isDisabled(), true);
   await page.getByText('请输入班级名称，不能只填写空格。', { exact: true }).waitFor();
   await gate('Empty and whitespace class names show guidance and keep Save disabled.');
   await page.getByLabel('班级名称', { exact: true }).fill('共享资料合成班');
-  await page.getByRole('button', { name: '保存班级', exact: true }).click();
+  await page.getByRole('button', { name: '保存', exact: true }).click();
   await screenshot('37-initial');
-  await page.getByRole('button', { name: '导入资料', exact: true }).click();
+  await page.getByRole('button', { name: '导入学生信息与成绩', exact: true }).click();
   const roster = path.join(root, '名单.csv'),
     scores = path.join(root, '成绩.csv');
   await fs.writeFile(roster, '学号,姓名\n001,合成甲\n002,合成乙\n003,合成丙');
@@ -152,8 +146,8 @@ try {
   assert.equal(await page.getByRole('button', { name: '资料下一页' }).isDisabled(), true);
   await screenshot('38-preview');
   await page.getByRole('button', { name: '确认保存并开始使用', exact: true }).click();
-  await page.getByRole('heading', { name: '欢迎使用 · 共享资料合成班', exact: true }).waitFor();
-  await page.getByText('已保存 3 名学生和 1 次考试', { exact: true }).waitFor();
+  await page.getByRole('heading', { name: '仪表盘', exact: true }).waitFor();
+  await page.getByText('学生信息与成绩已保存，各页面可直接使用。', { exact: true }).waitFor();
   snapshot = await call('snapshot');
   assert.equal(snapshot.students.length, 3);
   assert.deepEqual(snapshot.students.map((s) => s.studentNumber).sort(), ['001', '002', '003']);
@@ -161,7 +155,7 @@ try {
   await gate(
     'Two files preview without writes, then save one shared roster and one exam through real Main/worker/SQLite.',
   );
-  await tabs().getByRole('button', { name: '学生档案', exact: true }).click();
+  await tabs().getByRole('button', { name: '学生综合档案', exact: true }).click();
   await page.getByRole('heading', { name: '学生档案', exact: true }).waitFor();
   await page.getByLabel('搜索学生档案').fill('不存在的合成姓名');
   await page.getByText('未找到符合搜索条件的学生，已保存的名单仍在。', { exact: true }).waitFor();
@@ -204,7 +198,7 @@ try {
   await page.getByRole('button', { name: '保存点名记录', exact: true }).click();
   await page.getByRole('button', { name: '确认保存点名', exact: true }).click();
   await page.getByText('点名记录已保存，后续更正会保留原版本。', { exact: true }).waitFor();
-  await tabs().getByRole('button', { name: '学生档案', exact: true }).click();
+  await tabs().getByRole('button', { name: '学生综合档案', exact: true }).click();
   await page.getByRole('button', { name: '查看合成丙档案', exact: true }).click();
   await page
     .getByRole('navigation', { name: '学生资料分类' })
@@ -215,8 +209,8 @@ try {
     'The imported roster is immediately usable for roll call; saved attendance reappears in the same student detail.',
   );
   await page.getByRole('button', { name: '关闭学生档案', exact: true }).click();
-  await tabs().getByRole('button', { name: '工作台', exact: true }).click();
-  await page.getByRole('button', { name: '导入资料', exact: true }).click();
+  await main().getByRole('button', { name: '班主任管理', exact: true }).click();
+  await page.getByRole('button', { name: '导入学生信息与成绩', exact: true }).click();
   await fs.writeFile(
     scores,
     '姓名,语文,数学,英语\n合成甲,120,132,125.5\n合成乙,110,120,110\n合成丙,100,115,108',
@@ -226,10 +220,10 @@ try {
   await page.getByRole('heading', { name: '核对资料，保存后就能使用', exact: true }).waitFor();
   await page.getByLabel('统一导入考试名称', { exact: true }).fill('合成十一月考试');
   await page.getByRole('button', { name: '确认保存并开始使用', exact: true }).click();
-  await page.getByText('已保存 3 名学生和 2 次考试', { exact: true }).waitFor();
+  await page.getByText('学生信息与成绩已保存，各页面可直接使用。', { exact: true }).waitFor();
   snapshot = await call('snapshot');
   assert.equal(snapshot.students.length, 3);
-  await tabs().getByRole('button', { name: '学生档案', exact: true }).click();
+  await tabs().getByRole('button', { name: '学生综合档案', exact: true }).click();
   await page.getByRole('button', { name: '查看合成甲档案', exact: true }).click();
   await page
     .getByRole('navigation', { name: '学生资料分类' })
@@ -245,7 +239,7 @@ try {
   await page.getByRole('heading', { name: '花名册', exact: true }).waitFor();
   await gate('Legacy manual roster tools remain accessible under Student and scores.');
   await main().getByRole('button', { name: '班主任管理', exact: true }).click();
-  await tabs().getByRole('button', { name: '工作台', exact: true }).click();
+  await main().getByRole('button', { name: '班主任管理', exact: true }).click();
   for (const [width, height] of [
     [1440, 960],
     [1280, 720],
@@ -261,7 +255,7 @@ try {
     assert.ok(layout.scroll <= width + 1, `Global horizontal overflow: ${JSON.stringify(layout)}`);
   }
   await size(1440, 960);
-  await page.getByRole('button', { name: '导入资料', exact: true }).click();
+  await page.getByRole('button', { name: '导入学生信息与成绩', exact: true }).click();
   const bad = path.join(root, '不支持.xlsx');
   await fs.writeFile(bad, 'invalid workbook');
   await files([bad]);
@@ -291,7 +285,7 @@ try {
   await page.reload();
   await main().getByRole('button', { name: '班主任管理', exact: true }).click();
   await page.getByLabel('工作台当前管理班级', { exact: true }).selectOption(matchingClass);
-  await page.getByRole('button', { name: '导入资料', exact: true }).click();
+  await page.getByRole('button', { name: '导入学生信息与成绩', exact: true }).click();
   await fs.writeFile(scores, '姓名,数学\n合成同名,120\n合成新同学,118');
   await files([scores]);
   await page.getByRole('button', { name: '选择学生信息 / 成绩文件', exact: true }).click();
@@ -313,7 +307,7 @@ try {
   await page.getByRole('heading', { name: '核对资料，保存后就能使用', exact: true }).waitFor();
   assert.equal((await call('snapshot')).students.length, 5);
   await page.getByRole('button', { name: '确认保存并开始使用', exact: true }).click();
-  await page.getByText('已保存 3 名学生和 1 次考试', { exact: true }).waitFor();
+  await page.getByText('学生信息与成绩已保存，各页面可直接使用。', { exact: true }).waitFor();
   assert.equal((await call('snapshot')).students.length, 6);
   await gate(
     'Ambiguous names require explicit identity selection; unmatched pupils require explicit addition before any write.',

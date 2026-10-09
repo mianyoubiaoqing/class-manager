@@ -3,6 +3,13 @@ import { randomUUID } from 'node:crypto';
 import type { Result } from '../shared/contracts';
 
 export type WorkerOperation =
+  | 'readResourceDocument'
+  | 'saveResourceDocument'
+  | 'listResourceAttachments'
+  | 'storeResourceFile'
+  | 'readResourceFile'
+  | 'addResourceLink'
+  | 'removeResourceAttachment'
   | 'listTeachingRecords'
   | 'saveTeachingRecord'
   | 'deleteTeachingRecord'

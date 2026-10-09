@@ -1,3 +1,4 @@
+import { resourceSchemaStatements } from '../src/core/resource-library';
 import { mkdtempSync, rmSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -352,7 +353,7 @@ test('v12 migration preserves original roster and validates record payload again
   f.workspace.close();
   spaces.splice(spaces.indexOf(f.workspace), 1);
   const db = openDatabase(path, 'open');
-  for (const sql of [...teachingSchemaStatements].reverse()) {
+  for (const sql of [...teachingSchemaStatements, ...resourceSchemaStatements].reverse()) {
     const name = sql.match(/CREATE (?:TABLE|INDEX) (\w+)/)![1]!;
     db.exec(`DROP ${sql.includes('CREATE INDEX') ? 'INDEX' : 'TABLE'} ${name}`);
   }
@@ -363,7 +364,9 @@ test('v12 migration preserves original roster and validates record payload again
   spaces.push(next);
   expect(next.snapshot().students).toEqual(f.snapshot.students);
   expect(next.snapshot().schemaVersion).toBe(SCHEMA_VERSION);
-  expect(readdirSync(join(path, '..')).some((n) => n.includes('before-v13'))).toBe(true);
+  expect(readdirSync(join(path, '..')).some((n) => n.includes(`before-v${SCHEMA_VERSION}`))).toBe(
+    true,
+  );
   const record = next.teaching.save({ ...f.command, epoch: next.snapshot().epoch });
   next.close();
   spaces.splice(spaces.indexOf(next), 1);

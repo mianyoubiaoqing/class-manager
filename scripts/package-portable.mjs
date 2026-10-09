@@ -254,6 +254,10 @@ try {
   const documents = JSON.parse(
     await fs.readFile('output/docx-delivery-20261006/conversion-manifest.json', 'utf8'),
   );
+  await addText(
+    '诊断记录/教学资源库与入口迁移验收记录.md',
+    await fs.readFile('docs/handoff/resource-library-20261009.md', 'utf8'),
+  );
   await fs.writeFile(
     path.join(program, '诊断记录', '班级教学与WorkBuddy验收记录.md'),
     await fs.readFile('docs/handoff/teaching-workbench-20261008.md', 'utf8'),
