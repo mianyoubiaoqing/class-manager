@@ -333,8 +333,11 @@ try {
   await application.evaluate(
     ({ app, shell, dialog }, { path, executable }) => {
       app.setPath('home', path);
-      for (const key of ['SystemRoot', 'LOCALAPPDATA', 'ProgramFiles', 'ProgramFiles(x86)'])
+      globalThis.__cmOriginalDiscoveryEnvironment = {};
+      for (const key of ['SystemRoot', 'LOCALAPPDATA', 'ProgramFiles', 'ProgramFiles(x86)']) {
+        globalThis.__cmOriginalDiscoveryEnvironment[key] = process.env[key];
         process.env[key] = path;
+      }
       globalThis.__cmWorkBuddySelections = 0;
       dialog.showOpenDialog = async () => {
         globalThis.__cmWorkBuddySelections++;
@@ -375,6 +378,12 @@ try {
   checks.push(
     'custom WorkBuddy installation selection is remembered; subsequent registration needs no chooser',
   );
+  await application.evaluate(() => {
+    for (const [key, value] of Object.entries(globalThis.__cmOriginalDiscoveryEnvironment)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
   const child = spawn(config.command, config.args, {
     env: { ...env, ...config.env },
     stdio: ['pipe', 'pipe', 'pipe'],
@@ -510,6 +519,7 @@ try {
     await new Promise(() => {});
   }
 } catch (error) {
+  console.error(error);
   if (application) {
     const page = await application.firstWindow();
     await page.screenshot({ path: join(output, 'failure.png'), fullPage: true });
