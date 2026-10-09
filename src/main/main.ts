@@ -47,6 +47,7 @@ import { z } from 'zod';
 import sharp from 'sharp';
 import { WorkBuddyBridge } from './workbuddy-bridge';
 import { findWorkBuddy, registerWorkBuddy, type WorkBuddyServer } from './workbuddy-registration';
+import { discoverWorkBuddyWindows } from './workbuddy-discovery';
 import { teachingReport } from './teaching-reports';
 import type { TeachingRecord, TeachingSettings } from '../shared/teaching-workbench';
 import { randomUUID } from 'node:crypto';
@@ -511,6 +512,20 @@ if (!app.requestSingleInstanceLock()) {
           env: { ELECTRON_RUN_AS_NODE: '1' },
         };
       }
+      async function locateWorkBuddy() {
+        const home = app.getPath('home');
+        let remembered: string[] = [];
+        try {
+          const parsed: unknown = JSON.parse(
+            await fs.readFile(join(userDataPath, 'workbuddy-desktop.json'), 'utf8'),
+          );
+          if (typeof parsed === 'string') remembered = [parsed];
+        } catch {
+          /* First use or a removed installation; rediscover below. */
+        }
+        const known = findWorkBuddy(home, process.env, remembered);
+        return known ?? findWorkBuddy(home, process.env, await discoverWorkBuddyWindows());
+      }
       async function dispatch(channel: Channel, input: unknown): Promise<Result<unknown>> {
         switch (channel) {
           case 'previewResourcePrint': {
@@ -674,7 +689,7 @@ if (!app.requestSingleInstanceLock()) {
           }
           case 'openWorkBuddy':
             {
-              const installed = findWorkBuddy(app.getPath('home'));
+              const installed = await locateWorkBuddy();
               if (installed) {
                 const error = await shell.openPath(installed);
                 if (error)
@@ -683,7 +698,26 @@ if (!app.requestSingleInstanceLock()) {
             }
             return { ok: true, value: null };
           case 'startWorkBuddyConnection': {
-            const installed = findWorkBuddy(app.getPath('home'));
+            let installed = await locateWorkBuddy();
+            if (!installed) {
+              const selected = await dialog.showOpenDialog(window!, {
+                title: '自动检测未找到 WorkBuddy，请选择已安装的 WorkBuddy.exe（未安装可取消）',
+                properties: ['openFile'],
+                filters: [{ name: 'WorkBuddy 桌面程序', extensions: ['exe'] }],
+              });
+              if (!selected.canceled && selected.filePaths[0]) {
+                installed = findWorkBuddy(app.getPath('home'), {}, [selected.filePaths[0]]);
+                if (!installed)
+                  throw new DomainError(
+                    'VALIDATION',
+                    '请选择已安装的 WorkBuddy.exe 或 WorkBuddyAI.exe，不能选择安装包或其他程序。',
+                  );
+                atomicWrite(
+                  join(userDataPath, 'workbuddy-desktop.json'),
+                  JSON.stringify(installed),
+                );
+              }
+            }
             if (!installed)
               return {
                 ok: true,

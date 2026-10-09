@@ -63,6 +63,28 @@ try {
   await nav.getByRole('button', { name: '班主任管理', exact: true }).click();
   const workbench = page.getByRole('region', { name: '班主任工作台', exact: true });
   await workbench.getByRole('heading', { name: '从创建一个班级开始' }).waitFor();
+  const services = workbench.getByRole('region', { name: '江西班务平台', exact: true });
+  await services.getByText('江西省高中生综合素质评价', { exact: true }).waitFor();
+  await services.getByText('江西省教育考试院', { exact: true }).waitFor();
+  await application.evaluate(({ shell }) => {
+    globalThis.__cmExternalUrls = [];
+    shell.openExternal = async (url) => {
+      globalThis.__cmExternalUrls.push(url);
+    };
+  });
+  for (const label of ['江西省高中生综合素质评价', '江西省教育考试院'])
+    await services
+      .locator('.external-resource')
+      .filter({ hasText: label })
+      .getByRole('button', { name: '打开官网' })
+      .click();
+  assert.deepEqual(await application.evaluate(() => globalThis.__cmExternalUrls), [
+    'https://gzzs.jxedu.gov.cn/login',
+    'https://www.jxeea.cn/',
+  ]);
+  checks.push(
+    'Jiangxi services appear at the dashboard bottom without requiring a class and open the correct URLs',
+  );
   assert.equal(await workbench.getByRole('button', { name: '工作台首页', exact: true }).count(), 0);
   checks.push('original full workbench moved to homeroom; no duplicate homepage');
   await workbench.getByRole('button', { name: '创建班级', exact: true }).click();
@@ -302,22 +324,39 @@ try {
   assert.equal(readFileSync(image.path).subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
   checks.push('Word / Excel / PNG exports');
   const workBuddyHome = join(root, 'workbuddy-home');
-  const install = join(workBuddyHome, 'AppData', 'Local', 'Programs', 'WorkBuddy');
+  const install = join(root, 'custom apps', '教师助手');
   mkdirSync(install, { recursive: true });
   writeFileSync(join(install, 'WorkBuddy.exe'), 'synthetic executable');
-  mkdirSync(join(workBuddyHome, '.workbuddy'));
+  mkdirSync(join(workBuddyHome, '.workbuddy'), { recursive: true });
   const originalConfiguration = '{"mcpServers":{"other":{"command":"synthetic-other"}}}';
   writeFileSync(join(workBuddyHome, '.workbuddy', 'mcp.json'), originalConfiguration);
-  await application.evaluate(({ app, shell }, path) => {
-    app.setPath('home', path);
-    globalThis.__cmWorkBuddyLaunches = [];
-    shell.openPath = async (executable) => {
-      globalThis.__cmWorkBuddyLaunches.push(executable);
-      return '';
-    };
-  }, workBuddyHome);
+  await application.evaluate(
+    ({ app, shell, dialog }, { path, executable }) => {
+      app.setPath('home', path);
+      for (const key of ['SystemRoot', 'LOCALAPPDATA', 'ProgramFiles', 'ProgramFiles(x86)'])
+        process.env[key] = path;
+      globalThis.__cmWorkBuddySelections = 0;
+      dialog.showOpenDialog = async () => {
+        globalThis.__cmWorkBuddySelections++;
+        if (globalThis.__cmWorkBuddySelections === 1) return { canceled: true, filePaths: [] };
+        return { canceled: false, filePaths: [executable] };
+      };
+      globalThis.__cmWorkBuddyLaunches = [];
+      shell.openPath = async (executable) => {
+        globalThis.__cmWorkBuddyLaunches.push(executable);
+        return '';
+      };
+    },
+    { path: workBuddyHome, executable: join(install, 'WorkBuddy.exe') },
+  );
   await workbench.getByRole('button', { name: '开始连接', exact: true }).click();
   dialog = page.getByRole('dialog', { name: 'WorkBuddy 桥接与确认' });
+  await dialog.getByText('未检测到 WorkBuddy 桌面端', { exact: true }).waitFor();
+  assert.equal(
+    readFileSync(join(workBuddyHome, '.workbuddy', 'mcp.json'), 'utf8'),
+    originalConfiguration,
+  );
+  await dialog.getByRole('button', { name: '开始连接', exact: true }).click();
   await dialog.getByText('本机 MCP 已注册，等待 WorkBuddy 连接', { exact: true }).waitFor();
   const configPath = join(workBuddyHome, '.workbuddy', 'mcp.json');
   const registeredBytes = readFileSync(configPath, 'utf8');
@@ -327,10 +366,15 @@ try {
   await dialog.getByRole('button', { name: '重新检测并注册', exact: true }).click();
   await dialog.getByText('本机 MCP 已注册，等待 WorkBuddy 连接', { exact: true }).waitFor();
   assert.equal(readFileSync(configPath, 'utf8'), registeredBytes);
+  assert.equal(await application.evaluate(() => globalThis.__cmWorkBuddySelections), 2);
   const connection = await call('workBuddyConnection');
   const config = registeredConfiguration.mcpServers['class-manager'];
   assert.deepEqual(config, JSON.parse(connection.configuration).mcpServers['class-manager']);
   checks.push('one-click IPC registration preserves other services and is idempotent');
+  checks.push('cancelled installation chooser leaves existing MCP configuration untouched');
+  checks.push(
+    'custom WorkBuddy installation selection is remembered; subsequent registration needs no chooser',
+  );
   const child = spawn(config.command, config.args, {
     env: { ...env, ...config.env },
     stdio: ['pipe', 'pipe', 'pipe'],

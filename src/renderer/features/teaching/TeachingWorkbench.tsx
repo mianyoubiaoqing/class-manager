@@ -9,6 +9,7 @@ import type {
 } from '../../../shared/teaching-workbench';
 import type { ScoreVersionView } from '../../../shared/score-commands';
 import { DutyPage } from '../../DutyPage';
+import { ExternalResource } from '../../ResourceHub';
 import { RecordsPanel, type Execute } from './RecordsPanel';
 import { StudentsPanel } from './StudentsPanel';
 import { GradesPanel } from './GradesPanel';
@@ -510,6 +511,26 @@ export function TeachingWorkbench({
                 </div>
               )}
             </>
+          )}
+          {!tool && module === 'dash' && (
+            <section className="tw-card" aria-label="江西班务平台">
+              <h3>江西班务平台</h3>
+              <p className="tw-hint">在浏览器打开平台，按平台要求登录。</p>
+              <div className="tw-grid-2">
+                <ExternalResource
+                  name="江西省高中生综合素质评价"
+                  description="综评填报、审核与档案查看"
+                  url="https://gzzs.jxedu.gov.cn/login"
+                  kind="heart"
+                />
+                <ExternalResource
+                  name="江西省教育考试院"
+                  description="考试通知、报名与成绩查询"
+                  url="https://www.jxeea.cn/"
+                  kind="graduation"
+                />
+              </div>
+            </section>
           )}
           <WorkBuddyPanel
             snapshot={snapshot}

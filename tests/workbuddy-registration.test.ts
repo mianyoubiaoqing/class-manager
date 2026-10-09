@@ -1,5 +1,6 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import * as files from '../src/core/files';
+import { parseWorkBuddyDiscovery } from '../src/main/workbuddy-discovery';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -52,6 +53,29 @@ test('recognizes a machine-wide installation', () => {
   expect(findWorkBuddy(path, { ProgramFiles: programs })).toBe(
     join(programs, 'WorkBuddy', 'WorkBuddy.exe'),
   );
+});
+
+test('recognizes a custom installation discovered from Windows without assuming a drive', () => {
+  const path = home(),
+    directory = join(path, 'custom apps', '助手');
+  mkdirSync(directory, { recursive: true });
+  const executable = join(directory, 'WorkBuddy.exe');
+  writeFileSync(executable, 'synthetic');
+  expect(findWorkBuddy(path, {}, [executable])).toBe(executable);
+});
+
+test('ignores unrelated executables in discovered installation records', () => {
+  const path = home(),
+    executable = join(path, 'other.exe');
+  writeFileSync(executable, 'synthetic');
+  expect(findWorkBuddy(path, {}, [executable])).toBeUndefined();
+});
+
+test('discovery preserves Unicode paths and rejects malformed or non-list output', () => {
+  const path = 'D:\\教师助手\\WorkBuddy.exe';
+  expect(parseWorkBuddyDiscovery('\uFEFF' + JSON.stringify([path, null, {}, 42]))).toEqual([path]);
+  for (const output of ['warning\n[]', '{}', 'null', '"WorkBuddy.exe"'])
+    expect(parseWorkBuddyDiscovery(output)).toEqual([]);
 });
 test('registers stdio without persisting connection credentials or approving third-party tools', () => {
   const path = home(),

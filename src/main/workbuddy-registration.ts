@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, renameSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { join } from 'node:path';
+import { join, basename, isAbsolute } from 'node:path';
 import { atomicCreate, atomicWrite, requireDirectory, requireRegularFile } from '../core/files';
 import { DomainError } from '../core/errors';
 import type { WorkBuddyRegistration } from '../shared/teaching-workbench';
@@ -12,19 +12,28 @@ export interface WorkBuddyServer {
 }
 
 /** Only known desktop installations are launched; never execute paths supplied by the renderer. */
-export function findWorkBuddy(home: string, environment: NodeJS.ProcessEnv = process.env) {
+export function findWorkBuddy(
+  home: string,
+  environment: NodeJS.ProcessEnv = process.env,
+  discoveredExecutables: readonly string[] = [],
+) {
   const roots = [
     join(home, 'AppData', 'Local', 'Programs'),
     environment.LOCALAPPDATA && join(environment.LOCALAPPDATA, 'Programs'),
     environment.ProgramFiles,
     environment['ProgramFiles(x86)'],
   ].filter((root): root is string => Boolean(root));
-  for (const name of ['WorkBuddy', 'WorkBuddyAI']) {
-    for (const root of roots) {
-      const path = join(root, name, `${name}.exe`);
-      if (!existsSync(path)) continue;
+  const candidates = ['WorkBuddy', 'WorkBuddyAI'].flatMap((name) =>
+    roots.map((root) => join(root, name, `${name}.exe`)),
+  );
+  for (const path of [...candidates, ...discoveredExecutables.slice(0, 128)]) {
+    if (!isAbsolute(path) || !/^workbuddy(?:ai)?\.exe$/i.test(basename(path))) continue;
+    if (!existsSync(path)) continue;
+    try {
       requireRegularFile(path, 1024 * 1024 * 1024);
       return path;
+    } catch {
+      /* An obsolete, inaccessible or linked installation must not hide another valid copy. */
     }
   }
   return undefined;

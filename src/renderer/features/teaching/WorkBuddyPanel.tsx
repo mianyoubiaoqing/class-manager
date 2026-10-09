@@ -231,7 +231,11 @@ export function WorkBuddyPanel({
             </div>
           )}
           {registration && !registration.installed && (
-            <p>请先通过“前往 WorkBuddy”下载安装桌面端并登录，再点击开始连接。</p>
+            <p>
+              尚未找到桌面端。若已安装，点击“开始连接”后选择
+              WorkBuddy.exe；只需选择一次，程序会自动完成 MCP 注册。若未安装，可通过“前往
+              WorkBuddy”下载安装并登录。
+            </p>
           )}
           {registration?.launchError && <p role="alert">{registration.launchError}</p>}
           <button className="primary" disabled={busy} onClick={() => void connect(true)}>
@@ -253,8 +257,8 @@ export function WorkBuddyPanel({
               onFocus={(e) => e.target.select()}
             />
             <p>
-              非标准安装位置可在 WorkBuddy 的 MCP
-              设置中添加此配置。更换程序位置或数据目录后，重新点击开始连接。
+              自定义安装位置会通过 Windows
+              安装记录和运行进程检测；仍未找到时可选择程序文件。更换程序位置或数据目录后，重新点击开始连接。
             </p>
           </details>
           <details>
