@@ -14,7 +14,7 @@ import { StudentsPanel } from './StudentsPanel';
 import { GradesPanel } from './GradesPanel';
 import { SeatingPanel } from './SeatingPanel';
 import { WorkBuddyPanel } from './WorkBuddyPanel';
-import { TeachingDialog } from './TeachingDialog';
+import { TeachingDialog, TeachingDialogCancel } from './TeachingDialog';
 import { today, recordTitle } from './record-fields';
 import { withinLocalDays } from './date-range';
 import './teaching-workbench.css';
@@ -99,6 +99,11 @@ export function TeachingWorkbench({
     scope = useRef({ epoch: snapshot.epoch, classId });
   const alive = useRef(true),
     refreshRequest = useRef(0);
+  const acceptedSnapshot = useRef(snapshot);
+  if (acceptedSnapshot.current !== snapshot) {
+    acceptedSnapshot.current = snapshot;
+    refreshRequest.current++;
+  }
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -112,6 +117,7 @@ export function TeachingWorkbench({
   scope.current = { epoch: snapshot.epoch, classId };
   const execute: Execute = useCallback(async <T,>(work: () => Promise<T>, success?: string) => {
     if (locked.current) return undefined;
+    refreshRequest.current++;
     locked.current = true;
     setBusy(true);
     setMessage('');
@@ -175,6 +181,7 @@ export function TeachingWorkbench({
       views.sort((a, b) => b.payload.definition.date.localeCompare(a.payload.definition.date)),
     );
     setSettings(take(preferences));
+    acceptedSnapshot.current = take(current);
     onSnapshot(take(current));
   }, [api, classId, snapshot.epoch, onSnapshot]);
   useEffect(() => {
@@ -521,6 +528,8 @@ export function TeachingWorkbench({
                   setFormError(r.error.message);
                   throw new Error(r.error.message);
                 }
+                refreshRequest.current++;
+                acceptedSnapshot.current = r.value;
                 onSnapshot(r.value);
                 if (!classForm.rename) {
                   const id =
@@ -530,6 +539,13 @@ export function TeachingWorkbench({
                   onSelectClass(id);
                 }
                 setClassForm(undefined);
+                if (classForm.rename) {
+                  try {
+                    await refresh();
+                  } catch {
+                    throw new Error('班级已保存，但资料读取失败。请刷新教学资料，无需再次保存。');
+                  }
+                }
                 return true;
               }, '班级已保存');
             }}
@@ -547,9 +563,7 @@ export function TeachingWorkbench({
             {!classForm.rename && <p className="tw-hint">将创建空白班级，请随后导入学生。</p>}
             {formError && <p role="alert">{formError}</p>}
             <footer>
-              <button type="button" disabled={busy} onClick={() => setClassForm(undefined)}>
-                取消
-              </button>
+              <TeachingDialogCancel disabled={busy} />
               {!classForm.name.trim() && <p role="status">请输入班级名称，不能只填写空格。</p>}
               <button className="primary" disabled={busy || !classForm.name.trim()}>
                 保存

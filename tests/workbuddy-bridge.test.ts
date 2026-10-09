@@ -19,6 +19,31 @@ afterEach(() => {
   roots.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true }));
 });
 
+test('an initialized client resumes tools after the computer sleeps past idle expiry', async () => {
+  const f = await fixture();
+  vi.useFakeTimers();
+  vi.setSystemTime(Date.now() + 6 * 60 * 1000);
+  expect(await f.bridge.rpc({ jsonrpc: '2.0', id: 2, method: 'ping' }, f.client)).toHaveProperty(
+    'result',
+  );
+  expect(
+    await f.bridge.rpc({ jsonrpc: '2.0', id: 3, method: 'tools/list' }, f.client),
+  ).toHaveProperty('result.tools');
+  expect(
+    value(
+      await f.bridge.rpc(
+        {
+          jsonrpc: '2.0',
+          id: 4,
+          method: 'tools/call',
+          params: { name: 'workspace', arguments: {} },
+        },
+        f.client,
+      ),
+    ).classes,
+  ).toHaveLength(1);
+});
+
 test('disconnect and idle expiry release MCP sessions across more than 32 reconnects', async () => {
   const f = await fixture();
   for (let i = 0; i < 40; i++) {

@@ -213,9 +213,36 @@ export class TeachingBook {
       if (replay) return replay;
       if (!snapshot.classes.some((c) => c.id === input.classId))
         throw new DomainError('NOT_FOUND', '班级不存在。');
+      const old = input.id
+        ? this.list({ epoch: input.epoch, includeDeleted: true }).find((r) => r.id === input.id)
+        : undefined;
+      if (
+        input.id &&
+        (!old ||
+          old.revision !== input.expectedRevision ||
+          old.kind !== input.kind ||
+          old.classId !== input.classId ||
+          old.deleted)
+      )
+        throw new DomainError('REVISION_CONFLICT', '记录已修改或删除，请刷新后重试。');
       const studentIds = new Set(
         snapshot.students.filter((s) => s.classId === input.classId && s.active).map((s) => s.id),
       );
+      // Preserve historical identities, but never add an inactive or foreign student.
+      const historicalIds = old
+        ? 'studentId' in old.content
+          ? [old.content.studentId]
+          : 'submissions' in old.content
+            ? old.content.submissions.map((s) => s.studentId)
+            : []
+        : [];
+      for (const id of historicalIds)
+        if (
+          this.db
+            .prepare('SELECT id FROM enrollments WHERE student_id=? AND class_id=?')
+            .get(id, input.classId)
+        )
+          studentIds.add(id);
       if ('studentId' in content && !studentIds.has(content.studentId))
         throw new DomainError('VALIDATION', '学生不属于当前班级或已停用。');
       if ('submissions' in content) {
@@ -244,18 +271,6 @@ export class TeachingBook {
         )
       )
         throw new DomainError('VALIDATION', '此考试已有归档状态，请修改原记录。');
-      const old = input.id
-        ? this.list({ epoch: input.epoch, includeDeleted: true }).find((r) => r.id === input.id)
-        : undefined;
-      if (
-        input.id &&
-        (!old ||
-          old.revision !== input.expectedRevision ||
-          old.kind !== input.kind ||
-          old.classId !== input.classId ||
-          old.deleted)
-      )
-        throw new DomainError('REVISION_CONFLICT', '记录已修改或删除，请刷新后重试。');
       if (
         input.kind === 'studentExtra' &&
         this.list({ epoch: input.epoch, classId: input.classId, kind: input.kind }).some(

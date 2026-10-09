@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Plus, Search, FileDown, Pencil, Trash2, ImagePlus } from 'lucide-react';
 import type { DesktopApi, Snapshot } from '../../../shared/contracts';
 import {
@@ -6,7 +6,7 @@ import {
   type TeachingKind,
   type TeachingRecord,
 } from '../../../shared/teaching-workbench';
-import { TeachingDialog } from './TeachingDialog';
+import { TeachingDialog, TeachingDialogCancel } from './TeachingDialog';
 import { kindLabels, recordFields, today, localDateTime, recordTitle } from './record-fields';
 export type Execute = <T>(work: () => Promise<T>, success?: string) => Promise<T | undefined>;
 export function RecordsPanel({
@@ -39,7 +39,24 @@ export function RecordsPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [pendingDone, setPendingDone] = useState<Record<string, boolean>>({});
-  const students = snapshot.students.filter((s) => s.classId === classId && s.active);
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  const originalForm = useRef('');
+  const saveRequest = useRef<{ key: string; id: string } | undefined>(undefined);
+  const activeStudents = snapshot.students.filter((s) => s.classId === classId && s.active);
+  const historicalIds =
+    editing && editing !== 'new'
+      ? 'studentId' in editing.content
+        ? [editing.content.studentId]
+        : 'submissions' in editing.content
+          ? editing.content.submissions.map((s) => s.studentId)
+          : []
+      : [];
+  const students = [
+    ...activeStudents,
+    ...snapshot.students.filter(
+      (s) => historicalIds.includes(s.id) && !activeStudents.some((a) => a.id === s.id),
+    ),
+  ];
   useEffect(() => {
     onDirtyChange(Boolean(editing));
     return () => onDirtyChange(false);
@@ -91,7 +108,10 @@ export function RecordsPanel({
     if (kind === 'homework')
       initial.submissions = students.map((s) => ({ studentId: s.id, done: false }));
     if (kind === 'activity') initial.photoIds = [];
-    setForm(record ? { ...record.content } : initial);
+    const nextForm = record ? { ...record.content } : initial;
+    originalForm.current = JSON.stringify(nextForm);
+    saveRequest.current = undefined;
+    setForm(nextForm);
     setError('');
     setPhotos({});
     setEditing(record ?? 'new');
@@ -115,28 +135,56 @@ export function RecordsPanel({
       return false;
     }
     setBusy(true);
-    const result = await execute(async () => {
-      const saved = await api.saveTeachingRecord({
+    let committed = false;
+    await execute(async () => {
+      const command = {
         epoch: snapshot.epoch,
         classId,
         kind,
         ...(record ? { id: record.id } : {}),
         expectedRevision: record?.revision ?? 0,
-        requestId: crypto.randomUUID(),
         content: parsed.data,
-      });
+      };
+      const key = JSON.stringify(command);
+      if (saveRequest.current?.key !== key) saveRequest.current = { key, id: crypto.randomUUID() };
+      const saved = await api.saveTeachingRecord({ ...command, requestId: saveRequest.current.id });
       if (!saved.ok) {
         setError(saved.error.message);
         throw new Error(saved.error.message);
       }
-      await refresh();
+      committed = true;
+      saveRequest.current = undefined;
+      setEditing(undefined);
+      try {
+        await refresh();
+        setRefreshFailed(false);
+      } catch {
+        setRefreshFailed(true);
+        throw new Error('已保存到本地，但列表读取失败。请点击“重新读取列表”，无需再次保存。');
+      }
       return saved.value;
     }, '已保存到本地');
     setBusy(false);
-    return Boolean(result);
+    return committed;
   }
   return (
     <>
+      {refreshFailed && (
+        <p role="status">
+          已保存到本地，但列表读取失败。
+          <button
+            disabled={busy}
+            onClick={() =>
+              void execute(async () => {
+                await refresh();
+                setRefreshFailed(false);
+              }, '列表已更新')
+            }
+          >
+            重新读取列表
+          </button>
+        </p>
+      )}
       <div className="tw-toolbar">
         <label className="tw-search">
           <Search size={16} />
@@ -337,6 +385,7 @@ export function RecordsPanel({
         <TeachingDialog
           title={`${editing === 'new' ? '新增' : '编辑'}${kindLabels[kind]}`}
           busy={busy}
+          dirty={JSON.stringify(form) !== originalForm.current}
           onClose={() => setEditing(undefined)}
         >
           <form
@@ -360,6 +409,7 @@ export function RecordsPanel({
                     />
                   ) : f.type === 'student' || f.type === 'select' ? (
                     <select
+                      aria-label={`${f.label}${f.optional ? '（可选）' : ''}`}
                       required
                       disabled={busy}
                       value={String(form[f.key] ?? '')}
@@ -371,6 +421,8 @@ export function RecordsPanel({
                           {students.map((s) => (
                             <option key={s.id} value={s.id}>
                               {s.displayName}（{s.studentNumber}）
+                              {(!s.active || s.classId !== classId) &&
+                                ' · 已停用或转班 · 保留历史身份'}
                             </option>
                           ))}
                         </>
@@ -384,6 +436,7 @@ export function RecordsPanel({
                     </select>
                   ) : f.type === 'long' ? (
                     <textarea
+                      aria-label={`${f.label}${f.optional ? '（可选）' : ''}`}
                       required={!f.optional}
                       disabled={busy}
                       rows={4}
@@ -517,9 +570,7 @@ export function RecordsPanel({
             )}
             {error && <p role="alert">{error}</p>}
             <footer>
-              <button type="button" disabled={busy} onClick={() => setEditing(undefined)}>
-                取消
-              </button>
+              <TeachingDialogCancel disabled={busy} />
               <button className="primary" disabled={busy}>
                 {busy ? '保存中…' : '保存'}
               </button>

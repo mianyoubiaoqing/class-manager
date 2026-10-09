@@ -72,8 +72,25 @@ test('teaching reports generate actual DOCX and XLSX in the bounded Office child
   const sheet = await instance.generateTeachingReport({ ...report, format: 'xlsx' });
   expect((await JSZip.loadAsync(sheet.bytes)).file('xl/worksheets/sheet1.xml')).not.toBeNull();
   await expect(
-    instance.generateTeachingReport({ ...report, rows: [['x'.repeat(2001)]], format: 'docx' }),
+    instance.generateTeachingReport({ ...report, rows: [['x'.repeat(10001)]], format: 'docx' }),
   ).rejects.toThrow();
+});
+
+test('legal long teaching content survives DOCX and XLSX export without truncation', async () => {
+  const instance = runner();
+  const content = '长记录'.repeat(2000);
+  for (const format of ['docx', 'xlsx'] as const) {
+    const result = await instance.generateTeachingReport({
+      title: '长记录',
+      rows: [['内容', content]],
+      format,
+    });
+    const zip = await JSZip.loadAsync(result.bytes);
+    const xml = await zip
+      .file(format === 'docx' ? 'word/document.xml' : 'xl/sharedStrings.xml')!
+      .async('string');
+    expect(xml).toContain(content);
+  }
 });
 
 test('cancel waits for child closure, prevents concurrent admission and allows a subsequent task', async () => {

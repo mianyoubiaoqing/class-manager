@@ -6,7 +6,7 @@ import type { TeachingRecord } from '../../../shared/teaching-workbench';
 import type { ScoreVersionView } from '../../../shared/score-commands';
 import { profileContent } from '../../../shared/pupils';
 import { RosterImportDialog } from '../../RosterImportDialog';
-import { TeachingDialog } from './TeachingDialog';
+import { TeachingDialog, TeachingDialogCancel } from './TeachingDialog';
 import { type Execute } from './RecordsPanel';
 import { kindLabels, recordTitle } from './record-fields';
 
@@ -94,6 +94,17 @@ export function StudentsPanel({
       (r) => r.kind === 'studentExtra' && 'studentId' in r.content && r.content.studentId === id,
     );
   const profileFor = (id: string) => profiles.find((p) => p.studentId === id);
+  const savedExtra = detail?.extra?.content as
+    { height?: number; group?: number; idCard?: string; note?: string } | undefined;
+  const detailDirty = Boolean(
+    detail &&
+    (JSON.stringify(detail.profile.content) !==
+      JSON.stringify(profileFor(detail.student.id)?.content) ||
+      detail.height !== (savedExtra?.height ?? 0) ||
+      detail.group !== (savedExtra?.group ?? 1) ||
+      detail.idCard !== (savedExtra?.idCard ?? '') ||
+      detail.note !== (savedExtra?.note ?? '')),
+  );
   const filtered = students.filter(
     (s) =>
       s.active !== archived &&
@@ -390,8 +401,12 @@ export function StudentsPanel({
                   setError(r.error.message);
                   throw new Error(r.error.message);
                 }
-                await refresh();
                 setBase(undefined);
+                try {
+                  await refresh();
+                } catch {
+                  throw new Error('学生已保存，但列表读取失败。请刷新列表，无需再次保存。');
+                }
                 return true;
               }, '学生已保存').finally(() => setBusy(false));
             }}
@@ -421,9 +436,7 @@ export function StudentsPanel({
             </p>
             {error && <p role="alert">{error}</p>}
             <footer>
-              <button type="button" disabled={busy} onClick={() => setBase(undefined)}>
-                取消
-              </button>
+              <TeachingDialogCancel disabled={busy} />
               <button className="primary" disabled={busy}>
                 {busy ? '保存中…' : '保存学生'}
               </button>
@@ -436,6 +449,7 @@ export function StudentsPanel({
           title={`${detail.student.displayName} · 学生档案`}
           onClose={() => setDetail(undefined)}
           busy={busy}
+          dirty={detailDirty}
         >
           <form
             onSubmit={(e) => {
@@ -479,8 +493,12 @@ export function StudentsPanel({
                   setError(`联系资料已保存；身高与分组未保存：${extra.error.message}`);
                   throw new Error(extra.error.message);
                 }
-                await refresh();
                 setDetail(undefined);
+                try {
+                  await refresh();
+                } catch {
+                  throw new Error('学生资料已保存，但列表读取失败。请刷新列表，无需再次保存。');
+                }
                 return true;
               }, '学生资料已保存').finally(() => setBusy(false));
             }}
@@ -676,14 +694,20 @@ export function StudentsPanel({
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => exportFile('profile', 'docx', detail.student.id)}
+                onClick={() => {
+                  if (detailDirty) {
+                    setError('资料尚未保存，请先保存资料后再导出学生报告。');
+                    return;
+                  }
+                  setError('');
+                  exportFile('profile', 'docx', detail.student.id);
+                }}
               >
                 <FileDown size={16} />
                 导出学生报告
               </button>
-              <button type="button" disabled={busy} onClick={() => setDetail(undefined)}>
-                关闭
-              </button>
+              <span className="tw-hint">导出已保存的资料</span>
+              <TeachingDialogCancel disabled={busy}>关闭</TeachingDialogCancel>
               <button className="primary" disabled={busy || !detail.student.active}>
                 {busy ? '保存中…' : '保存资料'}
               </button>

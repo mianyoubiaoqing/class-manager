@@ -5,7 +5,7 @@ export const teachingReportDocument = z
     title: z.string().min(1).max(240),
     format: z.enum(['docx', 'xlsx']),
     rows: z
-      .array(z.array(z.string().max(2000)).min(1).max(30))
+      .array(z.array(z.string().max(10000)).min(1).max(30))
       .min(1)
       .max(40000),
   })

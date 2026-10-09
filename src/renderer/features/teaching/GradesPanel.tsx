@@ -13,7 +13,7 @@ import {
   type ExamDraft,
   scoreText,
 } from '../../score-editor';
-import { TeachingDialog } from './TeachingDialog';
+import { TeachingDialog, TeachingDialogCancel } from './TeachingDialog';
 import type { Execute } from './RecordsPanel';
 const cellKey = (studentId: string, subjectId: string) => `${studentId}:${subjectId}`;
 const csvCell = (value: string) => `"${value.replaceAll('"', '""')}"`;
@@ -498,9 +498,7 @@ export function GradesPanel({
             </div>
             {error && <p role="alert">{error}</p>}
             <footer>
-              <button type="button" disabled={busy} onClick={() => setDraft(undefined)}>
-                取消
-              </button>
+              <TeachingDialogCancel disabled={busy} />
               <button className="primary" disabled={busy || !draft.configuration.subjects.length}>
                 {busy ? '保存中…' : '确认保存全部成绩'}
               </button>

@@ -130,6 +130,67 @@ function fixture() {
   };
   return { workspace, root, snapshot, command, classId };
 }
+test('historical records retain an inactive student identity without permitting new inactive references', () => {
+  const f = fixture();
+  const saved = f.workspace.teaching.save(f.command);
+  const student = f.snapshot.students.find((s) => s.id === f.command.content.studentId)!;
+  f.workspace.setStudentActive({
+    epoch: f.snapshot.epoch,
+    id: student.id,
+    expectedRevision: student.revision,
+    active: false,
+  });
+  const edited = f.workspace.teaching.save({
+    ...f.command,
+    id: saved.id,
+    expectedRevision: 1,
+    requestId: randomUUID(),
+    content: { ...f.command.content, content: '停用后更正历史记录' },
+  });
+  expect(edited.revision).toBe(2);
+  const extraSnapshot = f.workspace.saveStudent({
+    epoch: f.snapshot.epoch,
+    classId: f.classId,
+    studentNumber: 'S003',
+    displayName: '另一名合成学生',
+  });
+  const another = extraSnapshot.students.find((s) => s.studentNumber === 'S003')!;
+  f.workspace.setStudentActive({
+    epoch: f.snapshot.epoch,
+    id: another.id,
+    expectedRevision: another.revision,
+    active: false,
+  });
+  expect(() =>
+    f.workspace.teaching.save({
+      ...f.command,
+      id: saved.id,
+      expectedRevision: 2,
+      requestId: randomUUID(),
+      content: { ...f.command.content, studentId: another.id },
+    }),
+  ).toThrow(/停用/);
+  expect(() => f.workspace.teaching.save({ ...f.command, requestId: randomUUID() })).toThrow(
+    /停用/,
+  );
+  expect(() =>
+    f.workspace.teaching.save({
+      ...f.command,
+      id: saved.id,
+      expectedRevision: 2,
+      requestId: randomUUID(),
+      content: {
+        ...f.command.content,
+        studentId: f.snapshot.students.find((s) => s.classId !== f.classId)!.id,
+      },
+    }),
+  ).toThrow(/当前班级/);
+  f.workspace.close();
+  spaces.splice(spaces.indexOf(f.workspace), 1);
+  const reopened = new Workspace(f.root);
+  spaces.push(reopened);
+  expect(reopened.teaching.list({ epoch: reopened.snapshot().epoch })[0]).toEqual(edited);
+});
 test('teaching records share roster identity, enforce class isolation, revisions and idempotent writes', () => {
   const f = fixture(),
     book = f.workspace.teaching;

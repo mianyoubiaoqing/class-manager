@@ -258,11 +258,11 @@ export class WorkBuddyBridge {
     if (!parsed.success) return errorReply(null, -32600, '无效的 JSON-RPC 请求');
     const request = parsed.data;
     const now = Date.now();
+    const session = this.sessions.get(client);
+    if (session) session.lastSeen = now;
     for (const [id, session] of this.sessions) {
       if (now - session.lastSeen >= 5 * 60 * 1000) this.sessions.delete(id);
     }
-    const session = this.sessions.get(client);
-    if (session) session.lastSeen = now;
     if (request.method === 'notifications/disconnected') {
       this.sessions.delete(client);
       return undefined;

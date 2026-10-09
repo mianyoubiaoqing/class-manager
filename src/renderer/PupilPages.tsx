@@ -10,6 +10,7 @@ import {
 import './pupils.css';
 import { WorkspaceTabs } from './WorkspaceTabs';
 import { RevealStep } from './RevealStep';
+import { TeachingDialog } from './features/teaching/TeachingDialog';
 
 const labels = {
   unmarked: '未点名',
@@ -50,6 +51,7 @@ export function AttendancePage({
   const [history, setHistory] = useState<PupilRevision<AttendanceRecord>[]>([]);
   const [tab, setTab] = useState<'roll' | 'list' | 'history'>('roll');
   const [search, setSearch] = useState('');
+  const [resetPending, setResetPending] = useState(false);
   const alive = useRef(true),
     request = useRef(0),
     running = useRef(false),
@@ -205,7 +207,13 @@ export function AttendancePage({
               ))}
             </select>
           </label>
-          <button disabled={busy || !classId} onClick={() => void load()}>
+          <button
+            disabled={busy || !classId}
+            onClick={() => {
+              if (dirty || review) setResetPending(true);
+              else void load();
+            }}
+          >
             重新开始点名
           </button>
           <label>
@@ -483,6 +491,23 @@ export function AttendancePage({
           </details>
         ))}
       </section>
+      {resetPending && (
+        <TeachingDialog title="重新开始点名？" onClose={() => setResetPending(false)} busy={busy}>
+          <p>重新开始将清除尚未保存的点名标题、状态和备注。已保存的历史记录会保留。</p>
+          <footer>
+            <button onClick={() => setResetPending(false)}>继续点名</button>
+            <button
+              className="danger"
+              onClick={() => {
+                setResetPending(false);
+                void load();
+              }}
+            >
+              放弃修改并重新开始
+            </button>
+          </footer>
+        </TeachingDialog>
+      )}
     </div>
   );
 }
