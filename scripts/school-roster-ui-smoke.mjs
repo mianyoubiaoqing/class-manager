@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import ExcelJS from 'exceljs';
+import JSZip from 'jszip';
 import { schoolRosterHeaders } from '../src/shared/roster-fields.ts';
 
 const output = path.resolve('output/playwright/school-roster');
@@ -66,7 +67,19 @@ try {
   ];
   sheet.mergeCells('B77:Q77');
   const roster = path.join(root, '合成花名册.xlsx');
-  await book.xlsx.writeFile(roster);
+  const archive = await JSZip.loadAsync(await book.xlsx.writeBuffer());
+  const sheetXml = 'xl/worksheets/sheet1.xml';
+  archive.file(
+    sheetXml,
+    (await archive.file(sheetXml).async('string')).replace(
+      '<sheetData>',
+      '<cols><col min="19" max="16384" width="10" customWidth="1"/></cols><sheetData>',
+    ),
+  );
+  await fs.writeFile(
+    roster,
+    await archive.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' }),
+  );
   app = await electron.launch({
     executablePath: packaged ?? runtime.executablePath,
     args: packaged ? [] : ['.'],

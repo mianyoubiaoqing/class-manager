@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import ExcelJS from 'exceljs';
+import JSZip from 'jszip';
 import { afterEach, expect, test } from 'vitest';
 import { Workspace } from '../src/core/workspace';
 import { schoolRosterHeaders } from '../src/shared/roster-fields';
@@ -54,6 +55,64 @@ async function file(row: (string | number | Date)[] = values) {
   s.getCell('D4').numFmt = row[3] instanceof Date ? 'yyyy年mm月' : '@';
   return Buffer.from(await b.xlsx.writeBuffer());
 }
+async function columnStyles(bytes: Buffer, min = '19', max = '16384') {
+  const zip = await JSZip.loadAsync(bytes),
+    name = 'xl/worksheets/sheet1.xml';
+  zip.file(
+    name,
+    (await zip.file(name)!.async('string')).replace(
+      '<sheetData>',
+      `<cols><col min="${min}" max="${max}" width="10" customWidth="1"/></cols><sheetData>`,
+    ),
+  );
+  return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
+}
+test.each(['roster', 'shared'] as const)(
+  '%s accepts 18 data columns with empty column formatting through XFD',
+  async (mode) => {
+    const { w, input } = setup(),
+      bytes = await columnStyles(await file());
+    const p =
+      mode === 'roster'
+        ? await w.previewRoster(bytes, 'xlsx', '合成花名册.xlsx', input)
+        : await w.classData.select([{ bytes, format: 'xlsx', fileName: '合成花名册.xlsx' }], input);
+    expect(p).toMatchObject({ added: 1, canConfirm: true });
+    const r =
+      mode === 'roster'
+        ? w.confirmRoster({ epoch: input.epoch, token: p.token })
+        : w.classData.confirm({ epoch: input.epoch, token: p.token });
+    expect(r.snapshot.students).toHaveLength(1);
+    expect(
+      w.pupils.readProfile({ epoch: input.epoch, studentId: r.snapshot.students[0]!.id }).content,
+    ).toMatchObject(profile);
+  },
+);
+test.each([
+  ['0', '18'],
+  ['19', '18'],
+  ['19', '16385'],
+])('invalid column style range %s:%s still rejects', async (min, max) => {
+  const { w, input } = setup();
+  await expect(
+    w.previewRoster(await columnStyles(await file(), min, max), 'xlsx', '合成.xlsx', input),
+  ).rejects.toMatchObject({ code: 'SCORE_FILE_LIMIT' });
+  expect(w.snapshot().students).toHaveLength(0);
+});
+test('wide formatting never permits actual data beyond the 23-column boundary', async () => {
+  const { w, input } = setup(),
+    b = new ExcelJS.Workbook();
+  await b.xlsx.load(Uint8Array.from(await file()).buffer);
+  b.worksheets[0]!.getCell('X4').value = '不能静默丢弃的合成数据';
+  await expect(
+    w.previewRoster(
+      await columnStyles(Buffer.from(await b.xlsx.writeBuffer())),
+      'xlsx',
+      '合成.xlsx',
+      input,
+    ),
+  ).rejects.toMatchObject({ code: 'SCORE_FILE_LIMIT' });
+  expect(w.snapshot().students).toHaveLength(0);
+});
 const profile = {
   gender: 'female',
   birthMonth: '2010-09',

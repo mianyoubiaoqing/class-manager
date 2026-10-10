@@ -3,6 +3,11 @@ import { SaxesParser } from 'saxes';
 import { SCORE_FILE_LIMITS } from '../shared/score-import';
 import { DomainError } from './errors';
 
+// XLSX column formatting may extend to XFD even when the data uses only A:R.
+// Bound style expansion by Excel's physical limit; checkAddress independently
+// enforces the much smaller import range for dimensions, cells and merges.
+const XLSX_MAX_COLUMNS = 16384;
+
 function checkAddress(address: string): number {
   const match = /^([A-Z]{1,3})([1-9]\d*)$/.exec(address);
   if (!match) throw new DomainError('SCORE_XLSX_INVALID', '工作表单元格坐标无效。');
@@ -102,9 +107,9 @@ export async function inspectScoreWorkbook(
               !/^[1-9]\d*$/.test(min) ||
               !/^[1-9]\d*$/.test(max) ||
               Number(min) > Number(max) ||
-              Number(max) > SCORE_FILE_LIMITS.columns
+              Number(max) > XLSX_MAX_COLUMNS
             ) {
-              throw new DomainError('SCORE_FILE_LIMIT', '工作表列范围无效或超过限制。');
+              throw new DomainError('SCORE_FILE_LIMIT', '工作表列格式范围无效或超出 Excel 限制。');
             }
           }
           if (node.local === 'dimension') {
