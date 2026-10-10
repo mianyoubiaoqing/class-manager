@@ -587,6 +587,13 @@
 .shared-table-scroll td:last-child {
   white-space: normal;
 }
+.class-data-import .shared-table-scroll td:last-child {
+  min-width: 220px;
+  max-width: 360px;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
 .shared-table-scroll .shared-text-button {
   padding: 0;
   min-height: 24px;

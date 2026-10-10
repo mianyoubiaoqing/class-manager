@@ -3,11 +3,14 @@ import { parse, CsvError } from 'csv-parse/sync';
 import { DomainError } from './errors';
 import { inspectScoreWorkbook } from './score-workbook-guard';
 import { SCORE_FILE_LIMITS } from '../shared/score-import';
+import { rosterCell } from './roster-cell';
+import { rosterHeaders, rosterProfileColumns } from './roster-profile';
 
 export interface ScoreCell {
   value: string | number | null;
   problem?: string;
   numberFormat?: string;
+  notice?: string;
 }
 export type ScoreTable = ScoreCell[][];
 
@@ -102,8 +105,10 @@ export async function readClassDataTables(
           if (
             Array.from(
               { length: sheet.columnCount },
-              (_, j) => sheet.getRow(i).getCell(j + 1).value,
-            ).some((v) => v === '姓名' || v === '学生姓名')
+              (_, j) => rosterCell(sheet.getRow(i).getCell(j + 1).value, 'text').value,
+            ).some(
+              (v) => typeof v === 'string' && ['姓名', '学生姓名'].includes(v.replace(/\s/gu, '')),
+            )
           ) {
             headerRow = i;
             break;
@@ -112,11 +117,12 @@ export async function readClassDataTables(
       }
       const headerValues = Array.from(
         { length: sheet.columnCount },
-        (_, j) => sheet.getRow(headerRow).getCell(j + 1).value,
+        (_, j) => rosterCell(sheet.getRow(headerRow).getCell(j + 1).value, 'text').value,
       );
+      const headers = rosterHeaders(headerValues.map((v) => String(v ?? '').trim()));
       const schoolRoster =
         allowRosterLayout &&
-        headerValues.some((v) => v === '学籍号' || v === '父亲姓名' || v === '出生年月');
+        headers.some((v) => v === '学籍号' || v === '父亲姓名' || v === '出生年月');
       let lastDataRow = headerRow;
       for (let i = headerRow + 1; i <= sheet.rowCount; i++)
         if (
@@ -147,12 +153,28 @@ export async function readClassDataTables(
               `第 ${rowIndex} 行存在合并单元格，请使用单行表头。`,
             );
           }
+          const header = headers[column - 1] ?? '';
+          const profileKey = rosterProfileColumns[header];
+          const rosterField =
+            profileKey || ['学生编号', '学号', '编号', '姓名', '学生姓名', '班级'].includes(header);
+          const kind =
+            profileKey === 'birthDate' || profileKey === 'birthMonth'
+              ? 'date'
+              : profileKey === 'boarding'
+                ? 'boarding'
+                : /IdCard|^idCard$|Registration|Number|Phone/u.test(profileKey ?? '') ||
+                    ['学生编号', '学号', '编号'].includes(header)
+                  ? 'identifier'
+                  : 'text';
           values.push({
-            ...cell(
-              schoolRoster && current.value instanceof Date
-                ? current.value.toISOString().slice(0, 10)
-                : current.value,
-            ),
+            ...(allowRosterLayout && (rowIndex === headerRow || rosterField)
+              ? rosterCell(
+                  current.value,
+                  rowIndex === headerRow ? 'text' : kind,
+                  current.numFmt,
+                  workbook.properties.date1904,
+                )
+              : cell(current.value)),
             ...(current.numFmt ? { numberFormat: current.numFmt } : {}),
           });
         }

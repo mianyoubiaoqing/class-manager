@@ -290,3 +290,225 @@ test('Excel date stores birth month; unsafe numeric identity and data-cell merge
   await expect(readScoreTable(await file(), 'xlsx')).rejects.toThrow('合并');
   expect(w.snapshot().students).toHaveLength(0);
 });
+
+test.each(['roster', 'shared'] as const)(
+  '%s accepts ordinary Excel roster cell types without requiring manual reformatting',
+  async (mode) => {
+    const { w, input } = setup(),
+      b = new ExcelJS.Workbook(),
+      s = b.addWorksheet('名单');
+    s.addRow(['学号', '姓名', '出生日期', '考籍号', '是否住校', '父亲姓名', '父亲联系电话']);
+    s.addRow([
+      1,
+      { richText: [{ text: '合成' }, { text: '甲' }] },
+      new Date('2010-09-01T00:00:00Z'),
+      3456,
+      true,
+      { formula: '"合成父亲"', result: '合成父亲' },
+      13800000002,
+    ]);
+    s.getCell('A2').numFmt = '0000';
+    s.getCell('C2').numFmt = 'yyyy/mm/dd';
+    s.getCell('D2').numFmt = '0000000';
+    s.addRow([2, '合成乙', '2010年9月2日', '0003457', '走读', '合成家长', '13800000003']);
+    s.getCell('A3').numFmt = '0000';
+    const bytes = Buffer.from(await b.xlsx.writeBuffer());
+    const p =
+      mode === 'roster'
+        ? await w.previewRoster(bytes, 'xlsx', '合成.xlsx', input)
+        : await w.classData.select([{ bytes, format: 'xlsx', fileName: '合成.xlsx' }], input);
+    expect(p).toMatchObject({ added: 2, canConfirm: true });
+    expect(p.rows.map((r) => r.studentNumber)).toEqual(['0001', '0002']);
+    expect(p.rows[0]!.message).toContain('公式');
+    const r =
+      mode === 'roster'
+        ? w.confirmRoster({ epoch: input.epoch, token: p.token })
+        : w.classData.confirm({ epoch: input.epoch, token: p.token });
+    const first = r.snapshot.students.find((s) => s.studentNumber === '0001')!,
+      second = r.snapshot.students.find((s) => s.studentNumber === '0002')!;
+    expect(w.pupils.readProfile({ epoch: input.epoch, studentId: first.id }).content).toMatchObject(
+      {
+        birthDate: '2010-09-01',
+        examRegistration: '0003456',
+        boarding: 'yes',
+        fatherName: '合成父亲',
+        fatherPhone: '13800000002',
+      },
+    );
+    expect(
+      w.pupils.readProfile({ epoch: input.epoch, studentId: second.id }).content,
+    ).toMatchObject({ birthDate: '2010-09-02', boarding: 'no' });
+  },
+);
+test.each(['√', '✓', '住宿', '寄宿', 'YES'])(
+  'boarding value %s is understood as boarding',
+  async (value) => {
+    const { w, input } = setup();
+    const p = await w.previewRoster(
+      Buffer.from(`学号,姓名,是否住校\n001,合成甲,${value}`),
+      'csv',
+      '合成.csv',
+      input,
+    );
+    expect(p.canConfirm).toBe(true);
+    expect(p.rows[0]!.profile?.boarding).toBe('yes');
+  },
+);
+test.each(['×', '走读生', '不住宿', 'NO'])(
+  'boarding value %s is understood as day school',
+  async (value) => {
+    const { w, input } = setup();
+    const p = await w.previewRoster(
+      Buffer.from(`学号,姓名,是否住校\n001,合成甲,${value}`),
+      'csv',
+      '合成.csv',
+      input,
+    );
+    expect(p.canConfirm).toBe(true);
+    expect(p.rows[0]!.profile?.boarding).toBe('no');
+  },
+);
+
+test.each(['roster', 'shared'] as const)(
+  '%s reads link labels and normalized parent headers without following links',
+  async (mode) => {
+    const { w, input } = setup(),
+      b = new ExcelJS.Workbook(),
+      s = b.addWorksheet('名单');
+    s.addRows([
+      [
+        '学 号',
+        { richText: [{ text: '姓' }, { text: '名' }] },
+        '父亲\n姓名',
+        '身份证号码',
+        '联系电话',
+        '母亲姓名',
+        '身份证号码',
+        '联系电话',
+        '家庭详细住址(具体到门牌号)',
+      ],
+      [
+        1,
+        { text: '合成甲', hyperlink: 'https://example.invalid/do-not-fetch' },
+        '合成父亲',
+        values[10],
+        13800000002,
+        '合成母亲',
+        values[13],
+        13800000003,
+        '合成街道1号',
+      ],
+    ]);
+    const bytes = Buffer.from(await b.xlsx.writeBuffer());
+    const p =
+      mode === 'roster'
+        ? await w.previewRoster(bytes, 'xlsx', '合成.xlsx', input)
+        : await w.classData.select([{ bytes, format: 'xlsx', fileName: '合成.xlsx' }], input);
+    expect(p.canConfirm).toBe(true);
+    expect(p.rows[0]!.message).toContain('未访问链接');
+    expect(p.rows[0]!.profile).toMatchObject({
+      fatherIdCard: values[10],
+      fatherPhone: '13800000002',
+      motherIdCard: values[13],
+      motherPhone: '13800000003',
+      address: '合成街道1号',
+    });
+    await expect(readScoreTable(bytes, 'xlsx')).rejects.toThrow('外部链接');
+  },
+);
+
+test.each(['roster', 'shared'] as const)(
+  '%s rejects corrupted and ambiguous roster cells with field-specific advice',
+  async (mode) => {
+    const { w, input } = setup();
+    for (const [header, value, reason] of [
+      ['学号', 1000000000000000, '精度'], // 16 digits can be safe in JS but are not reliable in Excel.
+      ['考籍号', 1234567890123456, '精度'],
+      ['父亲姓名', { formula: '"合成父亲"' }, '公式没有已保存'],
+      ['父亲姓名', { formula: '1/0', result: { error: '#DIV/0!' } }, '错误值'],
+      ['是否住校', '2', '含义不明确'],
+      ['出生日期', '2010-02-30', '不是有效日期'],
+      ['出生日期', '9/1/2010', '年在前'],
+      ['出生日期', '2010-911', '年在前'],
+    ] as const) {
+      const b = new ExcelJS.Workbook(),
+        s = b.addWorksheet('名单');
+      if (header === '学号')
+        s.addRows([
+          ['学号', '姓名'],
+          [value, '合成甲'],
+        ]);
+      else
+        s.addRows([
+          ['学号', '姓名', header],
+          ['001', '合成甲', value],
+        ]);
+      const bytes = Buffer.from(await b.xlsx.writeBuffer());
+      const p =
+        mode === 'roster'
+          ? await w.previewRoster(bytes, 'xlsx', '合成.xlsx', input)
+          : await w.classData.select([{ bytes, format: 'xlsx', fileName: '合成.xlsx' }], input);
+      expect(p.canConfirm).toBe(false);
+      expect(p.rows[0]!.message).toContain(header);
+      expect(p.rows[0]!.message).toContain(reason);
+      expect(w.snapshot().students).toHaveLength(0);
+    }
+  },
+);
+
+test.each(['2010/9/1', '2010.9.1', '20100901', 20100901])(
+  'year-first birth date %s is normalized',
+  async (value) => {
+    const { w, input } = setup(),
+      b = new ExcelJS.Workbook(),
+      s = b.addWorksheet('名单');
+    s.addRows([
+      ['学号', '姓名', '出生日期'],
+      [1, '合成甲', value],
+    ]);
+    const p = await w.previewRoster(
+      Buffer.from(await b.xlsx.writeBuffer()),
+      'xlsx',
+      '合成.xlsx',
+      input,
+    );
+    expect(p.canConfirm).toBe(true);
+    expect(p.rows[0]!.profile?.birthDate).toBe('2010-09-01');
+  },
+);
+
+test.each([false, true])('Excel numeric date serial respects date1904=%s', async (date1904) => {
+  const { w, input } = setup(),
+    b = new ExcelJS.Workbook(),
+    s = b.addWorksheet('名单');
+  b.properties.date1904 = date1904;
+  s.addRows([
+    ['学号', '姓名', '出生日期', '是否住校'],
+    [1, '合成甲', date1904 ? 38960 : 40422, false],
+  ]);
+  const p = await w.previewRoster(
+    Buffer.from(await b.xlsx.writeBuffer()),
+    'xlsx',
+    '合成.xlsx',
+    input,
+  );
+  expect(p.canConfirm).toBe(true);
+  expect(p.rows[0]!.profile).toMatchObject({ birthDate: '2010-09-01', boarding: 'no' });
+});
+
+test('roster compatibility does not accept cached formulas in score columns', async () => {
+  const { w, input } = setup(),
+    b = new ExcelJS.Workbook(),
+    s = b.addWorksheet('成绩');
+  s.addRows([
+    ['学号', '姓名', '数学'],
+    [1, { richText: [{ text: '合成甲' }] }, { formula: '50+50', result: 100 }],
+  ]);
+  const p = await w.classData.select(
+    [{ bytes: Buffer.from(await b.xlsx.writeBuffer()), format: 'xlsx', fileName: '合成.xlsx' }],
+    input,
+  );
+  expect(p.canConfirm).toBe(false);
+  expect(p.rows[0]!.message).toContain('数学');
+  expect(w.snapshot().students).toHaveLength(0);
+});

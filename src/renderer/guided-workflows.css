@@ -98,6 +98,15 @@
 .roster-import-dialog .import-error {
   color: #a4372c;
 }
+
+dialog.roster-import-dialog td.roster-import-result {
+  min-width: 240px;
+  max-width: 400px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  overflow: visible;
+  text-overflow: clip;
+}
 .classroom-control > section.classroom-preview-panel {
   grid-column: auto;
   min-height: 640px;

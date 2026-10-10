@@ -298,15 +298,13 @@ export class ClassDataImporter {
         cells.length !== sheet.headers.length
       ) {
         row.status = 'error';
-        row.message = '请核对姓名、列数与单元格；不接受公式或合并单元格。';
-        return row;
-      }
-      if (
-        typeof cells[numberIndex]?.value === 'number' &&
-        /0{2,}/u.test(cells[numberIndex]?.numberFormat ?? '')
-      ) {
-        row.status = 'error';
-        row.message = '学号使用了补零显示格式，请把学号保存为文本后重新导入，以保留前导零。';
+        row.message = [
+          ...(!name ? ['姓名不能为空。'] : []),
+          ...(cells.length !== sheet.headers.length ? ['本行列数与表头不一致。'] : []),
+          ...cells.flatMap((c, index) =>
+            c.problem ? [`${sheet.headers[index] || `第 ${index + 1} 列`}：${c.problem}`] : [],
+          ),
+        ].join(' ');
         return row;
       }
       if (
@@ -461,6 +459,9 @@ export class ClassDataImporter {
             }
           }
         }
+        if (!['error', 'skip'].includes(row.status) && cells.some((c) => c.notice))
+          row.message +=
+            '；' + [...new Set(cells.flatMap((c) => (c.notice ? [c.notice] : [])))].join(' ');
         rows.push(row);
       }
     }

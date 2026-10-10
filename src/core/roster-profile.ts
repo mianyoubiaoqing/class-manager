@@ -31,10 +31,24 @@ export const rosterProfileColumns: Record<string, keyof StudentProfile['content'
   家长电话: 'guardianPhone',
 };
 export function rosterHeaders(headers: string[]): string[] {
-  return headers.length === schoolRosterHeaders.length &&
-    headers.every((h, i) => h === schoolRosterHeaders[i])
-    ? [...schoolRosterUniqueHeaders]
-    : headers;
+  const normalized = headers.map((h) =>
+    h.replace(/\s/gu, '').replace(/[()]/gu, (p) => (p === '(' ? '（' : '）')),
+  );
+  if (
+    normalized.length === schoolRosterHeaders.length &&
+    normalized.every((h, i) => h === schoolRosterHeaders[i])
+  )
+    return [...schoolRosterUniqueHeaders];
+  // Parent columns in school forms repeat “身份证号码/联系电话”. Use explicit
+  // parent-name anchors rather than guessing from the position of a duplicate.
+  let parent = '';
+  return normalized.map((header) => {
+    if (header === '父亲姓名') parent = '父亲';
+    else if (header === '母亲姓名') parent = '母亲';
+    else if (!['身份证号码', '联系电话'].includes(header)) parent = '';
+    if (parent && ['身份证号码', '联系电话'].includes(header)) return parent + header;
+    return header === '身份证号码' ? '身份证号' : header;
+  });
 }
 export function importedProfile(headers: string[], cells: ScoreTable[number]) {
   const patch: Partial<StudentProfile['content']> = {};
@@ -51,7 +65,7 @@ export function importedProfile(headers: string[], cells: ScoreTable[number]) {
     if (!text) continue;
     if (
       typeof value === 'number' &&
-      (!Number.isSafeInteger(value) || /IdCard|^idCard$|Registration|Number/u.test(key))
+      (!Number.isSafeInteger(value) || String(Math.abs(value)).length > 15)
     )
       throw new DomainError(
         'VALIDATION',
@@ -63,16 +77,60 @@ export function importedProfile(headers: string[], cells: ScoreTable[number]) {
       text = gender;
     }
     if (key === 'boarding') {
-      const boarding = { 是: 'yes', 否: 'no', 住校: 'yes', 不住校: 'no', '1': 'yes', '0': 'no' }[
-        text
-      ];
-      if (!boarding) throw new DomainError('VALIDATION', '是否住校请填写是、否或留空。');
-      text = boarding;
+      const boarding: Record<string, string> = {
+        是: 'yes',
+        否: 'no',
+        住校: 'yes',
+        不住校: 'no',
+        '1': 'yes',
+        '0': 'no',
+        住宿: 'yes',
+        寄宿: 'yes',
+        住校生: 'yes',
+        住宿生: 'yes',
+        走读: 'no',
+        走读生: 'no',
+        不住宿: 'no',
+        '√': 'yes',
+        '✓': 'yes',
+        '✔': 'yes',
+        '×': 'no',
+        '✗': 'no',
+        '✘': 'no',
+        yes: 'yes',
+        no: 'no',
+        true: 'yes',
+        false: 'no',
+      };
+      const resolved = boarding[text.toLowerCase()];
+      if (!resolved)
+        throw new DomainError(
+          'VALIDATION',
+          `是否住校“${text}”含义不明确，请填写是/否、住校/走读、√/×或留空。`,
+        );
+      text = resolved;
     }
-    if (key === 'birthMonth') {
-      const match = /^(\d{4})[年./-](\d{1,2})(?:月|[./-]\d{1,2}日?)?$/.exec(text);
-      if (!match) throw new DomainError('VALIDATION', '出生年月请填写 YYYY-MM，例如 2010-09。');
-      text = `${match[1]}-${match[2]!.padStart(2, '0')}`;
+    if (key === 'birthMonth' || key === 'birthDate') {
+      const match =
+        /^(\d{4})(?:[./-](\d{1,2})(?:[./-](\d{1,2}))?|年(\d{1,2})月(?:(\d{1,2})日?)?|(\d{2})(\d{2})?)$/u.exec(
+          text,
+        );
+      const month = match?.[2] ?? match?.[4] ?? match?.[6];
+      const day = match?.[3] ?? match?.[5] ?? match?.[7];
+      if (!match || !month || (key === 'birthDate' && !day))
+        throw new DomainError(
+          'VALIDATION',
+          `${header}请填写年在前的日期，例如 2010-09${key === 'birthDate' ? '-01' : ''}。`,
+        );
+      text = `${match[1]}-${month.padStart(2, '0')}${key === 'birthDate' ? '-' + day!.padStart(2, '0') : ''}`;
+      // Validate an optional day even when importing only a birth month.
+      if (
+        day &&
+        !profileContent.shape.birthDate.safeParse(
+          `${match[1]}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
+        ).success
+      )
+        throw new DomainError('VALIDATION', `${header}不是有效日期，请核对。`);
     }
     const result = profileContent.shape[key].safeParse(text);
     if (!result.success)

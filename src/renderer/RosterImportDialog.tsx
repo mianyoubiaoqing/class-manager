@@ -106,8 +106,9 @@ export function RosterImportDialog({
         <div>
           <h3>已有学生名单？直接选择文件</h3>
           <p>
-            支持学校花名册的18列：学生身份、学籍与考籍、父母联系方式、住址、住校及贫困情况。至少填写“学号”和“姓名”；编号和身份证列请设为文本。每次导入一个班级，最多
-            10000 行、5 MiB。
+            支持学校花名册的18列。至少填写“学号”和“姓名”；常见数字学号、补零显示、Excel
+            日期和富文本可直接读取。身份证等长编号仍请保存为文本，避免 Excel
+            丢失精度。每次导入一个班级，最多 10000 行、5 MiB。
           </p>
           <p className="field-hint">
             没有名单文件时，再下载空白模板填写。下载模板不会导入学生，请另存为新文件，避免替换原名单。
@@ -197,7 +198,11 @@ export function RosterImportDialog({
                     <td>
                       <ImportedProfileDetails profile={r.profile} />
                     </td>
-                    <td className={r.status === 'error' ? 'import-error' : ''}>{r.message}</td>
+                    <td
+                      className={`roster-import-result ${r.status === 'error' ? 'import-error' : ''}`}
+                    >
+                      {r.message}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -44,7 +44,7 @@ test('name-only roster and numbered scores preserve one student identity', async
     workspace.classData.confirm({ epoch: input.epoch, token: p.token }).snapshot.students,
   ).toHaveLength(1);
 });
-test('numeric identifiers with padded display formats require explicit text preservation', async () => {
+test('numeric identifiers retain unambiguous padded display formats in the preview', async () => {
   const { workspace, input } = setup();
   const book = new ExcelJS.Workbook();
   const sheet = book.addWorksheet('名单');
@@ -57,8 +57,8 @@ test('numeric identifiers with padded display formats require explicit text pres
     [{ bytes: Buffer.from(await book.xlsx.writeBuffer()), format: 'xlsx', fileName: '补零.xlsx' }],
     input,
   );
-  expect(p.canConfirm).toBe(false);
-  expect(p.rows[0]!.message).toContain('前导零');
+  expect(p.canConfirm).toBe(true);
+  expect(p.rows[0]!.studentNumber).toBe('001');
   expect(workspace.snapshot().students).toHaveLength(0);
 });
 test('a score write failure rolls back the entire roster and exam transaction', async () => {

@@ -49,14 +49,15 @@ export async function parseRosterImport(
       status: 'new',
       message: '新增学生',
     };
-    const problems = cells.filter((c) => c.problem).map((c) => c.problem!);
+    const problems = cells.flatMap((c, index) =>
+      c.problem ? [`${headers[index] || `第 ${index + 1} 列`}：${c.problem}`] : [],
+    );
     try {
       row.profile = importedProfile(headers, cells);
     } catch (error) {
       problems.push(error instanceof Error ? error.message : '学生详细资料无效。');
     }
-    if (typeof number !== 'string')
-      problems.push('学生编号须为文本；请将 Excel 编号列设为文本，保留前导零。');
+    if (number == null || number === '') problems.push('学生编号不能为空，请填写学号。');
     if (
       !studentInput.safeParse({ epoch: snapshot.epoch, classId, studentNumber, displayName })
         .success
@@ -80,7 +81,10 @@ export async function parseRosterImport(
     if (problems.length) {
       row.status = 'error';
       row.message = [...new Set(problems)].join(' ');
-    }
+    } else
+      row.message += cells.some((c) => c.notice)
+        ? '；' + [...new Set(cells.flatMap((c) => (c.notice ? [c.notice] : [])))].join(' ')
+        : '';
     rows.push(row);
   }
   const duplicates = new Map<string, RosterImportRow[]>();

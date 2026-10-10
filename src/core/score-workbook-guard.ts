@@ -86,7 +86,13 @@ export async function inspectScoreWorkbook(
         if (
           (node.local === 'Relationship' &&
             (attribute('TargetMode')?.toLowerCase() === 'external' ||
-              /^(?:[a-z][a-z0-9+.-]*:|\/\/|\\\\)/i.test(attribute('Target') ?? ''))) ||
+              /^(?:[a-z][a-z0-9+.-]*:|\/\/|\\\\)/i.test(attribute('Target') ?? '')) &&
+            !(
+              allowRosterLayout &&
+              /^xl\/worksheets\/_rels\/[^/]+\.xml\.rels$/i.test(name) &&
+              attribute('Type') ===
+                'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink'
+            )) ||
           attribute('ContentType')?.toLowerCase().includes('macroenabled')
         ) {
           throw new DomainError('SCORE_XLSX_UNSAFE', '工作簿包含外部链接或宏格式，已拒绝。');

@@ -154,7 +154,7 @@ test.each([
   expect(() => workspace.confirmRoster({ epoch: input.epoch, token: p.token })).toThrow();
   expect(workspace.snapshot().students).toHaveLength(0);
 });
-test('XLSX template preserves textual leading zeros; numeric identifiers and formulas are rejected', async () => {
+test('XLSX template and numeric display formats preserve leading zeros; cached formulas are disclosed', async () => {
   const { workspace, input } = setup();
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(Uint8Array.from(await createRosterTemplate('xlsx')).buffer);
@@ -177,8 +177,8 @@ test('XLSX template preserves textual leading zeros; numeric identifiers and for
     '合成名册.xlsx',
     input,
   );
-  expect(numeric.canConfirm).toBe(false);
-  expect(numeric.rows[0]!.message).toContain('前导零');
+  expect(numeric.canConfirm).toBe(true);
+  expect(numeric.rows[0]!.studentNumber).toBe('0001');
   sheet.getCell('A2').value = { formula: '1+1', result: 2 };
   const formula = await workspace.previewRoster(
     Buffer.from(await workbook.xlsx.writeBuffer()),
@@ -186,7 +186,9 @@ test('XLSX template preserves textual leading zeros; numeric identifiers and for
     '合成名册.xlsx',
     input,
   );
-  expect(formula.canConfirm).toBe(false);
+  expect(formula.canConfirm).toBe(true);
+  expect(formula.rows[0]!.studentNumber).toBe('0002');
+  expect(formula.rows[0]!.message).toContain('公式');
   sheet.getRow(2).hidden = true;
   await expect(
     workspace.previewRoster(

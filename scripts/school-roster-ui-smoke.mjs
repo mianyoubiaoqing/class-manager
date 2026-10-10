@@ -65,6 +65,16 @@ try {
     '是',
     '是，建档立卡',
   ];
+  sheet.getCell('A4').value = 1;
+  sheet.getCell('A4').numFmt = '0000';
+  sheet.getCell('B4').value = { richText: [{ text: '合成' }, { text: '甲' }] };
+  sheet.getCell('D4').value = new Date('2010-09-01T00:00:00Z');
+  sheet.getCell('D4').numFmt = 'yyyy年mm月';
+  sheet.getCell('G4').value = 3456;
+  sheet.getCell('G4').numFmt = '0000000';
+  sheet.getCell('J4').value = { formula: '"合成父亲"', result: '合成父亲' };
+  sheet.getCell('L4').value = 13800000002;
+  sheet.getCell('Q4').value = true;
   sheet.mergeCells('B77:Q77');
   const roster = path.join(root, '合成花名册.xlsx');
   const archive = await JSZip.loadAsync(await book.xlsx.writeBuffer());
@@ -108,6 +118,7 @@ try {
   await page.getByText('核对 16 项资料', { exact: true }).click();
   await page.getByText('合成父亲', { exact: true }).waitFor();
   await page.getByText('合成母亲', { exact: true }).waitFor();
+  await page.getByText(/公式仅读取 Excel 已保存的结果/).waitFor();
   await page.screenshot({ path: path.join(root, 'import-preview.png'), fullPage: true });
   assert.equal((await call('snapshot')).students.length, 0);
   await page.getByRole('button', { name: '确认保存并开始使用', exact: true }).click();
@@ -120,6 +131,9 @@ try {
   assert.equal(profile.content.fatherPhone, '13800000002');
   assert.equal(profile.content.motherPhone, '13800000003');
   assert.equal(profile.content.birthMonth, '2010-09');
+  assert.equal(student.studentNumber, '0001');
+  assert.equal(profile.content.examRegistration, '0003456');
+  assert.equal(profile.content.boarding, 'yes');
   gate(
     'School XLSX title, row-2 header, repeated parent labels and all 18 fields import through real UI/IPC.',
   );
