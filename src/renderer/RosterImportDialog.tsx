@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { FileSpreadsheet, Upload, X } from 'lucide-react';
 import type { Snapshot } from '../shared/contracts';
 import type { RosterImportPreview } from '../shared/roster-import';
+import { ImportedProfileDetails } from './ImportedProfileDetails';
 
 export function RosterImportDialog({
   snapshot,
@@ -105,8 +106,8 @@ export function RosterImportDialog({
         <div>
           <h3>已有学生名单？直接选择文件</h3>
           <p>
-            至少包含“学生编号”和“姓名”两列。编号列请设为文本，例如 001；每次导入一个班级，最多 10000
-            行、5 MiB。
+            支持学校花名册的18列：学生身份、学籍与考籍、父母联系方式、住址、住校及贫困情况。至少填写“学号”和“姓名”；编号和身份证列请设为文本。每次导入一个班级，最多
+            10000 行、5 MiB。
           </p>
           <p className="field-hint">
             没有名单文件时，再下载空白模板填写。下载模板不会导入学生，请另存为新文件，避免替换原名单。
@@ -167,8 +168,9 @@ export function RosterImportDialog({
         <>
           <h3>核对导入结果 · {preview.className}</h3>
           <p>
-            {preview.fileName} · 新增 {preview.added} 人 · 跳过已有 {preview.skipped} 人 · 待修正{' '}
-            {preview.rows.filter((r) => r.status === 'error').length} 行
+            {preview.fileName} · 新增 {preview.added} 人 · 更新档案 {preview.updated} 人 · 跳过已有{' '}
+            {preview.skipped} 人 · 待修正 {preview.rows.filter((r) => r.status === 'error').length}{' '}
+            行
           </p>
           {preview.issues.map((issue) => (
             <p className="notice error" role="alert" key={issue}>
@@ -182,6 +184,7 @@ export function RosterImportDialog({
                   <th>文件行号</th>
                   <th>学生编号</th>
                   <th>姓名</th>
+                  <th>详细资料</th>
                   <th>检查结果</th>
                 </tr>
               </thead>
@@ -191,6 +194,9 @@ export function RosterImportDialog({
                     <td>{r.row}</td>
                     <td>{r.studentNumber || '—'}</td>
                     <td>{r.displayName || '—'}</td>
+                    <td>
+                      <ImportedProfileDetails profile={r.profile} />
+                    </td>
                     <td className={r.status === 'error' ? 'import-error' : ''}>{r.message}</td>
                   </tr>
                 ))}
@@ -212,7 +218,7 @@ export function RosterImportDialog({
             </button>
           </div>
           <p className="workspace-muted">
-            同班同编号、同姓名的在籍学生会跳过。冲突或错误须在原文件修正后重新选择；不会覆盖、转班或恢复停用记录。
+            同班同学号、同姓名的学生会更新本次填写的非空档案字段；空白字段保留原资料，内容一致时跳过。不会转班或恢复停用记录。
           </p>
         </>
       )}
@@ -237,7 +243,9 @@ export function RosterImportDialog({
             })
           }
         >
-          {busy ? '正在处理…' : `确认导入${preview ? ` ${preview.added} 人` : ''}`}
+          {busy
+            ? '正在处理…'
+            : `确认导入${preview ? ` ${preview.added + preview.updated} 人` : ''}`}
         </button>
       </footer>
     </dialog>

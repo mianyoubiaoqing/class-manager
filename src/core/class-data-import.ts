@@ -19,6 +19,14 @@ import { validateScorePayload } from './score-record-validation';
 import { transaction } from './database';
 import { DomainError } from './errors';
 import { MAX_EXAMS, MAX_SCORE_VERSIONS, MAX_SCORE_PAYLOAD_BYTES } from './storage-limits';
+import {
+  importedProfile,
+  rosterHeaders,
+  rosterProfileColumns,
+  planImportedProfile,
+  writeImportedProfile,
+} from './roster-profile';
+import type { StudentProfile } from '../shared/pupils';
 
 export interface ClassDataFile {
   bytes: Uint8Array;
@@ -31,6 +39,7 @@ interface Sheet {
   headers: string[];
   table: ScoreTable;
   file: ClassDataFile;
+  rowOffset: number;
 }
 interface Pending {
   epoch: string;
@@ -42,11 +51,13 @@ interface Pending {
   students: Array<{ id: string; studentNumber: string; displayName: string }>;
   payload: ScoreVersionPayload | null;
   generated: Map<string, string>;
+  profiles: StudentProfile[];
 }
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const nameHeaders = ['姓名', '学生姓名'];
 const numberHeaders = ['学生编号', '学号', '编号'];
 const ignoredHeaders = new Set([
+  ...Object.keys(rosterProfileColumns),
   ...nameHeaders,
   ...numberHeaders,
   '班级',
@@ -146,15 +157,16 @@ export class ClassDataImporter {
     const sheets: Sheet[] = [];
     for (const [index, file] of files.entries()) {
       for (const [sheetIndex, entry] of (
-        await readClassDataTables(file.bytes, file.format)
+        await readClassDataTables(file.bytes, file.format, true)
       ).entries()) {
-        const headers = entry.table[0]?.map((c) => text(c.value)) ?? [];
+        const headers = rosterHeaders(entry.table[0]?.map((c) => text(c.value)) ?? []);
         sheets.push({
           key: `${index}:${sheetIndex}`,
           label: `${file.fileName} · ${entry.name}`,
           headers,
           table: entry.table,
           file,
+          rowOffset: entry.rowOffset,
         });
       }
     }
@@ -203,6 +215,7 @@ export class ClassDataImporter {
       students: [],
       payload: null,
       generated: new Map(),
+      profiles: [],
     };
     return this.configure(configuration);
   }
@@ -419,7 +432,15 @@ export class ClassDataImporter {
       for (let i = 1; i < sheet.table.length; i++) {
         const cells = sheet.table[i]!;
         if (cells.every((c) => !c.problem && !text(c.value))) continue;
-        const row = getIdentity(sheet, cells, i + 1);
+        const row = getIdentity(sheet, cells, i + 1 + sheet.rowOffset);
+        if (row.status !== 'skip' && row.status !== 'error') {
+          try {
+            row.profile = importedProfile(sheet.headers, cells);
+          } catch (error) {
+            row.status = 'error';
+            row.message = error instanceof Error ? error.message : '学生档案字段无效。';
+          }
+        }
         if (row.studentId && seen.has(row.studentId)) {
           row.status = 'error';
           row.message = '同一工作表重复出现该学生，请核对重复行。';
@@ -446,6 +467,23 @@ export class ClassDataImporter {
     if (!rows.length) issues.push('所选工作表没有学生数据。');
     if (snapshot.students.length + students.length > 10000)
       issues.push('导入后学生总数超过 10000 人。');
+    const profilePatches = new Map<string, Partial<StudentProfile['content']>>();
+    for (const row of rows.filter(
+      (r) => r.studentId && r.profile && ['new', 'existing'].includes(r.status),
+    )) {
+      const previous = profilePatches.get(row.studentId!) ?? {};
+      if (
+        Object.entries(row.profile!).some(
+          ([key, value]) => key in previous && previous[key as keyof typeof previous] !== value,
+        )
+      ) {
+        row.status = 'error';
+        row.message = '两张工作表中的学生档案字段不一致，请核对后重新导入。';
+      } else profilePatches.set(row.studentId!, { ...previous, ...row.profile });
+    }
+    const profiles = [...profilePatches]
+      .map(([id, patch]) => planImportedProfile(this.db, id, patch))
+      .filter((p): p is StudentProfile => !!p);
     let payload: ScoreVersionPayload | null = null;
     const unresolved = rows.filter((r) => r.status === 'unresolved').length;
     const scoreRows = rows.filter(
@@ -531,16 +569,18 @@ export class ClassDataImporter {
       unresolved,
       scoreRows,
       hasScores: !!scoreSheet,
+      profileRows: profiles.length,
       canConfirm:
         !issues.length &&
         !unresolved &&
         !rows.some((r) => r.status === 'error') &&
-        (students.length > 0 || !!payload),
+        (students.length > 0 || profiles.length > 0 || !!payload),
       expiresAt: new Date(pending.expires).toISOString(),
     };
     pending.preview = preview;
     pending.students = students;
     pending.payload = payload;
+    pending.profiles = profiles;
     return preview;
   }
 
@@ -591,6 +631,7 @@ export class ClassDataImporter {
           .prepare('INSERT INTO enrollments VALUES (?, ?, ?, ?, NULL)')
           .run(randomUUID(), student.id, p.classId, now);
       }
+      for (const profile of p.profiles) writeImportedProfile(this.db, profile);
       if (p.payload && examId) {
         this.db.prepare('INSERT INTO exams VALUES (?, ?, ?)').run(examId, p.classId, now);
         this.db

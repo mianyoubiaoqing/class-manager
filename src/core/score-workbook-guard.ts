@@ -15,7 +15,10 @@ function checkAddress(address: string): number {
 }
 
 /** Inspect actual decompressed data before handing the bounded archive to ExcelJS. */
-export async function inspectScoreWorkbook(bytes: Buffer): Promise<void> {
+export async function inspectScoreWorkbook(
+  bytes: Buffer,
+  allowRosterLayout = false,
+): Promise<void> {
   const zip = await fromBufferPromise(bytes, {
     lazyEntries: true,
     validateEntrySizes: true,
@@ -86,7 +89,11 @@ export async function inspectScoreWorkbook(bytes: Buffer): Promise<void> {
         if (sheet) {
           // 在 ExcelJS 展开合并范围或列区间之前限制结构，而非分配内存之后。
           if (node.local === 'mergeCell') {
-            throw new DomainError('SCORE_XLSX_UNSAFE', '成绩表不接受合并单元格，请先取消合并。');
+            if (!allowRosterLayout)
+              throw new DomainError('SCORE_XLSX_UNSAFE', '成绩表不接受合并单元格，请先取消合并。');
+            const range = (attribute('ref') ?? '').split(':');
+            if (range.length !== 2 || checkAddress(range[0]!) > checkAddress(range[1]!))
+              throw new DomainError('SCORE_XLSX_INVALID', '合并单元格范围无效。');
           }
           if (node.local === 'col') {
             const min = attribute('min') ?? '';

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Result, Snapshot } from '../shared/contracts';
 import {
   profileContent,
+  profileFieldLabels,
   type StudentProfile,
   type AttendanceRoster,
   type AttendanceRecord,
@@ -11,6 +12,7 @@ import './pupils.css';
 import { WorkspaceTabs } from './WorkspaceTabs';
 import { RevealStep } from './RevealStep';
 import { TeachingDialog } from './features/teaching/TeachingDialog';
+import { SchoolProfileFields } from './SchoolProfileFields';
 
 const labels = {
   unmarked: '未点名',
@@ -708,6 +710,7 @@ export function StudentProfilesPage({
                 />
               </label>
             ))}
+            <SchoolProfileFields content={content} disabled={busy || review} onChange={edit} />
           </div>
           <div
             className="pupil-form-grid"
@@ -774,6 +777,27 @@ export function StudentProfilesPage({
                     学习优势: content.strengths,
                     学习支持需求: content.learningNeeds,
                     教师备注: content.teacherNotes,
+                    ...Object.fromEntries(
+                      Object.entries(content)
+                        .filter(
+                          ([key]) =>
+                            ![
+                              'gender',
+                              'birthDate',
+                              'guardianName',
+                              'guardianPhone',
+                              'address',
+                              'interests',
+                              'strengths',
+                              'learningNeeds',
+                              'teacherNotes',
+                            ].includes(key),
+                        )
+                        .map(([key, value]) => [
+                          profileFieldLabels[key as keyof typeof content],
+                          { yes: '是', no: '否', unspecified: '未填写' }[value] ?? value,
+                        ]),
+                    ),
                   }).map(([label, text]) => (
                     <div key={label}>
                       <dt>{label}</dt>

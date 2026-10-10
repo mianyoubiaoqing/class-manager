@@ -3,10 +3,32 @@ import { z } from 'zod';
 const epoch = z.uuid();
 const note = z.string().trim().max(2000);
 const date = z.iso.date();
+const identity = z
+  .string()
+  .trim()
+  .max(18)
+  .refine((v) => !v || /^\d{17}[\dXx]$/.test(v), '身份证号码须为18位');
 export const profileContent = z
   .object({
     gender: z.enum(['unspecified', 'female', 'male', 'other']).default('unspecified'),
     birthDate: z.union([date, z.literal('')]).default(''),
+    birthMonth: z
+      .string()
+      .regex(/^(?:\d{4}-(?:0[1-9]|1[0-2]))?$/, '出生年月须为 YYYY-MM')
+      .default(''),
+    idCard: identity.default(''),
+    studentRegistration: z.string().trim().max(40).default(''),
+    examRegistration: z.string().trim().max(40).default(''),
+    applicationNumber: z.string().trim().max(40).default(''),
+    studentPhone: z.string().trim().max(40).default(''),
+    fatherName: z.string().trim().max(80).default(''),
+    fatherIdCard: identity.default(''),
+    fatherPhone: z.string().trim().max(40).default(''),
+    motherName: z.string().trim().max(80).default(''),
+    motherIdCard: identity.default(''),
+    motherPhone: z.string().trim().max(40).default(''),
+    boarding: z.enum(['unspecified', 'yes', 'no']).default('unspecified'),
+    povertyStatus: z.string().trim().max(300).default(''),
     guardianName: z.string().trim().max(80).default(''),
     guardianPhone: z.string().trim().max(40).default(''),
     address: z.string().trim().max(300).default(''),
@@ -16,6 +38,31 @@ export const profileContent = z
     teacherNotes: note.default(''),
   })
   .strict();
+export const profileFieldLabels: Record<keyof z.infer<typeof profileContent>, string> = {
+  gender: '性别',
+  birthDate: '出生日期（可选）',
+  birthMonth: '出生年月',
+  idCard: '学生身份证号',
+  studentRegistration: '学籍号',
+  examRegistration: '考籍号',
+  applicationNumber: '报考序号',
+  studentPhone: '学生联系电话',
+  fatherName: '父亲姓名',
+  fatherIdCard: '父亲身份证号码',
+  fatherPhone: '父亲联系电话',
+  motherName: '母亲姓名',
+  motherIdCard: '母亲身份证号码',
+  motherPhone: '母亲联系电话',
+  boarding: '是否住校',
+  povertyStatus: '是否贫困生及类型',
+  guardianName: '其他监护人姓名（可选）',
+  guardianPhone: '其他监护人联系电话（可选）',
+  address: '家庭详细住址（具体到门牌号）',
+  interests: '兴趣',
+  strengths: '优势',
+  learningNeeds: '学习关注',
+  teacherNotes: '教师备注',
+};
 export const profileReadInput = z.object({ epoch, studentId: z.uuid() }).strict();
 export const profileSaveInput = profileReadInput.extend({
   expectedRevision: z.number().int().nonnegative(),

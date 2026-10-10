@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { Snapshot } from './contracts';
 import type { ScoreSubject, ScoreValue } from './scores';
+import type { StudentProfile } from './pupils';
 
 export const classDataSelectInput = z.object({ epoch: z.uuid(), classId: z.uuid() }).strict();
 export const classDataConfigureInput = classDataSelectInput
@@ -47,6 +48,7 @@ export interface ClassDataRow {
   status: 'new' | 'existing' | 'unresolved' | 'skip' | 'error';
   message: string;
   scores: Array<{ subjectId: string; score: ScoreValue }>;
+  profile?: Partial<StudentProfile['content']>;
 }
 export interface ClassDataPreview {
   token: string;
@@ -63,6 +65,7 @@ export interface ClassDataPreview {
   unresolved: number;
   scoreRows: number;
   hasScores: boolean;
+  profileRows: number;
   canConfirm: boolean;
   expiresAt: string;
 }

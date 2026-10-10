@@ -78,7 +78,7 @@ try {
     await library.getByRole('button', { name, exact: true }).click();
     await library.locator('.rl-book').first().click();
     await library.getByRole('button', { name: '课件', exact: true }).click();
-    await library.getByLabel('课件内容', { exact: true }).waitFor();
+    await library.getByLabel('课件文字提纲内容', { exact: true }).waitFor();
     await library.getByRole('button', { name: '教学设计', exact: true }).click();
     await library.getByLabel('教学设计内容', { exact: true }).waitFor();
     await page.waitForFunction(() => document.querySelector('textarea')?.value.length > 0);

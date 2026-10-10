@@ -77,24 +77,55 @@ export async function readScoreTable(
 export async function readClassDataTables(
   bytes: Uint8Array,
   format: 'csv' | 'xlsx',
-): Promise<Array<{ name: string; table: ScoreTable }>> {
+  allowRosterLayout = false,
+): Promise<Array<{ name: string; table: ScoreTable; rowOffset: number }>> {
   if (bytes.byteLength === 0 || bytes.byteLength > SCORE_FILE_LIMITS.bytes) {
     throw new DomainError('SCORE_FILE_LIMIT', '成绩文件为空或超过 5 MiB，未导入任何数据。');
   }
-  if (format === 'csv') return [{ name: 'CSV', table: csvTable(bytes) }];
+  if (format === 'csv') return [{ name: 'CSV', table: csvTable(bytes), rowOffset: 0 }];
   if (format !== 'xlsx') throw new DomainError('SCORE_FILE_TYPE', '只接受 XLSX 或 UTF-8 CSV。');
-  await inspectScoreWorkbook(Buffer.from(bytes));
+  await inspectScoreWorkbook(Buffer.from(bytes), allowRosterLayout);
   try {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(Uint8Array.from(bytes).buffer);
     if (!workbook.worksheets.length || workbook.worksheets.length > 10)
       throw new DomainError('SCORE_WORKSHEETS', '工作簿需包含 1–10 张工作表。');
-    const tables: Array<{ name: string; table: ScoreTable }> = [];
+    const tables: Array<{ name: string; table: ScoreTable; rowOffset: number }> = [];
     for (const sheet of workbook.worksheets) {
       if (sheet.state !== 'visible') {
         throw new DomainError('SCORE_WORKSHEETS', '成绩工作表必须可见。');
       }
       validateTableSize(sheet.rowCount, sheet.columnCount);
+      let headerRow = 1;
+      if (allowRosterLayout) {
+        for (let i = 1; i <= Math.min(10, sheet.rowCount); i++) {
+          if (
+            Array.from(
+              { length: sheet.columnCount },
+              (_, j) => sheet.getRow(i).getCell(j + 1).value,
+            ).some((v) => v === '姓名' || v === '学生姓名')
+          ) {
+            headerRow = i;
+            break;
+          }
+        }
+      }
+      const headerValues = Array.from(
+        { length: sheet.columnCount },
+        (_, j) => sheet.getRow(headerRow).getCell(j + 1).value,
+      );
+      const schoolRoster =
+        allowRosterLayout &&
+        headerValues.some((v) => v === '学籍号' || v === '父亲姓名' || v === '出生年月');
+      let lastDataRow = headerRow;
+      for (let i = headerRow + 1; i <= sheet.rowCount; i++)
+        if (
+          Array.from(
+            { length: sheet.columnCount },
+            (_, j) => sheet.getRow(i).getCell(j + 1).value,
+          ).some((v) => v !== null)
+        )
+          lastDataRow = i;
       const rows: ScoreTable = [];
       for (let rowIndex = 1; rowIndex <= sheet.rowCount; rowIndex++) {
         const row = sheet.getRow(rowIndex);
@@ -107,20 +138,27 @@ export async function readClassDataTables(
             throw new DomainError('SCORE_HIDDEN_COLUMNS', `第 ${column} 列被隐藏，请先取消隐藏。`);
           }
           const current = row.getCell(column);
-          if (current.isMerged) {
+          if (
+            current.isMerged &&
+            !(schoolRoster && (rowIndex < headerRow || rowIndex > lastDataRow))
+          ) {
             throw new DomainError(
               'SCORE_MERGED',
               `第 ${rowIndex} 行存在合并单元格，请使用单行表头。`,
             );
           }
           values.push({
-            ...cell(current.value),
+            ...cell(
+              schoolRoster && current.value instanceof Date
+                ? current.value.toISOString().slice(0, 10)
+                : current.value,
+            ),
             ...(current.numFmt ? { numberFormat: current.numFmt } : {}),
           });
         }
-        rows.push(values);
+        if (rowIndex >= headerRow) rows.push(values);
       }
-      tables.push({ name: sheet.name, table: rows });
+      tables.push({ name: sheet.name, table: rows, rowOffset: headerRow - 1 });
     }
     return tables;
   } catch (error) {

@@ -4,8 +4,11 @@ import { teachingExportInput, type TeachingRecord } from '../shared/teaching-wor
 import type { ScoreVersionView, ExamSummary } from '../shared/score-commands';
 import { DomainError } from '../core/errors';
 import type { WorkerClient, WorkerOperation } from './worker-client';
+import { profileFieldLabels } from '../shared/pupils';
+import { schoolRosterHeaders } from '../shared/roster-fields';
 
 const labels: Record<string, string> = {
+  ...profileFieldLabels,
   studentId: '学生',
   category: '类型',
   date: '日期',
@@ -61,6 +64,8 @@ const values: Record<string, string> = {
   female: '女',
   other: '其他',
   unspecified: '未填写',
+  yes: '是',
+  no: '否',
 };
 export async function teachingReport(
   worker: WorkerClient,
@@ -98,7 +103,7 @@ export async function teachingReport(
           : (values[String(value)] ?? String(value));
   if (input.kind === 'roster') {
     title = '学生花名册';
-    rows = [['学生编号', '姓名', '性别', '家长', '联系电话', '小组']];
+    rows = [[...schoolRosterHeaders]];
     for (const s of students) {
       const profile = await call<{ content: Record<string, unknown> }>('readStudentProfile', {
         epoch: input.epoch,
@@ -112,9 +117,28 @@ export async function teachingReport(
         s.studentNumber,
         s.displayName,
         values[String(profile.content.gender)] ?? '',
-        String(profile.content.guardianName ?? ''),
-        String(profile.content.guardianPhone ?? ''),
-        extra && 'group' in extra.content ? String(extra.content.group) : '',
+        String(profile.content.birthMonth || String(profile.content.birthDate ?? '').slice(0, 7)),
+        String(
+          profile.content.idCard ||
+            (extra && 'idCard' in extra.content ? extra.content.idCard : ''),
+        ),
+        ...[
+          'studentRegistration',
+          'examRegistration',
+          'applicationNumber',
+          'studentPhone',
+          'fatherName',
+          'fatherIdCard',
+          'fatherPhone',
+          'motherName',
+          'motherIdCard',
+          'motherPhone',
+          'address',
+        ].map((key) => String(profile.content[key] ?? '')),
+        values[String(profile.content.boarding)] === '未填写'
+          ? ''
+          : (values[String(profile.content.boarding)] ?? ''),
+        String(profile.content.povertyStatus ?? ''),
       ]);
     }
   } else if (input.kind === 'scores') {

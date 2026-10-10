@@ -8,6 +8,7 @@ import type {
 } from '../../../shared/class-data-import';
 import { scoreText } from '../../score-editor';
 import { WorkspaceLinks, type AppView } from '../../WorkspaceNavigation';
+import { ImportedProfileDetails } from '../../ImportedProfileDetails';
 
 export function ClassDataImport({
   snapshot,
@@ -69,6 +70,7 @@ export function ClassDataImport({
         (row) =>
           !row.key.startsWith(`${preview.configuration.studentSheet}:`) ||
           row.scores.length > 0 ||
+          Object.keys(row.profile ?? {}).length > 0 ||
           (row.status !== 'new' && row.status !== 'existing') ||
           !matchedScoreStudents.has(row.studentId),
       );
@@ -246,7 +248,7 @@ export function ClassDataImport({
               <span className="shared-file-icon">XLSX</span>
               <div>
                 <h3>点击选择学生信息 / 成绩文件</h3>
-                <p>支持 .xlsx 和 UTF-8 .csv；无需先下载模板或重新抄写。</p>
+                <p>支持学校18列花名册、成绩表（.xlsx / UTF-8 .csv）；无需重新抄写。</p>
                 <small>
                   只有成绩表？也可核对姓名后同时建立学生名册。最多两份文件，每份 5 MiB。
                 </small>
@@ -707,6 +709,7 @@ export function ClassDataImport({
                 <tr>
                   <th>学生编号</th>
                   <th>姓名</th>
+                  {preview.profileRows > 0 && <th>学生详细资料</th>}
                   {preview.subjects.map((s) => (
                     <th key={s.id}>
                       {s.name} / {s.maxScore}
@@ -725,6 +728,11 @@ export function ClassDataImport({
                         {row.sheet} · 第 {row.row} 行
                       </small>
                     </td>
+                    {preview.profileRows > 0 && (
+                      <td>
+                        <ImportedProfileDetails profile={row.profile} />
+                      </td>
+                    )}
                     {preview.subjects.map((s) => (
                       <td key={s.id}>
                         {row.scores.find((v) => v.subjectId === s.id)
@@ -791,7 +799,8 @@ export function ClassDataImport({
           <footer className="shared-footer">
             <div>
               <strong>
-                将保存：新增 {preview.added} 名学生{preview.hasScores ? ' + 1 次考试' : ''}
+                将保存：新增 {preview.added} 名学生 · 保存 {preview.profileRows} 份详细档案
+                {preview.hasScores ? ' + 1 次考试' : ''}
               </strong>
               <p>已有资料不会被覆盖。新资料保存后供点名、排班和成长档案共用。</p>
               {configChanged ? (

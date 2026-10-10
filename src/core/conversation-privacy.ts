@@ -214,7 +214,7 @@ export class ConversationPrivacy {
         const rowAlias = typeof rowId === 'string' ? this.aliases.get(rowId) : undefined;
         for (const [key, entry] of Object.entries(item)) {
           if (
-            /(?:^key$|apiKey|maskedKey|accessKey|secretKey|privateKey)|secret|(?:^token$|accessToken|refreshToken|authToken|fileToken)|password|authorization|credential|path|private|rawBytes|image|base64|dataUrl|bytes|epoch|checksum|hash|phone|mobile|email|address|guardian|parent|contact|idNumber|teacherName|birthDate/iu.test(
+            /(?:^key$|apiKey|maskedKey|accessKey|secretKey|privateKey)|secret|(?:^token$|accessToken|refreshToken|authToken|fileToken)|password|authorization|credential|path|private|rawBytes|image|base64|dataUrl|bytes|epoch|checksum|hash|phone|mobile|email|address|guardian|parent|contact|idNumber|idCard|Registration|applicationNumber|father|mother|poverty|boarding|teacherName|birthDate|birthMonth/iu.test(
               key,
             )
           )

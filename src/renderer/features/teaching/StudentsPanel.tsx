@@ -4,7 +4,7 @@ import type { DesktopApi, Snapshot, Student } from '../../../shared/contracts';
 import type { StudentProfile } from '../../../shared/pupils';
 import type { TeachingRecord } from '../../../shared/teaching-workbench';
 import type { ScoreVersionView } from '../../../shared/score-commands';
-import { profileContent } from '../../../shared/pupils';
+import { profileContent, profileFieldLabels } from '../../../shared/pupils';
 import { RosterImportDialog } from '../../RosterImportDialog';
 import { TeachingDialog, TeachingDialogCancel } from './TeachingDialog';
 import { type Execute } from './RecordsPanel';
@@ -102,13 +102,14 @@ export function StudentsPanel({
       JSON.stringify(profileFor(detail.student.id)?.content) ||
       detail.height !== (savedExtra?.height ?? 0) ||
       detail.group !== (savedExtra?.group ?? 1) ||
-      detail.idCard !== (savedExtra?.idCard ?? '') ||
+      detail.idCard !==
+        (profileFor(detail.student.id)?.content.idCard || savedExtra?.idCard || '') ||
       detail.note !== (savedExtra?.note ?? '')),
   );
   const filtered = students.filter(
     (s) =>
       s.active !== archived &&
-      `${s.displayName} ${s.studentNumber} ${profileFor(s.id)?.content.guardianName ?? ''}`.includes(
+      `${s.displayName} ${s.studentNumber} ${profileFor(s.id)?.content.guardianName ?? ''} ${profileFor(s.id)?.content.fatherName ?? ''} ${profileFor(s.id)?.content.motherName ?? ''}`.includes(
         search,
       ) &&
       (!gender || profileFor(s.id)?.content.gender === gender) &&
@@ -132,7 +133,7 @@ export function StudentsPanel({
       extra,
       height: c?.height ?? 0,
       group: c?.group ?? 1,
-      idCard: c?.idCard ?? '',
+      idCard: profile.content.idCard || c?.idCard || '',
       note: c?.note ?? '',
     });
   }
@@ -262,7 +263,12 @@ export function StudentsPanel({
                 <span className="tw-avatar">{s.displayName.slice(0, 1)}</span>
                 <b>{s.displayName}</b>
                 <small>{s.studentNumber}</small>
-                <span>{profileFor(s.id)?.content.guardianName || '家长尚未填写'}</span>
+                <span>
+                  {profileFor(s.id)?.content.guardianName ||
+                    profileFor(s.id)?.content.fatherName ||
+                    profileFor(s.id)?.content.motherName ||
+                    '家长尚未填写'}
+                </span>
               </button>
             ))}
           </div>
@@ -311,8 +317,18 @@ export function StudentsPanel({
                           <td>{extra?.group || '—'}</td>
                         </>
                       )}
-                      <td>{p?.content.guardianName || '—'}</td>
-                      <td>{p?.content.guardianPhone || '—'}</td>
+                      <td>
+                        {p?.content.guardianName ||
+                          p?.content.fatherName ||
+                          p?.content.motherName ||
+                          '—'}
+                      </td>
+                      <td>
+                        {p?.content.guardianPhone ||
+                          p?.content.fatherPhone ||
+                          p?.content.motherPhone ||
+                          '—'}
+                      </td>
                       <td>
                         <div className="tw-actions">
                           <button
@@ -462,14 +478,18 @@ export function StudentsPanel({
                   expectedRevision: detail.profile.revision,
                   expectedStudentRevision: detail.student.revision,
                   requestId: crypto.randomUUID(),
-                  content: detail.profile.content,
+                  content: { ...detail.profile.content, idCard: detail.idCard },
                   reason: '工作台更新学生资料',
                 });
                 if (!r.ok) {
                   setError(r.error.message);
                   throw new Error(r.error.message);
                 }
-                const updated = { ...detail.profile, revision: r.value.revision };
+                const updated = {
+                  ...detail.profile,
+                  content: { ...detail.profile.content, idCard: detail.idCard },
+                  revision: r.value.revision,
+                };
                 setProfiles((ps) =>
                   ps.map((p) => (p.studentId === detail.student.id ? updated : p)),
                 );
@@ -507,83 +527,100 @@ export function StudentsPanel({
               学生编号：{detail.student.studentNumber} · 学生成绩和班务记录自动关联，无需重复导入。
             </p>
             <div className="tw-form">
-              {Object.keys(profileContent.shape).map((key) => {
-                const k = key as keyof StudentProfile['content'];
-                const names: Record<string, string> = {
-                  gender: '性别',
-                  birthDate: '出生日期',
-                  guardianName: '家长姓名',
-                  guardianPhone: '联系电话',
-                  address: '住址',
-                  interests: '兴趣',
-                  strengths: '优势',
-                  learningNeeds: '学习关注',
-                  teacherNotes: '教师备注',
-                };
-                return (
-                  <label
-                    key={k}
-                    className={
-                      [
-                        'interests',
-                        'strengths',
-                        'learningNeeds',
-                        'teacherNotes',
-                        'address',
-                      ].includes(k)
-                        ? 'wide'
-                        : ''
-                    }
-                  >
-                    {names[k]}
-                    {k === 'gender' ? (
-                      <select
-                        value={detail.profile.content[k]}
-                        onChange={(e) =>
-                          setDetail({
-                            ...detail,
-                            profile: {
-                              ...detail.profile,
-                              content: {
-                                ...detail.profile.content,
-                                gender: e.target.value as StudentProfile['content']['gender'],
+              {Object.keys(profileContent.shape)
+                .filter((key) => key !== 'idCard')
+                .map((key) => {
+                  const k = key as keyof StudentProfile['content'];
+                  return (
+                    <label
+                      key={k}
+                      className={
+                        [
+                          'interests',
+                          'strengths',
+                          'learningNeeds',
+                          'teacherNotes',
+                          'address',
+                        ].includes(k)
+                          ? 'wide'
+                          : ''
+                      }
+                    >
+                      {profileFieldLabels[k]}
+                      {k === 'gender' || k === 'boarding' ? (
+                        <select
+                          aria-label={profileFieldLabels[k]}
+                          value={detail.profile.content[k]}
+                          onChange={(e) =>
+                            setDetail({
+                              ...detail,
+                              profile: {
+                                ...detail.profile,
+                                content: {
+                                  ...detail.profile.content,
+                                  [k]: e.target.value,
+                                },
                               },
-                            },
-                          })
-                        }
-                      >
-                        <option value="unspecified">未填写</option>
-                        <option value="female">女</option>
-                        <option value="male">男</option>
-                        <option value="other">其他</option>
-                      </select>
-                    ) : (
-                      <input
-                        type={k === 'birthDate' ? 'date' : k === 'guardianPhone' ? 'tel' : 'text'}
-                        maxLength={
-                          k === 'guardianPhone'
-                            ? 40
-                            : k === 'guardianName'
-                              ? 80
-                              : k === 'address'
-                                ? 300
-                                : 2000
-                        }
-                        value={detail.profile.content[k]}
-                        onChange={(e) =>
-                          setDetail({
-                            ...detail,
-                            profile: {
-                              ...detail.profile,
-                              content: { ...detail.profile.content, [k]: e.target.value },
-                            },
-                          })
-                        }
-                      />
-                    )}
-                  </label>
-                );
-              })}
+                            })
+                          }
+                        >
+                          <option value="unspecified">未填写</option>
+                          {k === 'gender' ? (
+                            <>
+                              <option value="female">女</option>
+                              <option value="male">男</option>
+                              <option value="other">其他</option>
+                            </>
+                          ) : (
+                            <>
+                              <option value="yes">是</option>
+                              <option value="no">否</option>
+                            </>
+                          )}
+                        </select>
+                      ) : (
+                        <input
+                          aria-label={profileFieldLabels[k]}
+                          type={
+                            k === 'birthDate'
+                              ? 'date'
+                              : k === 'birthMonth'
+                                ? 'month'
+                                : /Phone$/.test(k)
+                                  ? 'tel'
+                                  : 'text'
+                          }
+                          pattern={/IdCard$/.test(k) ? '[0-9]{17}[0-9Xx]' : undefined}
+                          maxLength={
+                            /Phone$/.test(k)
+                              ? 40
+                              : /Name$/.test(k)
+                                ? 80
+                                : k === 'address'
+                                  ? 300
+                                  : /IdCard$/.test(k)
+                                    ? 18
+                                    : /Registration$|Number$/.test(k)
+                                      ? 40
+                                      : k === 'povertyStatus'
+                                        ? 300
+                                        : 2000
+                          }
+                          value={detail.profile.content[k]}
+                          onChange={(e) =>
+                            setDetail({
+                              ...detail,
+                              profile: {
+                                ...detail.profile,
+                                content: { ...detail.profile.content, [k]: e.target.value },
+                              },
+                            })
+                          }
+                        />
+                      )}
+                    </label>
+                  );
+                })}
               <label>
                 身高（厘米）
                 <input

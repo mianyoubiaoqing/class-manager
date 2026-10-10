@@ -5,6 +5,7 @@ import ExcelJS from 'exceljs';
 import { afterEach, expect, test, vi } from 'vitest';
 import { Workspace } from '../src/core/workspace';
 import { createRosterTemplate } from '../src/core/roster-import';
+import { schoolRosterHeaders } from '../src/shared/roster-fields';
 
 const roots: string[] = [];
 const workspaces: Workspace[] = [];
@@ -197,7 +198,9 @@ test('XLSX template preserves textual leading zeros; numeric identifiers and for
   ).rejects.toThrow('隐藏');
 });
 test('templates contain no sample student data and CSV is UTF-8 with BOM', async () => {
-  expect((await createRosterTemplate('csv')).toString('utf8')).toBe('\uFEFF学生编号,姓名\r\n');
+  expect((await createRosterTemplate('csv')).toString('utf8')).toBe(
+    '\uFEFF' + schoolRosterHeaders.join(',') + '\r\n',
+  );
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(Uint8Array.from(await createRosterTemplate('xlsx')).buffer);
   expect(workbook.worksheets[0]!.rowCount).toBe(1);

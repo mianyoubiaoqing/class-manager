@@ -278,69 +278,32 @@ try {
     await fs.writeFile(path.join(program, folder, item.docx), bytes, { flag: 'wx' });
   }
   assert.equal(documents.length, 8, 'Expected original six manuals and two current guides');
-  const git = spawnSync(
-    'rtk',
-    ['proxy', 'git', 'ls-files', '--cached', '--others', '--exclude-standard', '-z'],
-    { windowsHide: true, maxBuffer: 16 * 1024 * 1024 },
+  await run('sanitized-source', [
+    'proxy',
+    process.execPath,
+    'scripts/package-sanitized-source.mjs',
+  ]);
+  const sanitized = JSON.parse(await fs.readFile('output/current-sanitized-source.json', 'utf8'));
+  assert.equal(sanitized.status, 'passed');
+  const sourceBytes = await fs.readFile(sanitized.zip);
+  assert.equal(hash(sourceBytes), sanitized.sha256);
+  const sourceArchive = await JSZip.loadAsync(sourceBytes, { checkCRC32: true });
+  const manifestEntry = Object.keys(sourceArchive.files).find((name) =>
+    name.endsWith('/source-manifest.json'),
   );
-  assert.equal(git.status, 0, 'Cannot inventory source');
-  const sourceZip = new JSZip();
-  const sourceManifest = [];
-  const sourceFiles = [...new Set(git.stdout.toString('utf8').split('\0').filter(Boolean))]
-    .filter(
-      (file) =>
-        /^(?:src|scripts|tests|tools|docs)\//.test(file) ||
-        [
-          'package.json',
-          'package-lock.json',
-          'tsconfig.json',
-          'vitest.config.ts',
-          'eslint.config.mjs',
-          '.prettierrc.json',
-          '.gitignore',
-          'README.md',
-          'CONTEXT.md',
-        ].includes(file),
-    )
-    .sort();
-  for (const file of sourceFiles) {
-    assert.ok(!(await fs.lstat(file)).isSymbolicLink(), 'Unsupported source link');
-    assert.ok(
-      !/(?:^|\/)(?:credentials|conversation-history|workspace-data|node_modules)(?:\/|$)|\.cmbackup$|\.env(?:\.|$)/i.test(
-        file,
-      ),
-      'Private source file',
-    );
-    if (/\.sqlite(?:-|$)/i.test(file))
-      assert.ok(
-        ['tests/fixtures/frozen-v7.sqlite', 'tests/fixtures/frozen-v6-lessons.sqlite'].includes(
-          file,
-        ),
-        'Unexpected source database',
-      );
-    const bytes = await fs.readFile(file);
-    sourceZip.file('class-manager/' + file, bytes);
-    sourceManifest.push({ file, bytes: bytes.length, sha256: hash(bytes) });
-  }
-  const sourceBytes = await sourceZip.generateAsync({
-    type: 'nodebuffer',
-    platform: 'DOS',
-    compression: 'DEFLATE',
-    compressionOptions: { level: 6 },
-  });
-  const sourceRead = await JSZip.loadAsync(sourceBytes, { checkCRC32: true });
-  for (const item of sourceManifest)
-    assert.equal(
-      hash(await sourceRead.file('class-manager/' + item.file).async('nodebuffer')),
-      item.sha256,
-    );
+  assert.ok(manifestEntry);
   await fs.writeFile(path.join(program, '开发资料', 'Class-Manager-Source.zip'), sourceBytes, {
     flag: 'wx',
   });
   await fs.writeFile(
     path.join(program, '开发资料', 'source-manifest.json'),
-    JSON.stringify({ files: sourceManifest }, null, 2),
+    await sourceArchive.file(manifestEntry).async('nodebuffer'),
   );
+  report.sanitizedSource = {
+    files: sanitized.includedFiles,
+    credentialsFound: sanitized.credentialsFound,
+    sha256: sanitized.sha256,
+  };
   await addText(
     '开发资料/当前版本补充说明.md',
     await fs.readFile('docs/handoff/current-delivery-notes.md', 'utf8'),

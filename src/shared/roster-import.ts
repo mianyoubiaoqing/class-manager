@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { StudentProfile } from './pupils';
 
 export const rosterImportInput = z.object({ epoch: z.uuid(), classId: z.uuid() }).strict();
 export const rosterConfirmInput = z.object({ epoch: z.uuid(), token: z.uuid() }).strict();
@@ -9,7 +10,9 @@ export interface RosterImportRow {
   row: number;
   studentNumber: string;
   displayName: string;
-  status: 'new' | 'skip' | 'error';
+  status: 'new' | 'update' | 'skip' | 'error';
+  studentId?: string;
+  profile?: Partial<StudentProfile['content']>;
   message: string;
 }
 export interface RosterImportPreview {
@@ -20,5 +23,6 @@ export interface RosterImportPreview {
   issues: string[];
   added: number;
   skipped: number;
+  updated: number;
   canConfirm: boolean;
 }

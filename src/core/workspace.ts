@@ -30,6 +30,8 @@ import { PupilBook } from './pupil-book';
 import { TeachingBook } from './teaching-book';
 import { ResourceLibrary } from './resource-library';
 import { parseRosterImport } from './roster-import';
+import { planImportedProfile, writeImportedProfile } from './roster-profile';
+import type { StudentProfile } from '../shared/pupils';
 import { ClassDataImporter } from './class-data-import';
 import {
   rosterImportInput,
@@ -80,6 +82,7 @@ export class Workspace {
     fingerprint: string;
     expires: number;
     preview: RosterImportPreview;
+    profiles: StudentProfile[];
   };
   private rosterReceipts = new Map<string, { epoch: string; added: number; skipped: number }>();
   readonly root: string;
@@ -378,7 +381,13 @@ export class Workspace {
   private rosterFingerprint(): string {
     const snapshot = this.snapshot();
     return createHash('sha256')
-      .update(JSON.stringify([snapshot.classes, snapshot.students]))
+      .update(
+        JSON.stringify([
+          snapshot.classes,
+          snapshot.students,
+          this.db.prepare('SELECT id,revision FROM student_profiles ORDER BY id').all(),
+        ]),
+      )
       .digest('hex');
   }
 
@@ -396,6 +405,20 @@ export class Workspace {
     if (!classroom) throw new DomainError('NOT_FOUND', '请先创建并选择班级。');
     const fingerprint = this.rosterFingerprint();
     const parsed = await parseRosterImport(bytes, format, snapshot, input.classId);
+    const profiles: StudentProfile[] = [];
+    for (const row of parsed.rows) {
+      if (row.status !== 'new' && row.status !== 'update') continue;
+      row.studentId ??= randomUUID();
+      const profile = planImportedProfile(this.db, row.studentId, row.profile ?? {});
+      if (profile) profiles.push(profile);
+      else if (row.status === 'update') {
+        row.status = 'skip';
+        row.message = '已有学生，档案内容一致，跳过';
+      }
+    }
+    parsed.updated = parsed.rows.filter((row) => row.status === 'update').length;
+    parsed.skipped = parsed.rows.filter((row) => row.status === 'skip').length;
+    parsed.canConfirm = parsed.canConfirm && (parsed.added > 0 || parsed.updated > 0);
     this.guard(input.epoch);
     if (fingerprint !== this.rosterFingerprint())
       throw new DomainError('CONFLICT', '名册已变化，请重新预览。');
@@ -406,6 +429,7 @@ export class Workspace {
       fingerprint,
       expires: Date.now() + 15 * 60 * 1000,
       preview,
+      profiles,
     };
     return preview;
   }
@@ -436,7 +460,7 @@ export class Workspace {
     const now = this.membershipTimestamp();
     transaction(this.db, () => {
       for (const row of pending.preview.rows.filter((r) => r.status === 'new')) {
-        const id = randomUUID();
+        const id = row.studentId!;
         this.db
           .prepare('INSERT INTO students VALUES (?, ?, ?, 1, 1, ?)')
           .run(id, row.studentNumber, row.displayName, now);
@@ -444,6 +468,7 @@ export class Workspace {
           .prepare('INSERT INTO enrollments VALUES (?, ?, ?, ?, NULL)')
           .run(randomUUID(), id, pending.classId, now);
       }
+      for (const profile of pending.profiles) writeImportedProfile(this.db, profile);
     });
     const saved = {
       epoch: input.epoch,

@@ -404,7 +404,12 @@ export function ResourceLibraryPage({
                     <h3>
                       <FolderOpen size={18} /> 我的{resourceTypes[type]}文件
                     </h3>
-                    <p>添加后保存在本机并纳入备份。打开的是副本；修改后请重新添加文件。</p>
+                    <p>
+                      {type === 'courseware'
+                        ? '添加已有 PPT / PPTX、Word、PDF 等课件，使用本机软件打开。'
+                        : '添加已有教学资料，使用本机软件打开。'}
+                      文件保存在本机并纳入备份；打开的是副本，修改后请重新添加。
+                    </p>
                   </div>
                   <div className="rl-actions">
                     <button
@@ -476,8 +481,14 @@ export function ResourceLibraryPage({
               <section className="rl-editor-card">
                 <div className="rl-card-head">
                   <div>
-                    <h3>可编辑{resourceTypes[type]}模板</h3>
-                    <p>这是备课起点，请核对内容并补充本班学情。课件页导出的是 Word 提纲。</p>
+                    <h3>
+                      {type === 'courseware' ? '课件文字提纲' : `可编辑${resourceTypes[type]}模板`}
+                    </h3>
+                    <p>
+                      {type === 'courseware'
+                        ? '在这里编写教学目标、讲解顺序与课堂活动，保存或导出为 Word 提纲。此处不编辑上方课件文件，也不生成 PPT。'
+                        : '这是备课起点，请核对内容并补充本班学情。'}
+                    </p>
                   </div>
                   <span className="rl-save-state">
                     {busy
@@ -490,7 +501,9 @@ export function ResourceLibraryPage({
                   </span>
                 </div>
                 <textarea
-                  aria-label={`${resourceTypes[type]}内容`}
+                  aria-label={
+                    type === 'courseware' ? '课件文字提纲内容' : `${resourceTypes[type]}内容`
+                  }
                   value={body}
                   readOnly={busy || !loaded}
                   maxLength={50000}
@@ -534,7 +547,7 @@ export function ResourceLibraryPage({
                     }
                   >
                     <Download size={16} />
-                    导出 Word（.docx）
+                    {type === 'courseware' ? '导出 Word 提纲（.docx）' : '导出 Word（.docx）'}
                   </button>
                   <span>{body.length}/50000 字</span>
                   <button

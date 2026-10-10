@@ -1,5 +1,8 @@
 import ExcelJS from 'exceljs';
-import { readScoreTable } from './score-table';
+import { readClassDataTables } from './score-table';
+import { importedProfile, rosterHeaders } from './roster-profile';
+import { schoolRosterHeaders } from '../shared/roster-fields';
+import { DomainError } from './errors';
 import { studentInput, type Snapshot } from '../shared/contracts';
 import type { RosterImportRow } from '../shared/roster-import';
 
@@ -9,9 +12,12 @@ export async function parseRosterImport(
   snapshot: Snapshot,
   classId: string,
 ) {
-  const table = await readScoreTable(bytes, format);
-  const headers =
-    table[0]?.map((c) => (typeof c.value === 'string' && !c.problem ? c.value.trim() : '')) ?? [];
+  const sheets = await readClassDataTables(bytes, format, true);
+  if (sheets.length !== 1) throw new DomainError('VALIDATION', '名册文件请只保留一张工作表。');
+  const { table, rowOffset } = sheets[0]!;
+  const headers = rosterHeaders(
+    table[0]?.map((c) => (typeof c.value === 'string' && !c.problem ? c.value.trim() : '')) ?? [],
+  );
   const issues: string[] = [];
   const numberColumns = headers
     .map((h, i) => (['学生编号', '学号', '编号'].includes(h) ? i : -1))
@@ -37,13 +43,18 @@ export async function parseRosterImport(
     const studentNumber = typeof number === 'string' ? number.trim().toUpperCase() : '';
     const displayName = typeof name === 'string' ? name.trim() : '';
     const row: RosterImportRow = {
-      row: i + 1,
+      row: i + 1 + rowOffset,
       studentNumber,
       displayName,
       status: 'new',
       message: '新增学生',
     };
     const problems = cells.filter((c) => c.problem).map((c) => c.problem!);
+    try {
+      row.profile = importedProfile(headers, cells);
+    } catch (error) {
+      problems.push(error instanceof Error ? error.message : '学生详细资料无效。');
+    }
     if (typeof number !== 'string')
       problems.push('学生编号须为文本；请将 Excel 编号列设为文本，保留前导零。');
     if (
@@ -58,8 +69,12 @@ export async function parseRosterImport(
     const old = existing.get(studentNumber);
     if (old) {
       if (old.active && old.classId === classId && old.displayName === displayName) {
-        row.status = 'skip';
-        row.message = '本班已有同编号、同姓名的在籍学生，跳过';
+        row.studentId = old.id;
+        row.status = Object.keys(row.profile ?? {}).length ? 'update' : 'skip';
+        row.message =
+          row.status === 'update'
+            ? '已有学生：核对后更新非空档案字段'
+            : '本班已有同编号、同姓名的在籍学生，跳过';
       } else problems.push('编号已被其他学生、班级或停用记录使用，请先核对名册。');
     }
     if (problems.length) {
@@ -86,18 +101,26 @@ export async function parseRosterImport(
     issues,
     added,
     skipped: rows.filter((r) => r.status === 'skip').length,
-    canConfirm: !issues.length && !rows.some((r) => r.status === 'error') && added > 0,
+    updated: rows.filter((r) => r.status === 'update').length,
+    canConfirm:
+      !issues.length &&
+      !rows.some((r) => r.status === 'error') &&
+      (added > 0 || rows.some((r) => r.status === 'update')),
   };
 }
 
 export async function createRosterTemplate(format: 'csv' | 'xlsx'): Promise<Buffer> {
-  if (format === 'csv') return Buffer.from('\uFEFF学生编号,姓名\r\n', 'utf8');
+  if (format === 'csv')
+    return Buffer.from('\uFEFF' + schoolRosterHeaders.join(',') + '\r\n', 'utf8');
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('班级名册');
-  sheet.columns = [
-    { header: '学生编号', key: 'number', width: 24, style: { numFmt: '@' } },
-    { header: '姓名', key: 'name', width: 20 },
-  ];
+  sheet.columns = schoolRosterHeaders.map((header, i) => ({
+    header,
+    key: String(i),
+    width: i === 15 ? 45 : 24,
+    style: { numFmt: '@' },
+  }));
+  sheet.views = [{ state: 'frozen', ySplit: 1, xSplit: 2 }];
   sheet.getRow(1).font = { bold: true };
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }

@@ -35,6 +35,34 @@ function fixture() {
   return { workspace, snapshot, privacy, tools, classId, student: snapshot.students[0]! };
 }
 
+test('school roster private fields cannot enter public model write parameters or redacted results', () => {
+  const { tools, privacy } = fixture();
+  const schema = JSON.stringify(
+    tools.catalog().find((t) => t.tool === 'saveStudentProfile')!.parameters,
+  );
+  for (const key of [
+    'idCard',
+    'fatherName',
+    'motherPhone',
+    'studentRegistration',
+    'birthMonth',
+    'povertyStatus',
+  ])
+    expect(schema).not.toContain(`"${key}"`);
+  const redacted = JSON.stringify(
+    privacy.toolResult({
+      fatherName: '合成父亲',
+      motherPhone: '13800000003',
+      idCard: '110101201009010012',
+      studentRegistration: 'G110101201009010012',
+      birthMonth: '2010-09',
+      povertyStatus: '是，建档立卡',
+    }),
+  );
+  for (const text of ['合成父亲', '13800000003', '110101201009010012', '2010-09', '建档立卡'])
+    expect(redacted).not.toContain(text);
+});
+
 test('catalog describes every callable tool with the real parameter schema and confirmation boundary', () => {
   const { tools } = fixture();
   const catalog = tools.catalog();

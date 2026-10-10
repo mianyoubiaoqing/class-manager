@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { profileFieldLabels } from '../shared/pupils';
 
 const toolLabels: Record<string, string> = {
   createClass: '创建班级',
@@ -60,8 +61,7 @@ const fields: Record<string, string> = {
   active: '在籍状态',
   marks: '逐人点名结果',
   note: '备注',
-  gender: '性别',
-  birthDate: '出生日期',
+  ...profileFieldLabels,
   guardianName: '监护人姓名',
   guardianPhone: '联系电话',
   address: '联系地址',

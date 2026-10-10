@@ -57,7 +57,7 @@ const rootFiles = [
 ];
 const excluded =
   /(?:^|\/)(?:asset|output|dist|release|node_modules|evidence|\.git|\.local-data|coverage|credentials|conversation-history|workspace-data)(?:\/|$)|(?:^|\/)\.env(?:\.|$)|\.(?:log|cmbackup|db|pem|p12|pfx|key|sqlite(?:-.*)?)$/i;
-const files = git(['ls-files', '--cached', '-z'])
+const files = git(['ls-files', '--cached', '--others', '--exclude-standard', '-z'])
   .split('\0')
   .filter(Boolean)
   .filter(

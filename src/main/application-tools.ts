@@ -194,7 +194,13 @@ export class ApplicationTools {
         }
         if (tool === 'saveStudentProfile') {
           publicShape.content = pupils.profileContent
-            .omit({ birthDate: true, guardianName: true, guardianPhone: true, address: true })
+            .pick({
+              gender: true,
+              interests: true,
+              strengths: true,
+              learningNeeds: true,
+              teacherNotes: true,
+            })
             .partial();
         }
         if ('token' in schema.shape) publicShape.operationRef = z.string();
@@ -379,7 +385,13 @@ export class ApplicationTools {
       if (!previous?.content)
         throw new DomainError('VALIDATION', '请先读取学生资料，核对当前内容。');
       const patch = pupils.profileContent
-        .omit({ birthDate: true, guardianName: true, guardianPhone: true, address: true })
+        .pick({
+          gender: true,
+          interests: true,
+          strengths: true,
+          learningNeeds: true,
+          teacherNotes: true,
+        })
         .partial()
         .parse(input.content);
       input.content = { ...(previous.content as Record<string, unknown>), ...patch };
