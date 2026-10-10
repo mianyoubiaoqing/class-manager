@@ -26,7 +26,20 @@ export function RosterImportDialog({
   const [preview, setPreview] = useState<RosterImportPreview>();
   const [busy, setBusy] = useState(false),
     [notice, setNotice] = useState(''),
-    [page, setPage] = useState(0);
+    [page, setPage] = useState(0),
+    [problemsOnly, setProblemsOnly] = useState(false);
+  const problemRows = preview?.rows.filter((row) => row.status === 'error') ?? [];
+  const tableRows = problemsOnly ? problemRows : (preview?.rows ?? []);
+  const pageCount = Math.max(1, Math.ceil(tableRows.length / 20));
+  const blockedReason = !preview
+    ? ''
+    : problemRows.length
+      ? `还有 ${problemRows.length} 行需要修正，本次未导入任何学生。请核对下方问题行，在 Excel 中更正并保存后，点击“选择名单文件”重新读取。`
+      : preview.issues.length
+        ? '文件仍有问题，本次未导入任何学生。请按上方提示修正并重新选择文件。'
+        : !preview.canConfirm
+          ? '没有需要新增或更新的学生；已有且资料相同的学生已跳过，无需再次导入。'
+          : '';
   const dialog = useRef<HTMLDialogElement>(null),
     running = useRef(false),
     alive = useRef(true);
@@ -92,6 +105,7 @@ export function RosterImportDialog({
             setClassId(e.target.value);
             setPreview(undefined);
             setPage(0);
+            setProblemsOnly(false);
           }}
         >
           {snapshot.classes.map((c) => (
@@ -145,6 +159,7 @@ export function RosterImportDialog({
                   if (alive.current) {
                     setPreview(r.value ?? undefined);
                     setPage(0);
+                    setProblemsOnly(Boolean(r.value?.rows.some((row) => row.status === 'error')));
                   }
                 })
               }
@@ -178,6 +193,35 @@ export function RosterImportDialog({
               {issue}
             </p>
           ))}
+          {blockedReason && (
+            <p
+              id="roster-import-blocker"
+              className={`notice ${problemRows.length || preview.issues.length ? 'error' : ''}`}
+              role={problemRows.length || preview.issues.length ? 'alert' : 'status'}
+            >
+              {blockedReason}
+            </p>
+          )}
+          {problemRows.length > 0 && (
+            <div className="button-row">
+              <button
+                disabled={busy}
+                onClick={() => {
+                  setProblemsOnly(!problemsOnly);
+                  setPage(0);
+                }}
+              >
+                {problemsOnly
+                  ? `查看全部 ${preview.rows.length} 行`
+                  : `只看问题行（${problemRows.length}）`}
+              </button>
+              <span className="field-hint">
+                {problemsOnly
+                  ? '当前只显示阻止导入的问题行；文件行号对应 Excel 中的行号。'
+                  : '点击“只看问题行”即可定位阻止导入的记录。'}
+              </span>
+            </div>
+          )}
           <div className="table-scroll">
             <table>
               <thead>
@@ -190,7 +234,7 @@ export function RosterImportDialog({
                 </tr>
               </thead>
               <tbody>
-                {preview.rows.slice(page * 20, (page + 1) * 20).map((r) => (
+                {tableRows.slice(page * 20, (page + 1) * 20).map((r) => (
                   <tr key={r.row}>
                     <td>{r.row}</td>
                     <td>{r.studentNumber || '—'}</td>
@@ -213,12 +257,9 @@ export function RosterImportDialog({
               上一页
             </button>
             <span>
-              {page + 1} / {Math.max(1, Math.ceil(preview.rows.length / 20))}
+              {page + 1} / {pageCount}
             </span>
-            <button
-              disabled={busy || (page + 1) * 20 >= preview.rows.length}
-              onClick={() => setPage(page + 1)}
-            >
+            <button disabled={busy || page + 1 >= pageCount} onClick={() => setPage(page + 1)}>
               下一页
             </button>
           </div>
@@ -234,6 +275,8 @@ export function RosterImportDialog({
         <button
           className="primary"
           disabled={busy || !preview?.canConfirm}
+          aria-describedby={blockedReason ? 'roster-import-blocker' : undefined}
+          title={blockedReason || undefined}
           onClick={() =>
             void run(async () => {
               const r = await api.confirmRosterImport({
@@ -250,7 +293,9 @@ export function RosterImportDialog({
         >
           {busy
             ? '正在处理…'
-            : `确认导入${preview ? ` ${preview.added + preview.updated} 人` : ''}`}
+            : problemRows.length
+              ? `修正 ${problemRows.length} 行后可导入`
+              : `确认导入${preview ? ` ${preview.added + preview.updated} 人` : ''}`}
         </button>
       </footer>
     </dialog>
