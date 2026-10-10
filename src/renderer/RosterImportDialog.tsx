@@ -41,6 +41,7 @@ export function RosterImportDialog({
           ? '没有需要新增或更新的学生；已有且资料相同的学生已跳过，无需再次导入。'
           : '';
   const dialog = useRef<HTMLDialogElement>(null),
+    tableScroll = useRef<HTMLDivElement>(null),
     running = useRef(false),
     alive = useRef(true);
   useEffect(() => {
@@ -53,6 +54,12 @@ export function RosterImportDialog({
   useEffect(() => {
     onDirtyChange(true);
   }, [onDirtyChange]);
+  useEffect(() => {
+    if (tableScroll.current) {
+      tableScroll.current.scrollTop = 0;
+      tableScroll.current.scrollLeft = 0;
+    }
+  }, [page, problemsOnly, preview]);
   async function run(work: () => Promise<void>) {
     if (running.current) return;
     running.current = true;
@@ -222,7 +229,18 @@ export function RosterImportDialog({
               </span>
             </div>
           )}
-          <div className="table-scroll">
+          <p id="roster-table-help" className="field-hint">
+            本页 {tableRows.slice(page * 20, (page + 1) * 20).length} 条，共 {tableRows.length} 条。
+            在表格内上下滚动查看本页记录；窗口较窄时可左右滚动查看完整列。点击表格后也可使用方向键滚动。
+          </p>
+          <div
+            ref={tableScroll}
+            className="table-scroll"
+            role="region"
+            aria-label="名册导入预览表格"
+            aria-describedby="roster-table-help"
+            tabIndex={0}
+          >
             <table>
               <thead>
                 <tr>

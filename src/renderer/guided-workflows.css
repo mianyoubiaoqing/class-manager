@@ -92,8 +92,23 @@
   color: #5d7167;
   line-height: 1.8;
 }
-.roster-import-dialog .table-scroll {
+.app-shell dialog.roster-import-dialog .table-scroll {
   max-height: 340px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.roster-import-dialog .table-scroll:focus-visible {
+  outline: 2px solid #2d7658;
+  outline-offset: 2px;
+}
+.roster-import-dialog .table-scroll table {
+  min-width: 840px;
+}
+.roster-import-dialog .table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 .roster-import-dialog .import-error {
   color: #a4372c;

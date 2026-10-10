@@ -83,6 +83,66 @@ try {
   const confirm = dialog.getByRole('button', { name: '确认导入 51 人', exact: true });
   await confirm.waitFor();
   assert.equal(await confirm.isEnabled(), true);
+  const table = dialog.locator('.table-scroll');
+  await table.scrollIntoViewIfNeeded();
+  const box = await table.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, 600);
+  await page.waitForFunction(
+    () => document.querySelector('.roster-import-dialog .table-scroll').scrollTop > 0,
+    null,
+    { timeout: 2500 },
+  );
+  assert.ok(
+    await table.evaluate((el) => el.scrollTop > 0),
+    'The rows clipped below the preview must be reachable with the mouse wheel',
+  );
+  await dialog.getByRole('button', { name: '下一页', exact: true }).click();
+  assert.equal(
+    await table.evaluate((el) => el.scrollTop),
+    0,
+    'Changing pages must reset the table scroll position',
+  );
+  assert.equal(
+    await dialog.locator('tbody').getByText('合成学生21', { exact: true }).isVisible(),
+    true,
+  );
+  await page.setViewportSize({ width: 720, height: 720 });
+  await table.scrollIntoViewIfNeeded();
+  const narrowBox = await table.boundingBox();
+  assert.ok(
+    await table.evaluate((el) => el.scrollWidth > el.clientWidth),
+    'Narrow view should exercise horizontal overflow',
+  );
+  await page.mouse.move(narrowBox.x + narrowBox.width / 2, narrowBox.y + narrowBox.height / 2);
+  await page.mouse.wheel(600, 0);
+  await page.waitForFunction(
+    () => document.querySelector('.roster-import-dialog .table-scroll').scrollLeft > 0,
+    null,
+    { timeout: 2500 },
+  );
+  const region = dialog.getByRole('region', { name: '名册导入预览表格', exact: true });
+  await region.focus();
+  await page.keyboard.press('Control+End');
+  await page.waitForFunction(
+    () => {
+      const el = document.querySelector('.roster-import-dialog .table-scroll');
+      return el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
+    },
+    null,
+    { timeout: 2500 },
+  );
+  await dialog.getByRole('button', { name: '下一页', exact: true }).click();
+  assert.equal(await table.evaluate((el) => el.scrollTop), 0);
+  assert.equal(await table.evaluate((el) => el.scrollLeft), 0);
+  assert.equal(
+    await dialog.locator('tbody').getByText('合成学生41', { exact: true }).isVisible(),
+    true,
+  );
+  await page.screenshot({ path: path.join(root, 'scrollable-preview.png'), fullPage: true });
+  report.checks.push(
+    'Mouse-wheel vertical scrolling exposes hidden rows; narrow-window horizontal scrolling and keyboard scrolling expose all columns and rows; changing pages resets both axes.',
+  );
   await confirm.click();
   await dialog.waitFor({ state: 'hidden' });
   assert.equal(
