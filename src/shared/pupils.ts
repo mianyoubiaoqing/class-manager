@@ -3,11 +3,7 @@ import { z } from 'zod';
 const epoch = z.uuid();
 const note = z.string().trim().max(2000);
 const date = z.iso.date();
-const identity = z
-  .string()
-  .trim()
-  .max(18)
-  .refine((v) => !v || /^\d{17}[\dXx]$/.test(v), '身份证号码须为18位');
+export const studentIdentityText = z.string().trim().max(40, '身份证号码文本最多40字');
 export const profileContent = z
   .object({
     gender: z.enum(['unspecified', 'female', 'male', 'other']).default('unspecified'),
@@ -16,16 +12,16 @@ export const profileContent = z
       .string()
       .regex(/^(?:\d{4}-(?:0[1-9]|1[0-2]))?$/, '出生年月须为 YYYY-MM')
       .default(''),
-    idCard: identity.default(''),
+    idCard: studentIdentityText.default(''),
     studentRegistration: z.string().trim().max(40).default(''),
     examRegistration: z.string().trim().max(40).default(''),
     applicationNumber: z.string().trim().max(40).default(''),
     studentPhone: z.string().trim().max(40).default(''),
     fatherName: z.string().trim().max(80).default(''),
-    fatherIdCard: identity.default(''),
+    fatherIdCard: studentIdentityText.default(''),
     fatherPhone: z.string().trim().max(40).default(''),
     motherName: z.string().trim().max(80).default(''),
-    motherIdCard: identity.default(''),
+    motherIdCard: studentIdentityText.default(''),
     motherPhone: z.string().trim().max(40).default(''),
     boarding: z.enum(['unspecified', 'yes', 'no']).default('unspecified'),
     povertyStatus: z.string().trim().max(300).default(''),

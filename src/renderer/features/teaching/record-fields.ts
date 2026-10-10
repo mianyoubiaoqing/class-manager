@@ -141,7 +141,7 @@ export const recordFields: Record<TeachingKind, Field[]> = {
   ],
   studentExtra: [
     student,
-    { key: 'idCard', label: '身份证号', optional: true, max: 18 },
+    { key: 'idCard', label: '身份证号', optional: true, max: 40 },
     { key: 'height', label: '身高（厘米，未填写时填 0）', type: 'number', min: 0, max: 250 },
     { key: 'group', label: '小组', type: 'number', min: 1, max: 100 },
     { key: 'note', label: '备注', optional: true, type: 'long' },

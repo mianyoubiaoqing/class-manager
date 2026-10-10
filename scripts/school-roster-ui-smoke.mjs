@@ -68,8 +68,8 @@ try {
   sheet.getCell('A4').value = 1;
   sheet.getCell('A4').numFmt = '0000';
   sheet.getCell('B4').value = { richText: [{ text: '合成' }, { text: '甲' }] };
-  sheet.getCell('D4').value = new Date('2010-09-01T00:00:00Z');
-  sheet.getCell('D4').numFmt = 'yyyy年mm月';
+  sheet.getCell('D4').value = { formula: 'MID(E4,7,6)', result: '000000' };
+  sheet.getCell('E4').value = '1101010000000000';
   sheet.getCell('G4').value = 3456;
   sheet.getCell('G4').numFmt = '0000000';
   sheet.getCell('J4').value = { formula: '"合成父亲"', result: '合成父亲' };
@@ -115,9 +115,14 @@ try {
   await files([roster]);
   await page.getByRole('button', { name: '选择学生信息 / 成绩文件', exact: true }).click();
   await page.getByRole('heading', { name: '核对资料，保存后就能使用', exact: true }).waitFor();
-  await page.getByText('核对 16 项资料', { exact: true }).click();
-  await page.getByText('合成父亲', { exact: true }).waitFor();
-  await page.getByText('合成母亲', { exact: true }).waitFor();
+  await page.getByText('核对 15 项资料', { exact: true }).click();
+  await page.getByText('合成父亲', { exact: true }).first().waitFor();
+  await page.getByText('合成母亲', { exact: true }).first().waitFor();
+  const importedTable = page.getByRole('region', { name: '学生信息与成绩预览表格', exact: true });
+  assert.deepEqual(
+    (await importedTable.locator('thead th').allTextContents()).slice(0, 18),
+    schoolRosterHeaders,
+  );
   await page.getByText(/公式仅读取 Excel 已保存的结果/).waitFor();
   await page.screenshot({ path: path.join(root, 'import-preview.png'), fullPage: true });
   assert.equal((await call('snapshot')).students.length, 0);
@@ -130,7 +135,8 @@ try {
   });
   assert.equal(profile.content.fatherPhone, '13800000002');
   assert.equal(profile.content.motherPhone, '13800000003');
-  assert.equal(profile.content.birthMonth, '2010-09');
+  assert.equal(profile.content.birthMonth, '');
+  assert.equal(profile.content.idCard, '1101010000000000');
   assert.equal(student.studentNumber, '0001');
   assert.equal(profile.content.examRegistration, '0003456');
   assert.equal(profile.content.boarding, 'yes');
@@ -138,6 +144,24 @@ try {
     'School XLSX title, row-2 header, repeated parent labels and all 18 fields import through real UI/IPC.',
   );
   await page.getByRole('button', { name: '学生管理', exact: true }).click();
+  const displayedRoster = page.getByRole('region', { name: '学生花名册表格', exact: true });
+  assert.deepEqual(
+    (await displayedRoster.locator('thead th').allTextContents()).slice(0, 18),
+    schoolRosterHeaders,
+  );
+  const rosterCells = await displayedRoster
+    .locator('tbody tr')
+    .first()
+    .locator('td')
+    .allTextContents();
+  assert.equal(rosterCells[4], '1101010000000000');
+  assert.equal(rosterCells[8], '13800000001');
+  assert.equal(rosterCells[11], '13800000002');
+  assert.equal(rosterCells[14], '13800000003');
+  assert.equal(rosterCells[16], '住校');
+  await displayedRoster.evaluate((el) => (el.scrollLeft = el.scrollWidth));
+  assert.ok(await displayedRoster.evaluate((el) => el.scrollLeft > 0));
+  await page.screenshot({ path: path.join(root, 'roster-all-fields.png'), fullPage: true });
   await page.getByRole('button', { name: '查看 合成甲', exact: true }).click();
   const detail = page.getByRole('dialog', { name: '合成甲 · 学生档案', exact: true });
   assert.equal(await detail.getByLabel('父亲姓名', { exact: true }).inputValue(), '合成父亲');
@@ -160,6 +184,23 @@ try {
   await exportedBook.xlsx.readFile(exported);
   assert.deepEqual(exportedBook.worksheets[0].getRow(1).values.slice(1), schoolRosterHeaders);
   assert.equal(exportedBook.worksheets[0].getCell('O2').value, '13900000003');
+  assert.equal(exportedBook.worksheets[0].getCell('E2').value, '1101010000000000');
+  assert.equal(exportedBook.worksheets[0].getCell('Q2').value, '住校');
+  await page.getByRole('button', { name: '批量导入', exact: true }).click();
+  await files([exported]);
+  const importDialog = page.getByRole('dialog', { name: '把学生名单导入班级', exact: true });
+  await importDialog.getByRole('button', { name: '选择名单文件', exact: true }).click();
+  await importDialog.getByText(/跳过已有 1 人/).waitFor();
+  const rosterPreview = importDialog.getByRole('region', { name: '名册导入预览表格', exact: true });
+  assert.deepEqual(
+    (await rosterPreview.locator('thead th').allTextContents()).slice(0, 18),
+    schoolRosterHeaders,
+  );
+  const reread = await rosterPreview.locator('tbody tr').first().locator('td').allTextContents();
+  assert.equal(reread[4], '1101010000000000');
+  assert.equal(reread[14], '13900000003');
+  assert.equal(reread[16], '住校');
+  await importDialog.getByRole('button', { name: '关闭批量导入', exact: true }).click();
   gate('Student management edits parent fields; Excel export round-trips the 18-column roster.');
   await openWorkspacePage(page, '班主任管理', '学生资料');
   await page.getByLabel('档案学生', { exact: true }).selectOption(student.id);

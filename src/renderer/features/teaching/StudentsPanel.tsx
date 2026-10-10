@@ -6,6 +6,7 @@ import type { TeachingRecord } from '../../../shared/teaching-workbench';
 import type { ScoreVersionView } from '../../../shared/score-commands';
 import { profileContent, profileFieldLabels } from '../../../shared/pupils';
 import { RosterImportDialog } from '../../RosterImportDialog';
+import { SchoolRosterCells, SchoolRosterHeaders } from '../../SchoolRosterTable';
 import { TeachingDialog, TeachingDialogCancel } from './TeachingDialog';
 import { type Execute } from './RecordsPanel';
 import { kindLabels, recordTitle } from './record-fields';
@@ -239,6 +240,11 @@ export function StudentsPanel({
         <div className="tw-section-title">
           {contacts ? '家长联系台账' : '学生花名册'} · {filtered.length} 人
         </div>
+        {!contacts && !cards && filtered.length > 0 && (
+          <p className="tw-hint">
+            按学校花名册的18列表头与顺序显示。左右滚动查看全部字段，学号和姓名保持可见；点击姓名可编辑档案。
+          </p>
+        )}
         {!filtered.length ? (
           <div className="tw-empty">
             {students.length
@@ -273,62 +279,81 @@ export function StudentsPanel({
             ))}
           </div>
         ) : (
-          <div className="tw-table-scroll">
-            <table>
+          <div
+            className={`tw-table-scroll ${contacts ? '' : 'school-roster-scroll'}`}
+            role="region"
+            aria-label={contacts ? '家长联系表格' : '学生花名册表格'}
+            tabIndex={0}
+          >
+            <table className={contacts ? undefined : 'school-roster-table'}>
               <thead>
                 <tr>
-                  <th>编号</th>
-                  <th>姓名</th>
-                  <th>性别</th>
-                  {!contacts && (
+                  {contacts ? (
                     <>
-                      <th>身高</th>
-                      <th>小组</th>
+                      <th>学号</th>
+                      <th>姓名</th>
+                      <th>性别</th>
+                      <th>家长</th>
+                      <th>联系方式</th>
                     </>
+                  ) : (
+                    <SchoolRosterHeaders />
                   )}
-                  <th>家长</th>
-                  <th>联系方式</th>
                   <th>操作</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.slice(currentPage * 24, (currentPage + 1) * 24).map((s) => {
-                  const p = profileFor(s.id),
-                    extra = extraFor(s.id)?.content as
-                      { height: number; group: number } | undefined;
+                  const p = profileFor(s.id);
                   return (
                     <tr key={s.id}>
-                      <td>{s.studentNumber}</td>
-                      <td>
-                        <button className="tw-text-button" onClick={() => showDetail(s)}>
-                          {s.displayName}
-                        </button>
-                      </td>
-                      <td>
-                        {
-                          { male: '男', female: '女', other: '其他', unspecified: '—' }[
-                            p?.content.gender ?? 'unspecified'
-                          ]
-                        }
-                      </td>
-                      {!contacts && (
+                      {contacts ? (
                         <>
-                          <td>{extra?.height || '—'}</td>
-                          <td>{extra?.group || '—'}</td>
+                          <td>{s.studentNumber}</td>
+                          <td>
+                            <button className="tw-text-button" onClick={() => showDetail(s)}>
+                              {s.displayName}
+                            </button>
+                          </td>
+                          <td>
+                            {
+                              { male: '男', female: '女', other: '其他', unspecified: '—' }[
+                                p?.content.gender ?? 'unspecified'
+                              ]
+                            }
+                          </td>
+                          <td>
+                            {p?.content.guardianName ||
+                              p?.content.fatherName ||
+                              p?.content.motherName ||
+                              '—'}
+                          </td>
+                          <td>
+                            {p?.content.guardianPhone ||
+                              p?.content.fatherPhone ||
+                              p?.content.motherPhone ||
+                              '—'}
+                          </td>
                         </>
+                      ) : (
+                        <SchoolRosterCells
+                          studentNumber={s.studentNumber}
+                          displayName={s.displayName}
+                          profile={{
+                            ...p?.content,
+                            idCard:
+                              p?.content.idCard ||
+                              (extraFor(s.id)?.content as { idCard?: string } | undefined)
+                                ?.idCard ||
+                              '',
+                          }}
+                          name={
+                            <button className="tw-text-button" onClick={() => showDetail(s)}>
+                              {s.displayName}
+                            </button>
+                          }
+                        />
                       )}
-                      <td>
-                        {p?.content.guardianName ||
-                          p?.content.fatherName ||
-                          p?.content.motherName ||
-                          '—'}
-                      </td>
-                      <td>
-                        {p?.content.guardianPhone ||
-                          p?.content.fatherPhone ||
-                          p?.content.motherPhone ||
-                          '—'}
-                      </td>
                       <td>
                         <div className="tw-actions">
                           <button
@@ -590,7 +615,6 @@ export function StudentsPanel({
                                   ? 'tel'
                                   : 'text'
                           }
-                          pattern={/IdCard$/.test(k) ? '[0-9]{17}[0-9Xx]' : undefined}
                           maxLength={
                             /Phone$/.test(k)
                               ? 40
@@ -599,7 +623,7 @@ export function StudentsPanel({
                                 : k === 'address'
                                   ? 300
                                   : /IdCard$/.test(k)
-                                    ? 18
+                                    ? 40
                                     : /Registration$|Number$/.test(k)
                                       ? 40
                                       : k === 'povertyStatus'
@@ -645,11 +669,13 @@ export function StudentsPanel({
               <label>
                 身份证号（可选）
                 <input
-                  maxLength={18}
-                  pattern="[0-9]{17}[0-9Xx]"
+                  maxLength={40}
                   value={detail.idCard}
                   onChange={(e) => setDetail({ ...detail, idCard: e.target.value })}
                 />
+                {detail.idCard && !/^\d{17}[\dXx]$/.test(detail.idCard) && (
+                  <small>格式待核对，按原文保存。</small>
+                )}
               </label>
               <label>
                 备注

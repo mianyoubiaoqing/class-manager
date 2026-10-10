@@ -110,6 +110,64 @@
   top: 0;
   z-index: 1;
 }
+.app-shell .school-roster-scroll {
+  overflow: auto;
+  max-height: 560px;
+  max-width: 100%;
+  scrollbar-gutter: stable;
+}
+.app-shell .school-roster-scroll:focus-visible {
+  outline: 2px solid #2d7658;
+  outline-offset: 2px;
+}
+.app-shell table.school-roster-table {
+  min-width: 2800px;
+  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.app-shell .school-roster-table th,
+.app-shell .school-roster-table td {
+  min-width: 120px;
+  max-width: 320px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  overflow: visible;
+  text-overflow: clip;
+}
+.app-shell .school-roster-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #eef6f1;
+}
+.app-shell .school-roster-table :is(th, td):nth-child(-n + 2) {
+  position: sticky;
+  left: 0;
+  min-width: 100px;
+  width: 100px;
+  max-width: 100px;
+  box-sizing: border-box;
+  background: #fff;
+  z-index: 1;
+}
+.app-shell .school-roster-table :is(th, td):nth-child(2) {
+  left: 100px;
+  min-width: 120px;
+  width: 120px;
+  max-width: 120px;
+  border-right: 1px solid #d5e3da;
+}
+.app-shell .school-roster-table th:nth-child(-n + 2) {
+  background: #eef6f1;
+  z-index: 3;
+}
+.app-shell .school-roster-table :is(th, td):nth-child(16) {
+  min-width: 300px;
+}
+.app-shell .school-roster-table :is(th, td):nth-child(18) {
+  min-width: 200px;
+}
 .roster-import-dialog .import-error {
   color: #a4372c;
 }

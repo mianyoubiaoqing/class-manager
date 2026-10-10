@@ -9,6 +9,7 @@ import type {
 import { scoreText } from '../../score-editor';
 import { WorkspaceLinks, type AppView } from '../../WorkspaceNavigation';
 import { ImportedProfileDetails } from '../../ImportedProfileDetails';
+import { SchoolRosterCells, SchoolRosterHeaders } from '../../SchoolRosterTable';
 
 export function ClassDataImport({
   snapshot,
@@ -703,12 +704,24 @@ export function ClassDataImport({
               <button onClick={() => setMatching(true)}>核对学生匹配</button>
             </div>
           )}
-          <div className="shared-table-scroll">
-            <table>
+          <div
+            className={`shared-table-scroll ${preview.profileRows > 0 ? 'school-roster-scroll' : ''}`}
+            tabIndex={0}
+            role="region"
+            aria-label="学生信息与成绩预览表格"
+          >
+            <table className={preview.profileRows > 0 ? 'school-roster-table' : undefined}>
               <thead>
                 <tr>
-                  <th>学生编号</th>
-                  <th>姓名</th>
+                  {preview.profileRows > 0 ? (
+                    <SchoolRosterHeaders />
+                  ) : (
+                    <>
+                      <th>学号</th>
+                      <th>姓名</th>
+                    </>
+                  )}
+                  <th>来源行</th>
                   {preview.profileRows > 0 && <th>学生详细资料</th>}
                   {preview.subjects.map((s) => (
                     <th key={s.id}>
@@ -721,9 +734,19 @@ export function ClassDataImport({
               <tbody>
                 {tableRows.slice(page * 3, page * 3 + 3).map((row) => (
                   <tr key={row.key}>
-                    <td>{row.studentNumber || '确认后生成'}</td>
+                    {preview.profileRows > 0 ? (
+                      <SchoolRosterCells
+                        studentNumber={row.studentNumber || '确认后生成'}
+                        displayName={row.displayName || '缺少姓名'}
+                        profile={row.profile}
+                      />
+                    ) : (
+                      <>
+                        <td>{row.studentNumber || '确认后生成'}</td>
+                        <td>{row.displayName || '缺少姓名'}</td>
+                      </>
+                    )}
                     <td>
-                      {row.displayName || '缺少姓名'}
                       <small className="shared-row-source">
                         {row.sheet} · 第 {row.row} 行
                       </small>

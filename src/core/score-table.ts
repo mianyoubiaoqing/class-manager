@@ -162,10 +162,12 @@ export async function readClassDataTables(
               ? 'date'
               : profileKey === 'boarding'
                 ? 'boarding'
-                : /IdCard|^idCard$|Registration|Number|Phone/u.test(profileKey ?? '') ||
-                    ['学生编号', '学号', '编号'].includes(header)
-                  ? 'identifier'
-                  : 'text';
+                : /IdCard|^idCard$/u.test(profileKey ?? '')
+                  ? 'identity'
+                  : /Registration|Number|Phone/u.test(profileKey ?? '') ||
+                      ['学生编号', '学号', '编号'].includes(header)
+                    ? 'identifier'
+                    : 'text';
           values.push({
             ...(allowRosterLayout && (rowIndex === headerRow || rosterField)
               ? rosterCell(

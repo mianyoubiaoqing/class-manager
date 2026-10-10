@@ -36,14 +36,13 @@ export function SchoolProfileFields({
             type={key === 'birthMonth' ? 'month' : /Phone$/.test(key) ? 'tel' : 'text'}
             maxLength={
               /IdCard$|^idCard$/.test(key)
-                ? 18
+                ? 40
                 : /Name$/.test(key)
                   ? 80
                   : key === 'povertyStatus'
                     ? 300
                     : 40
             }
-            pattern={/IdCard$|^idCard$/.test(key) ? '[0-9]{17}[0-9Xx]' : undefined}
             onChange={(e) => onChange(key, e.target.value)}
           />
         </label>

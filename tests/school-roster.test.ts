@@ -512,3 +512,81 @@ test('roster compatibility does not accept cached formulas in score columns', as
   expect(p.rows[0]!.message).toContain('数学');
   expect(w.snapshot().students).toHaveLength(0);
 });
+
+test.each(['roster', 'shared'] as const)(
+  '%s imports the school layout with cached all-zero birth-month placeholders',
+  async (mode) => {
+    const { w, input } = setup(),
+      b = new ExcelJS.Workbook();
+    await b.xlsx.load(Uint8Array.from(await file()).buffer);
+    b.worksheets[0]!.getCell('D4').value = { formula: 'MID(E4,7,6)', result: '000000' };
+    const bytes = Buffer.from(await b.xlsx.writeBuffer());
+    const p =
+      mode === 'roster'
+        ? await w.previewRoster(bytes, 'xlsx', '合成.xlsx', input)
+        : await w.classData.select([{ bytes, format: 'xlsx', fileName: '合成.xlsx' }], input);
+    expect(p).toMatchObject({ added: 1, canConfirm: true });
+    expect(p.rows[0]!.message).toContain('全零');
+    expect(p.rows[0]!.message).toContain('公式');
+    const saved =
+      mode === 'roster'
+        ? w.confirmRoster({ epoch: input.epoch, token: p.token })
+        : w.classData.confirm({ epoch: input.epoch, token: p.token });
+    expect(
+      w.pupils.readProfile({ epoch: input.epoch, studentId: saved.snapshot.students[0]!.id })
+        .content,
+    ).toMatchObject({ ...profile, birthMonth: '' });
+  },
+);
+
+test('all-zero placeholders do not clear an existing birth month; real invalid months still block', async () => {
+  const { w, input } = setup();
+  const p = await w.previewRoster(await file(), 'xlsx', '合成.xlsx', input);
+  w.confirmRoster({ epoch: input.epoch, token: p.token });
+  const changed = [...values];
+  changed[3] = '000000';
+  changed[11] = '13900000002';
+  const update = await w.previewRoster(await file(changed), 'xlsx', '合成.xlsx', input);
+  expect(update).toMatchObject({ updated: 1, canConfirm: true });
+  w.confirmRoster({ epoch: input.epoch, token: update.token });
+  expect(
+    w.pupils.readProfile({ epoch: input.epoch, studentId: w.snapshot().students[0]!.id }).content,
+  ).toMatchObject({ birthMonth: '2010-09', fatherPhone: '13900000002' });
+  changed[3] = '201013';
+  const invalid = await w.previewRoster(await file(changed), 'xlsx', '合成.xlsx', input);
+  expect(invalid.canConfirm).toBe(false);
+  expect(invalid.rows[0]!.message).toContain('出生年月');
+});
+
+test.each(['roster', 'shared'] as const)(
+  '%s preserves school identity text of nonstandard length with a review notice',
+  async (mode) => {
+    const { w, root, input } = setup();
+    const row = [...values];
+    row[4] = '1101010000000000';
+    row[10] = '家长未提供';
+    const bytes = await file(row);
+    const p =
+      mode === 'roster'
+        ? await w.previewRoster(bytes, 'xlsx', '合成.xlsx', input)
+        : await w.classData.select([{ bytes, format: 'xlsx', fileName: '合成.xlsx' }], input);
+    expect(p).toMatchObject({ added: 1, canConfirm: true });
+    expect(p.rows[0]!.message).toContain('格式待核对');
+    const saved =
+      mode === 'roster'
+        ? w.confirmRoster({ epoch: input.epoch, token: p.token })
+        : w.classData.confirm({ epoch: input.epoch, token: p.token });
+    expect(
+      w.pupils.readProfile({ epoch: input.epoch, studentId: saved.snapshot.students[0]!.id })
+        .content,
+    ).toMatchObject({ idCard: row[4], fatherIdCard: row[10] });
+    w.close();
+    workspaces.splice(workspaces.indexOf(w), 1);
+    const reopened = new Workspace(root);
+    workspaces.push(reopened);
+    expect(
+      reopened.pupils.readProfile({ epoch: input.epoch, studentId: saved.snapshot.students[0]!.id })
+        .content.idCard,
+    ).toBe(row[4]);
+  },
+);

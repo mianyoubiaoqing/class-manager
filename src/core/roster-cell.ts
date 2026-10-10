@@ -4,7 +4,7 @@ import { SCORE_FILE_LIMITS } from '../shared/score-import';
 /** Read only displayed roster data. Formulas and links are never executed or followed. */
 export function rosterCell(
   raw: unknown,
-  kind: 'text' | 'identifier' | 'date' | 'boarding',
+  kind: 'text' | 'identifier' | 'identity' | 'date' | 'boarding',
   numberFormat = '',
   date1904 = false,
 ): ScoreCell {
@@ -28,6 +28,11 @@ export function rosterCell(
     }
   }
   if (value == null) return { value: null, ...(notice ? { notice } : {}) };
+  if (kind === 'date' && typeof value === 'string' && /^0{6}(?:00)?$/.test(value.trim()))
+    return {
+      value: null,
+      notice: [notice, '全零出生年月/日期按未填写处理，未保存为日期。'].filter(Boolean).join(' '),
+    };
   if (value instanceof Date) {
     if (kind !== 'date' || !Number.isFinite(value.getTime()))
       return fail('此字段不是日期，请检查 Excel 单元格类型。');
@@ -48,7 +53,7 @@ export function rosterCell(
       value = new Date(epoch + (value - (!date1904 && value > 60 ? 1 : 0)) * 86400000)
         .toISOString()
         .slice(0, 10);
-    } else if (kind === 'identifier') {
+    } else if (kind === 'identifier' || kind === 'identity') {
       if (!Number.isSafeInteger(value) || value < 0 || String(value).length > 15)
         return fail('长编号以数字保存可能已丢失精度，请从原始资料核对后以文本重新填写。');
       const digits = String(value);
@@ -62,5 +67,9 @@ export function rosterCell(
     return fail('单元格包含 Excel 错误值或不支持的内容，请修正后导入。');
   if (value.length > SCORE_FILE_LIMITS.cellCharacters)
     return fail('单元格超过 512 字符，请缩短内容。');
+  if (kind === 'identity' && value.trim() && !/^\d{17}[\dXx]$/.test(value.trim()))
+    notice = [notice, '身份证号码格式待核对：按原文保存，未补位或认定为有效号码。']
+      .filter(Boolean)
+      .join(' ');
   return { value, ...(notice ? { notice } : {}) };
 }

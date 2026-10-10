@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { studentIdentityText } from './pupils';
 
 const text = (max = 2000) => z.string().trim().max(max);
 const required = (max = 120) => text(max).min(1);
@@ -114,7 +115,7 @@ export const teachingContentSchemas = {
   studentExtra: z
     .object({
       studentId: pupil,
-      idCard: text(18).refine((v) => !v || /^\d{17}[\dXx]$/.test(v), '身份证号须为18位'),
+      idCard: studentIdentityText,
       height: z.number().min(0).max(250),
       group: z.number().int().min(1).max(100),
       note: text(),

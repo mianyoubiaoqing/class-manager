@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { FileSpreadsheet, Upload, X } from 'lucide-react';
 import type { Snapshot } from '../shared/contracts';
 import type { RosterImportPreview } from '../shared/roster-import';
-import { ImportedProfileDetails } from './ImportedProfileDetails';
+import { SchoolRosterCells, SchoolRosterHeaders } from './SchoolRosterTable';
 
 export function RosterImportDialog({
   snapshot,
@@ -127,7 +127,7 @@ export function RosterImportDialog({
         <div>
           <h3>已有学生名单？直接选择文件</h3>
           <p>
-            支持学校花名册的18列。至少填写“学号”和“姓名”；常见数字学号、补零显示、Excel
+            表头与学校花名册的18列一致，学生、父亲、母亲的联系资料分别保存。已有同格式文件可直接选择，无需改名或重新排列。至少填写“学号”和“姓名”；常见数字学号、补零显示、Excel
             日期和富文本可直接读取。身份证等长编号仍请保存为文本，避免 Excel
             丢失精度。每次导入一个班级，最多 10000 行、5 MiB。
           </p>
@@ -241,25 +241,23 @@ export function RosterImportDialog({
             aria-describedby="roster-table-help"
             tabIndex={0}
           >
-            <table>
+            <table className="school-roster-table">
               <thead>
                 <tr>
+                  <SchoolRosterHeaders />
                   <th>文件行号</th>
-                  <th>学生编号</th>
-                  <th>姓名</th>
-                  <th>详细资料</th>
                   <th>检查结果</th>
                 </tr>
               </thead>
               <tbody>
                 {tableRows.slice(page * 20, (page + 1) * 20).map((r) => (
                   <tr key={r.row}>
+                    <SchoolRosterCells
+                      studentNumber={r.studentNumber}
+                      displayName={r.displayName}
+                      profile={r.profile}
+                    />
                     <td>{r.row}</td>
-                    <td>{r.studentNumber || '—'}</td>
-                    <td>{r.displayName || '—'}</td>
-                    <td>
-                      <ImportedProfileDetails profile={r.profile} />
-                    </td>
                     <td
                       className={`roster-import-result ${r.status === 'error' ? 'import-error' : ''}`}
                     >

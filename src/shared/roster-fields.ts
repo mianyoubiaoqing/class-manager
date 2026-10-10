@@ -1,3 +1,5 @@
+import type { StudentProfile } from './pupils';
+
 /** Exact school roster layout; repeated labels are disambiguated only in this known layout. */
 export const schoolRosterHeaders = [
   '学号',
@@ -29,3 +31,37 @@ export const schoolRosterUniqueHeaders = schoolRosterHeaders.map(
       14: '母亲联系电话',
     })[index] ?? header,
 );
+
+/** The same field order is used by the roster, import previews and Excel exports. */
+export function schoolRosterValues(
+  studentNumber: string,
+  displayName: string,
+  content: Partial<StudentProfile['content']> = {},
+): string[] {
+  return [
+    studentNumber,
+    displayName,
+    ({ male: '男', female: '女', other: '其他', unspecified: '' } as const)[
+      content.gender ?? 'unspecified'
+    ],
+    content.birthMonth || content.birthDate?.slice(0, 7) || '',
+    ...(
+      [
+        'idCard',
+        'studentRegistration',
+        'examRegistration',
+        'applicationNumber',
+        'studentPhone',
+        'fatherName',
+        'fatherIdCard',
+        'fatherPhone',
+        'motherName',
+        'motherIdCard',
+        'motherPhone',
+        'address',
+      ] as const
+    ).map((key) => content[key] ?? ''),
+    ({ yes: '住校', no: '走读', unspecified: '' } as const)[content.boarding ?? 'unspecified'],
+    content.povertyStatus ?? '',
+  ];
+}
